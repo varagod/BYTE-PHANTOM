@@ -2,7 +2,7 @@
 
 **DIGITAL GHOST · CYBER OPERATIONS SIMULATOR**
 
-BYTE PHANTOM is a cinematic, cyberpunk-inspired **fictional hacking simulator**. It provides an interactive dashboard, animated ASCII-style terminal, operation scenarios, activity log, and fictional profile generator.
+BYTE PHANTOM is a cinematic, cyberpunk-inspired **fictional hacking simulator**. It provides an interactive dashboard, animated ASCII-style terminal, original procedural ambient music, synthesized sound effects, a resizable desktop app with maximize/fullscreen controls, operation scenarios, activity log, and fictional profile generator.
 
 > **Safety:** Every operation is local and simulated. The app does not scan networks, trace real IP addresses, access cameras/devices/satellites, crack passwords, extract real data, or contact external targets.
 
@@ -26,7 +26,12 @@ BYTE PHANTOM is a cinematic, cyberpunk-inspired **fictional hacking simulator**.
 - DARK TERMINAL with simulator-only commands
 - PROFILE GENERATOR for fictional identities
 - Local activity history and progress animations
+- Original procedural ambient music and UI / operation sound effects (Web Audio API)
+- Independent music and effects toggles with volume sliders
+- Native resizable Windows desktop window (Electron), starts windowed and supports maximize / fullscreen
+- Fullscreen toggle in browser mode and keyboard shortcut F11
 - Android packaging through Capacitor and GitHub Actions
+- Windows portable EXE through Electron Builder and GitHub Actions
 
 ## Run the web version locally
 
@@ -82,3 +87,27 @@ BYTE-PHANTOM/
 ├── package.json
 └── README.md
 ~~~
+
+
+## Desktop app (Windows)
+
+Requirements: Node.js 24+.
+
+~~~powershell
+npm install
+npm run desktop:dev
+~~~
+
+The desktop shell opens in a normal, resizable window with the standard Windows minimize and maximize controls. Use the in-app FULLSCREEN control or press F11 to toggle fullscreen.
+
+Build a portable Windows x64 executable:
+
+~~~powershell
+npm run desktop:build
+~~~
+
+The EXE is written to dist-desktop/. The GitHub Actions workflow also publishes it as a downloadable artifact.
+
+## Audio
+
+Music is an original, procedural ambient soundtrack synthesized locally using the Web Audio API. Interface, navigation, operation-start, and completion sounds are generated in the same way. Browsers require a user gesture before audio can start, so playback begins after the first click or key press. Music and effects can be controlled separately in Settings.

@@ -26,7 +26,12 @@
   let operationTimer = null;
   let operationCount = 0;
   let activity = [];
-  let soundEnabled = false;
+  const audioState = {
+    context: null, masterGain: null, musicGain: null, sfxGain: null,
+    masterEnabled: true, musicEnabled: true, sfxEnabled: true,
+    musicVolume: 0.32, sfxVolume: 0.48, musicStarted: false,
+    arpeggioTimer: null, noteIndex: 0
+  };
   let terminalHistory = [];
   let terminalHistoryIndex = 0;
 
@@ -40,25 +45,167 @@
       return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[ch];
     });
   };
-  function tone() {
-    if (!soundEnabled) return;
+  function loadAudioPreferences() {
     try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      const oscillator = ctx.createOscillator();
-      const gain = ctx.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.value = 620;
-      gain.gain.setValueAtTime(0.035, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.075);
-      oscillator.connect(gain);
-      gain.connect(ctx.destination);
-      oscillator.start();
-      oscillator.stop(ctx.currentTime + 0.08);
-      oscillator.onended = function () { ctx.close(); };
-    } catch (e) { /* Audio is optional. */ }
+      audioState.masterEnabled = localStorage.getItem("bpAudioMaster") !== "false";
+      audioState.musicEnabled = localStorage.getItem("bpMusicEnabled") !== "false";
+      audioState.sfxEnabled = localStorage.getItem("bpSfxEnabled") !== "false";
+      const music = Number(localStorage.getItem("bpMusicVolume"));
+      const sfx = Number(localStorage.getItem("bpSfxVolume"));
+      if (Number.isFinite(music) && localStorage.getItem("bpMusicVolume") !== null) audioState.musicVolume = Math.max(0, Math.min(1, music));
+      if (Number.isFinite(sfx) && localStorage.getItem("bpSfxVolume") !== null) audioState.sfxVolume = Math.max(0, Math.min(1, sfx));
+    } catch (e) { /* Preferences are optional. */ }
   }
+  function saveAudioPreferences() {
+    try {
+      localStorage.setItem("bpAudioMaster", String(audioState.masterEnabled));
+      localStorage.setItem("bpMusicEnabled", String(audioState.musicEnabled));
+      localStorage.setItem("bpSfxEnabled", String(audioState.sfxEnabled));
+      localStorage.setItem("bpMusicVolume", String(audioState.musicVolume));
+      localStorage.setItem("bpSfxVolume", String(audioState.sfxVolume));
+    } catch (e) { /* Private browsing may disable storage. */ }
+  }
+  function updateAudioLevels() {
+    if (!audioState.context) return;
+    const ctx = audioState.context;
+    if (audioState.musicGain) audioState.musicGain.gain.setTargetAtTime(
+      audioState.masterEnabled && audioState.musicEnabled ? audioState.musicVolume : 0,
+      ctx.currentTime, 0.28
+    );
+    if (audioState.sfxGain) audioState.sfxGain.gain.setTargetAtTime(
+      audioState.masterEnabled && audioState.sfxEnabled ? audioState.sfxVolume : 0,
+      ctx.currentTime, 0.035
+    );
+  }
+  function syncAudioUi() {
+    const button = $("audioToggle");
+    if (button) {
+      button.classList.toggle("is-active", audioState.masterEnabled);
+      button.classList.toggle("is-muted", !audioState.masterEnabled);
+      button.setAttribute("aria-pressed", String(audioState.masterEnabled));
+      $("audioToggleLabel").textContent = audioState.masterEnabled ? "AUDIO ON" : "AUDIO MUTED";
+      button.title = audioState.masterEnabled ? "Mute all audio" : "Enable music and sound";
+    }
+    if ($("musicToggle")) $("musicToggle").checked = audioState.musicEnabled;
+    if ($("soundToggle")) $("soundToggle").checked = audioState.sfxEnabled;
+    if ($("musicVolume")) $("musicVolume").value = String(Math.round(audioState.musicVolume * 100));
+    if ($("sfxVolume")) $("sfxVolume").value = String(Math.round(audioState.sfxVolume * 100));
+    if ($("musicVolumeValue")) $("musicVolumeValue").textContent = Math.round(audioState.musicVolume * 100) + "%";
+    if ($("sfxVolumeValue")) $("sfxVolumeValue").textContent = Math.round(audioState.sfxVolume * 100) + "%";
+    document.body.classList.toggle("audio-muted", !audioState.masterEnabled);
+  }
+  function startAmbientMusic() {
+    if (!audioState.context || audioState.musicStarted) return;
+    const ctx = audioState.context;
+    const bus = audioState.musicGain;
+    const padFilter = ctx.createBiquadFilter();
+    padFilter.type = "lowpass";
+    padFilter.frequency.value = 420;
+    padFilter.Q.value = 0.7;
+    padFilter.connect(bus);
+    [
+      { f:55, type:"sine", gain:0.23 },
+      { f:82.41, type:"sine", gain:0.13 },
+      { f:110, type:"triangle", gain:0.055 },
+      { f:164.81, type:"sine", gain:0.035 }
+    ].forEach(function (voice) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = voice.type;
+      osc.frequency.value = voice.f;
+      gain.gain.value = voice.gain;
+      osc.connect(gain);
+      gain.connect(padFilter);
+      osc.start();
+    });
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.frequency.value = 0.055;
+    lfoGain.gain.value = 95;
+    lfo.connect(lfoGain);
+    lfoGain.connect(padFilter.frequency);
+    lfo.start();
+
+    const notes = [220, 164.81, 246.94, 196, 293.66, 220, 164.81, 146.83];
+    audioState.arpeggioTimer = window.setInterval(function () {
+      if (!audioState.musicEnabled || !audioState.masterEnabled || !audioState.context) return;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 780;
+      osc.type = "sine";
+      osc.frequency.value = notes[audioState.noteIndex % notes.length];
+      audioState.noteIndex += 1;
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(0.035, t + 0.24);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
+      osc.connect(filter);
+      filter.connect(env);
+      env.connect(bus);
+      osc.start(t);
+      osc.stop(t + 2.85);
+    }, 3100);
+    audioState.musicStarted = true;
+  }
+  async function ensureAudio() {
+    try {
+      if (!audioState.context) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return false;
+        const ctx = new AudioContextClass();
+        const master = ctx.createGain();
+        const music = ctx.createGain();
+        const sfx = ctx.createGain();
+        master.gain.value = 0.72;
+        music.gain.value = 0;
+        sfx.gain.value = 0;
+        music.connect(master);
+        sfx.connect(master);
+        master.connect(ctx.destination);
+        audioState.context = ctx;
+        audioState.masterGain = master;
+        audioState.musicGain = music;
+        audioState.sfxGain = sfx;
+      }
+      if (audioState.context.state === "suspended") await audioState.context.resume();
+      startAmbientMusic();
+      updateAudioLevels();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  function playSfx(kind) {
+    if (!audioState.masterEnabled || !audioState.sfxEnabled || !audioState.context) return;
+    const patterns = {
+      click: [{ f:620, d:0.055, a:0.025 }],
+      nav: [{ f:520, d:0.06, a:0.025 }, { f:780, d:0.07, a:0.016, delay:0.035 }],
+      start: [{ f:220, d:0.14, a:0.045 }, { f:440, d:0.19, a:0.025, delay:0.09 }],
+      success: [{ f:523.25, d:0.13, a:0.035 }, { f:659.25, d:0.17, a:0.03, delay:0.1 }, { f:783.99, d:0.26, a:0.026, delay:0.2 }]
+    };
+    (patterns[kind] || patterns.click).forEach(function (note) {
+      const ctx = audioState.context;
+      const t = ctx.currentTime + (note.delay || 0);
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(note.f, t);
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(note.a, t + 0.012);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + note.d);
+      osc.connect(env);
+      env.connect(audioState.sfxGain);
+      osc.start(t);
+      osc.stop(t + note.d + 0.02);
+    });
+  }
+  function tone() { playSfx("click"); }
+  loadAudioPreferences();
+  syncAudioUi();
+  document.addEventListener("pointerdown", function () { ensureAudio(); }, { once:true, passive:true });
+  document.addEventListener("keydown", function () { ensureAudio(); }, { once:true });
 
   function showPage(page) {
     if (!pageTitles[page]) return;
@@ -205,6 +352,8 @@
     $("modalResult").hidden = true;
     $("runOperation").disabled = true;
     $("runOperation").textContent = "SIMULATION RUNNING...";
+    ensureAudio();
+    playSfx("start");
     $("progressLabel").textContent = "INITIALIZING";
     const stages = operation.stages;
     let tick = 0;
@@ -239,7 +388,7 @@
     $("runOperation").textContent = "RUN AGAIN";
     addActivity(operation.name, "Fictional scenario completed in the local simulator.");
     appendDashboardLog(operation.name + " simulation completed.", "term-green");
-    tone();
+    playSfx("success");
   }
   $("runOperation").addEventListener("click", runOperation);
   document.querySelectorAll("[data-operation]").forEach(function (button) {
@@ -415,7 +564,7 @@
     $("profileResult").appendChild(card);
     addActivity("PROFILE GENERATED", name + " · fictional identity created locally.");
     appendDashboardLog("Fictional profile generated: " + name + ".", "term-violet");
-    tone();
+    playSfx("success");
   }
   $("generateProfile").addEventListener("click", generateProfile);
 
@@ -427,13 +576,90 @@
   $("effectsToggle").addEventListener("change", function (event) {
     document.body.classList.toggle("no-effects", !event.target.checked);
   });
-  $("soundToggle").addEventListener("change", function (event) {
-    soundEnabled = event.target.checked;
-    tone();
+  $("audioToggle").addEventListener("click", async function () {
+    audioState.masterEnabled = !audioState.masterEnabled;
+    if (audioState.masterEnabled) await ensureAudio();
+    updateAudioLevels();
+    saveAudioPreferences();
+    syncAudioUi();
+    playSfx("nav");
+  });
+  $("musicToggle").addEventListener("change", async function (event) {
+    audioState.musicEnabled = event.target.checked;
+    if (audioState.musicEnabled) await ensureAudio();
+    updateAudioLevels();
+    saveAudioPreferences();
+    syncAudioUi();
+    playSfx("click");
+  });
+  $("soundToggle").addEventListener("change", async function (event) {
+    audioState.sfxEnabled = event.target.checked;
+    if (audioState.sfxEnabled) await ensureAudio();
+    updateAudioLevels();
+    saveAudioPreferences();
+    syncAudioUi();
+    playSfx("click");
+  });
+  $("musicVolume").addEventListener("input", function (event) {
+    audioState.musicVolume = Number(event.target.value) / 100;
+    updateAudioLevels();
+    saveAudioPreferences();
+    syncAudioUi();
+  });
+  $("sfxVolume").addEventListener("input", function (event) {
+    audioState.sfxVolume = Number(event.target.value) / 100;
+    updateAudioLevels();
+    saveAudioPreferences();
+    syncAudioUi();
   });
   $("compactToggle").addEventListener("change", function (event) {
     document.body.classList.toggle("compact", event.target.checked);
   });
+
+  async function syncFullscreenUi() {
+    let isFullscreen = !!document.fullscreenElement;
+    if (window.bytePhantomDesktop && typeof window.bytePhantomDesktop.getWindowState === "function") {
+      try {
+        const state = await window.bytePhantomDesktop.getWindowState();
+        isFullscreen = !!state.fullscreen;
+      } catch (e) { /* Window state is optional in browser mode. */ }
+    }
+    const button = $("fullscreenToggle");
+    button.classList.toggle("is-active", isFullscreen);
+    button.setAttribute("aria-pressed", String(isFullscreen));
+    $("fullscreenLabel").textContent = isFullscreen ? "EXIT FULLSCREEN" : "FULLSCREEN";
+    button.title = isFullscreen ? "Exit fullscreen" : "Enter fullscreen";
+  }
+  async function toggleFullscreen() {
+    try {
+      if (window.bytePhantomDesktop && typeof window.bytePhantomDesktop.toggleFullscreen === "function") {
+        await window.bytePhantomDesktop.toggleFullscreen();
+      } else if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen({ navigationUI:"hide" });
+      } else {
+        addActivity("FULLSCREEN UNAVAILABLE", "This browser does not support the Fullscreen API.", true);
+      }
+      await syncFullscreenUi();
+      playSfx("nav");
+    } catch (e) {
+      addActivity("FULLSCREEN BLOCKED", "The host window did not allow fullscreen mode.", true);
+    }
+  }
+  $("fullscreenToggle").addEventListener("click", toggleFullscreen);
+  document.addEventListener("fullscreenchange", syncFullscreenUi);
+  window.addEventListener("resize", syncFullscreenUi);
+  if (window.bytePhantomDesktop && typeof window.bytePhantomDesktop.onFullscreenChanged === "function") {
+    window.bytePhantomDesktop.onFullscreenChanged(syncFullscreenUi);
+  }
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "F11") {
+      event.preventDefault();
+      toggleFullscreen();
+    }
+  });
+  syncFullscreenUi();
 
   addActivity("CORE INITIALIZED", "BYTE PHANTOM local simulator is ready.");
   addActivity("SAFE MODE ENABLED", "No external connections or real targets are used.");
