@@ -53,7 +53,16 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: |
+          for attempt in 1 2 3; do
+            echo "Android build attempt ${attempt}/3"
+            ./gradlew --no-daemon assembleDebug && exit 0
+            if [ "$attempt" -lt 3 ]; then
+              echo "Gradle dependency download failed; retrying after backoff..."
+              sleep $((attempt * 25))
+            fi
+          done
+          exit 1
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
