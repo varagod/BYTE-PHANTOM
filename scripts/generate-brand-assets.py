@@ -11,7 +11,7 @@ def main():
     text=BRAND.read_text(encoding="utf-8");match=re.search(r'data:image/jpeg;base64,([^"]+)',text)
     if not match: raise RuntimeError("Embedded logo data was not found.")
     source=Image.open(io.BytesIO(base64.b64decode(match.group(1)))).convert("RGB")
-    w,h=source.size;crop=source.crop((round(w*.1875),round(h*.0156),round(w*.8125),round(h*.6406)))
+    w,h=source.size;crop=source.crop((round(w*.1042),0,round(w*.8958),round(h*.5625)))
     mark=ImageOps.fit(crop,(512,512),method=Image.Resampling.LANCZOS)
     brand_dir=ROOT/"web"/"assets"/"brand";brand_dir.mkdir(parents=True,exist_ok=True)
     mark.resize((192,192),Image.Resampling.LANCZOS).save(brand_dir/"icon-192.png",optimize=True)
