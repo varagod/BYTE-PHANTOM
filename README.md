@@ -2,7 +2,7 @@
 
 **DIGITAL GHOST · CYBER OPERATIONS SIMULATOR**
 
-BYTE PHANTOM is a cinematic, cyberpunk-inspired **fictional hacking simulator**. It provides an interactive dashboard, animated ASCII-style terminal, original procedural ambient music, synthesized sound effects, a resizable desktop app with maximize/fullscreen controls, operation scenarios, activity log, and fictional profile generator.
+BYTE PHANTOM is a cinematic, cyberpunk-inspired **fictional hacking simulator**. It provides an interactive dashboard, animated ASCII-style terminal, original procedural ambient music, synthesized sound effects, a resizable desktop app with maximize/fullscreen controls, a cinematic Matrix/ASCII startup sequence, and operation-specific visual reports, activity log, and fictional profile generator.
 
 > **Safety:** Every operation is local and simulated. The app does not scan networks, trace real IP addresses, access cameras/devices/satellites, crack passwords, extract real data, or contact external targets.
 
@@ -107,6 +107,10 @@ npm run desktop:build
 ~~~
 
 The EXE is written to dist-desktop/. The GitHub Actions workflow also publishes it as a downloadable artifact.
+
+## Brand assets (v1.2.0)
+
+The approved logo is the shared source for favicon, web/PWA icons, Android launcher/adaptive icons, and the Windows ICO. Build workflows derive platform-sized assets automatically with Pillow. For local generation run `python -m pip install Pillow` then `python scripts/generate-brand-assets.py`; for Android, add `--android` after `npx cap sync android`.
 
 ## Audio
 

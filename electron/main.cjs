@@ -16,6 +16,7 @@ function createWindow() {
     fullscreen: false,
     autoHideMenuBar: true,
     backgroundColor: "#090910",
+    icon: path.join(__dirname, "..", "assets", "byte-phantom.ico"),
     title: "BYTE PHANTOM — Digital Ghost",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),

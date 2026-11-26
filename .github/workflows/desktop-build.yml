@@ -7,6 +7,7 @@ on:
       - "web/**"
       - "electron/**"
       - "package.json"
+      - "scripts/**"
       - ".github/workflows/desktop-build.yml"
   workflow_dispatch:
 
@@ -25,6 +26,16 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 24
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Generate Windows and web icons
+        run: |
+          python -m pip install --upgrade pip pillow
+          python scripts/generate-brand-assets.py
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund

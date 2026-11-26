@@ -17,6 +17,22 @@
     { id:"encryption-breaker", name:"ENCRYPTION BREAKER", icon:"⟡", tone:"amber-card", category:"data", description:"Solve a toy cipher embedded in the simulator. No external files or real encrypted data are used.", target:"TOY_CIPHER_C-12", stages:["Loading built-in toy cipher","Mapping sample substitution table","Resolving training puzzle","Verifying local demonstration"], result:["CIPHER: C-12 / TOY EXERCISE","PUZZLE: SOLVED LOCALLY","REAL ENCRYPTION: UNTOUCHED","OUTPUT: FICTIONAL TRAINING TEXT"] }
   ];
 
+
+  const operationStreams = {
+    "system-scan": {phases:["PROFILE READ","RESOURCE AUDIT","SERVICE REVIEW","REPORT COMPILE"],visual:"┌── PHANTOM-8 WORKSTATION ───────────────┐\n│ CPU [████████░░] 68%   MEM [██████░░] │\n│ DISK [███████░░] 71%   TEMP 42°C      │\n│ SERVICES 07/07       ALERTS 00        │\n└───────────────────────────────────────┘",lines:["Reading synthetic host signature BP-WS-008","Mapping 8 virtual CPU threads and scheduler state","Sampling fictional memory map: 32 GB / 11.4 GB used","Indexing 7 mock services and 18 loaded components","Checking local resource thresholds: 3 metrics nominal","Comparing generated process table against baseline","No host APIs queried; telemetry is embedded sample data","Compiling workstation health card and checksum BP-8A21"],report:["HOST PHANTOM-8 / 8 VIRTUAL THREADS","MEMORY 32 GB MOCK / 35.6% OCCUPIED","SERVICES 07 ACTIVE / 00 FAULTS","HEALTH NOMINAL / BP-SCAN-8A21"],activity:"A workstation health card was assembled from embedded sample telemetry."},
+    "network-radar": {phases:["GRID WAKE","NODE PLOT","LINK ANALYSIS","RADAR RENDER"],visual:" [N-01]────[N-02]\n    \\       /  \\\n   [N-03]──[N-04]──[N-05]\n       \\       /\n       [N-06]──[N-07]──[N-08]",lines:["Waking the offline radar canvas and sample coordinate grid","Allocating eight fictional nodes across the demo topology","Assigning generated signal strengths and node health values","Drawing edge paths between five imaginary relay links","Resolving two isolated nodes and one high-latency branch","Coloring node clusters by synthetic signal quality","Coordinates belong to bundled DEMO_GRID sample data","Rendering radial topology map with local-only metadata"],report:["NODES 08 FICTIONAL / LINKS 05 ACTIVE","STRONGEST SIGNAL NODE N-04 / 96%","ISOLATED NODES 02","RADAR FRAME GRID-08 / RENDERED LOCALLY"],activity:"Eight generated nodes and their mock links were plotted on the local radar."},
+    "ip-trace": {phases:["ADDRESS PARSE","HOP SIMULATION","ROUTE PAINT","TRACE REPORT"],visual:"TRACE 192.0.2.44 [RESERVED EXAMPLE]\nSTART ─ H01 ─ H02 ─ H03\n                 └── H04 ─ H05 ─ END\nROUTE DEPTH: 06 MOCK HOPS",lines:["Parsing reserved documentation address 192.0.2.44","Creating a six-hop sample route from the local scenario seed","Assigning fictional latency values: 04 / 12 / 19 / 31 / 27 / 42 ms","Placing non-geographic route markers on a demo path","Adding one simulated branch to illustrate route divergence","Checking trace consistency against the embedded route template","No DNS lookup, geolocation request, socket, or packet was used","Painting the final trace card from generated sample values"],report:["DESTINATION 192.0.2.44 / DOCUMENTATION RANGE","ROUTE 06 SIMULATED HOPS / 04 → 42 MS","GEOGRAPHY NOT RESOLVED","TRACE CARD BP-TRACE-044"],activity:"A fictional six-hop route card was rendered for a reserved example address."},
+    "device-infiltration": {phases:["DEVICE PROFILE","HANDSHAKE THEATRE","PERMISSION MAP","SESSION CLOSE"],visual:"MOCK_DEVICE_DELTA\n[BOOT] → [PAIR] → [AUTH] → [PROFILE]\n  │        │       │        │\nLOCAL   DEMO KEY  PASS     CLOSED",lines:["Loading generated device dossier MOCK_DEVICE_DELTA","Reading fictional model string: DLT-09 / firmware 4.2-demo","Animating a local handshake between two mock records","Comparing four imaginary permission layers","Displaying a sample device state: powered / disconnected","Generating a permission matrix with zero device calls","Bluetooth, USB, ADB, and discovery APIs remain unused","Sealing the mock session and clearing temporary state"],report:["DEVICE MOCK-DELTA / DLT-09","HANDSHAKE THEATRICAL SEQUENCE COMPLETE","PERMISSION LAYERS 04 SAMPLE RECORDS","PHYSICAL DEVICE NOT CONTACTED / SESSION CLOSED"],activity:"A fictional device profile and permission matrix were displayed."},
+    "firewall-breach": {phases:["RULESET LOAD","PATTERN MATCH","PUZZLE RESOLVE","AUDIT CLOSE"],visual:"DEMO FIREWALL / RULE MATRIX\n01 ALLOW     ░░░░░░\n02 DENY      ██████\n03 DENY      ██████\n04 ALLOW     ░░░░░░\n05 CHALLENGE ▒▒▒▒▒▒\n06 ALLOW     ░░░░░░",lines:["Mounting the built-in firewall puzzle with 24 sample rules","Grouping mock entries into allow, deny, and challenge lanes","Comparing generated packet labels against the puzzle rule table","Highlighting three deliberate rule conflicts in the demo matrix","Applying the scenario's harmless resolution sequence","Rechecking the six visible rules for a consistent final state","The puzzle engine uses static local data and no network traffic","Exporting a color-coded firewall audit summary"],report:["RULES 24 MOCK ENTRIES / 03 CONFLICTS RESOLVED","DEMO POLICY CONSISTENT","EXTERNAL FIREWALL NOT CONNECTED","AUDIT BP-FW-024"],activity:"A six-row mock firewall matrix was reviewed and resolved."},
+    "password-cracker": {phases:["SAMPLE HASH","TOY SEARCH","STRENGTH SCORE","DATA PURGE"],visual:"TOY HASH LAB\nHASH 7F3A-91C2\nMASK ****-****\nSPACE 16 SYMBOLS × 4 SLOTS\nMATCH TRAINING TOKEN ONLY",lines:["Creating an ephemeral training hash from the built-in toy phrase","Displaying a fictional four-slot character mask","Enumerating a deliberately tiny 16-symbol demonstration space","Scoring entropy against the simulator teaching rubric","Revealing the pre-seeded training token: GHOST-42","This toy result is not a real password recovery","No entered credentials, hashes, files, or accounts are accepted","Discarding the temporary token and synthetic hash"],report:["EXERCISE TOY HASH / 7F3A-91C2","TRAINING TOKEN GHOST-42","REAL CREDENTIALS NOT ACCEPTED","TEMPORARY VALUES DISCARDED"],activity:"A tiny built-in password-strength teaching puzzle was completed."},
+    "camera-access": {phases:["VIRTUAL CHANNEL","FRAME SYNTHESIS","TELEMETRY DRAW","FEED SHUTDOWN"],visual:"VIRTUAL CAM 03 / GENERATED FRAME\n┌──────────────────────────┐\n│ . . . FRAME 003 . . .    │\n│     [ TEST PATTERN ]      │\n│ 00:00:03 / DEMO SIGNAL   │\n└──────────────────────────┘",lines:["Opening the internal VIRTUAL_CAM_03 scene renderer","Generating a synthetic test frame from geometric primitives","Drawing a timestamp, scan bars, and sample frame counter","Adding mock exposure and frame-rate telemetry","Simulating a three-frame buffer with no live video source","Confirming that browser camera permissions were never requested","No webcam, phone camera, stream, or media device is opened","Closing the virtual preview and releasing generated frames"],report:["CHANNEL VIRTUAL-CAM-03 / FRAME 003","PREVIEW GENERATED TEST GRAPHIC","TELEMETRY 30 FPS MOCK / EXPOSURE 0.7","PHYSICAL CAMERA NOT ACCESSED / FEED CLOSED"],activity:"A generated CCTV-style preview frame was rendered without camera access."},
+    "satellite-link": {phases:["ORBIT CATALOG","BEACON ALIGN","TELEMETRY DRAW","LINK RELEASE"],visual:"       ✦ ORBIT-SIM-09\n   . . . . . . . . . . . .\n .      [ PLANET / DEMO ]    .\n   . . . . . . . . . . . .\n          GROUND NODE",lines:["Loading the bundled ORBITAL_SIM_NODE_09 profile","Drawing a fictional orbital path at 540 km altitude","Assigning synthetic beacon ID and carrier frequency","Animating antenna alignment against the demo orbit","Calculating sample link quality and signal-to-noise values","Rendering telemetry strip with generated orbital parameters","No radio, GPS, satellite modem, or external service is contacted","Releasing the visual link and closing the scene"],report:["SATELLITE ORBITAL-SIM-09 / ALTITUDE 540 KM","LINK QUALITY 98% DEMO","RADIO TRANSMISSION NONE","TELEMETRY GENERATED LOCALLY"],activity:"A fictional orbital link and synthetic satellite telemetry were visualized."},
+    "mainframe-override": {phases:["CORE WAKE","LAYER INSPECT","CONTROL PUZZLE","STATE RESTORE"],visual:"PHANTOM MAINFRAME X\n┌ ROOT CONTROL ────────────┐\n├ LAYER 04 [ LOCKED ]      │\n├ LAYER 03 [ LOCKED ]      │\n├ LAYER 02 [ CHECK  ]      │\n└ LAYER 01 [ SANDBOX ] ────┘",lines:["Booting imaginary PHANTOM_MAINFRAME_X environment","Drawing five mock control layers and their access states","Comparing generated access tokens against puzzle rules","Resolving local sequence in the correct training order","Displaying state change in the fictional control stack","Verifying that only the simulator in-memory model changed","No operating-system privileges or remote mainframe are involved","Restoring every layer to its original demo state"],report:["MAINFRAME VIRTUAL-X / 05 DEMO LAYERS","PUZZLE RESOLVED LOCALLY","REAL SYSTEM STATE UNCHANGED","SANDBOX RESTORED"],activity:"The five-layer imaginary mainframe puzzle was resolved and reset."},
+    "data-extraction": {phases:["ARCHIVE MOUNT","FILE INDEX","METADATA PASS","PACKAGE BUILD"],visual:"DEMO_ARCHIVE_001/\n├── logs/  kernel.log  session.log\n├── media/ frame_003.mock\n├── records/ index.json manifest.dat\n└── checksum.bp",lines:["Creating an in-memory sample archive DEMO_ARCHIVE_001","Enumerating 18 fictional entries across four demo folders","Reading mock file sizes, types, and timestamps from seed data","Building compact metadata index with synthetic checksums","Flagging two duplicate sample names for visual review","Packing display manifest and summary into a local report","No user files, folders, or storage locations are read","Removing temporary archive objects after report generation"],report:["FILES 18 FICTIONAL ITEMS / 04 FOLDERS","DUPLICATE LABELS 02","PACKAGE DEMO-PACKAGE-001","SOURCE BUILT-IN DATA / TEMP OBJECTS REMOVED"],activity:"A fictional archive tree and metadata index were generated in memory."},
+    "digital-forensics": {phases:["CASE OPEN","ARTIFACT REVIEW","TIMELINE BUILD","EVIDENCE REPORT"],visual:"CASE PH-014 / EVENT TIMELINE\n09:14 ─ BOOT SAMPLE\n09:16 ─ MOCK LOGIN\n09:19 ─ FILE LABEL CHANGE\n09:23 ─ SESSION CLOSE\nALL TIMES FICTIONAL",lines:["Opening training evidence case PH-014 / sample bundle A","Indexing nine fictional artifacts and generated metadata","Sorting four sample events by embedded timestamps","Comparing a mock file label against the case baseline","Marking one anomaly and two routine events in the timeline","Calculating teaching checksum for the evidence summary","No real disks, browser history, devices, or system logs are read","Packaging forensic timeline and chain-of-custody example"],report:["CASE PH-014 / TRAINING SAMPLE","ARTIFACTS 09 MOCK ITEMS / 04 FICTIONAL EVENTS","ANOMALIES 01 TEACHING EXAMPLE","CONCLUSION DEMO REPORT READY"],activity:"A fictional evidence set was arranged into a four-event forensic timeline."},
+    "encryption-breaker": {phases:["CIPHER LOAD","SUBSTITUTION MAP","TOY DECODE","VERIFY OUTPUT"],visual:"TOY CIPHER C-12\nINPUT  : KJHWY VQJPC\nKEY    : DEMO-5\nOUTPUT : GHOST SIGNAL\nMODE   : TRAINING PUZZLE",lines:["Loading the built-in toy cipher C-12 exercise","Creating a small substitution table from demo key DEMO-5","Mapping sample ciphertext KJHWY VQJPC character by character","Resolving training phrase GHOST SIGNAL from static puzzle data","Comparing decoded phrase against expected sample output","This exercise is not a real encryption attack","No external ciphertext, files, keys, or protected data are accepted","Verifying toy result and clearing the temporary mapping table"],report:["CIPHER C-12 / TOY EXERCISE","TRAINING OUTPUT GHOST SIGNAL","PUZZLE SOLVED LOCALLY","REAL ENCRYPTION UNTOUCHED / TABLE CLEARED"],activity:"The built-in C-12 toy cipher puzzle decoded to its training phrase."}
+  };
+
   const pageTitles = {
     dashboard:"DASHBOARD", operations:"HACKING OPERATIONS", terminal:"DARK TERMINAL",
     profiles:"PROFILE GENERATOR", logs:"ACTIVITY LOGS", settings:"SETTINGS"
@@ -348,46 +364,50 @@
   function runOperation() {
     if (!selectedOperation || operationTimer) return;
     const operation = selectedOperation;
+    const feed = operationStreams[operation.id];
+    if (!feed) return;
     $("progressArea").hidden = false;
     $("modalResult").hidden = true;
     $("runOperation").disabled = true;
-    $("runOperation").textContent = "SIMULATION RUNNING...";
+    $("runOperation").textContent = "RUNNING " + operation.name + "...";
+    $("operationModal").dataset.operation = operation.id;
+    $("progressArea").dataset.scene = operation.id;
     ensureAudio();
     playSfx("start");
-    $("progressLabel").textContent = "INITIALIZING";
-    const stages = operation.stages;
     let tick = 0;
-    const total = 24;
-    $("progressOutput").textContent = "[CORE] Starting local simulation...\n";
+    const total = feed.lines.length;
+    const phaseSize = Math.ceil(total / feed.phases.length);
+    $("progressLabel").textContent = feed.phases[0];
+    $("progressBar").style.width = "0%";
+    $("progressPercent").textContent = "0%";
+    $("progressOutput").textContent = feed.visual + "\n\n";
     operationTimer = setInterval(function () {
+      $("progressOutput").textContent += "[" + String(tick + 1).padStart(2, "0") + "] " + feed.lines[tick] + "\n";
       tick += 1;
       const percent = Math.min(100, Math.round(tick / total * 100));
       $("progressBar").style.width = percent + "%";
       $("progressPercent").textContent = percent + "%";
-      const stageIndex = Math.min(stages.length - 1, Math.floor((tick - 1) / (total / stages.length)));
-      $("progressLabel").textContent = percent >= 100 ? "FINALIZING" : "PHASE " + String(stageIndex + 1).padStart(2, "0");
-      if (tick === 1 || tick % 5 === 0) {
-        $("progressOutput").textContent += "[SIM] " + stages[Math.min(stages.length - 1, Math.floor((tick - 1) / 5))] + "...\n";
-      }
+      const phaseIndex = Math.min(feed.phases.length - 1, Math.floor((tick - 1) / phaseSize));
+      $("progressLabel").textContent = tick >= total ? "GENERATING REPORT" : feed.phases[phaseIndex];
+      const output = $("progressOutput"); output.scrollTop = output.scrollHeight;
       if (tick >= total) {
-        clearInterval(operationTimer);
-        operationTimer = null;
-        finishOperation(operation);
+        clearInterval(operationTimer); operationTimer = null;
+        finishOperation(operation, feed);
       }
-    }, 105);
+    }, operation.id === "network-radar" || operation.id === "satellite-link" ? 245 : 215);
   }
-  function finishOperation(operation) {
+  function finishOperation(operation, feed) {
     operationCount += 1;
     $("runCount").textContent = String(operationCount).padStart(2, "0");
     $("runStatus").textContent = "COMPLETE";
-    $("progressLabel").textContent = "SIMULATION COMPLETE";
-    $("progressOutput").textContent += "[CORE] Local scenario completed.\n[SAFE] No external connection was made.";
+    $("progressLabel").textContent = feed.phases[feed.phases.length - 1] + " / DONE";
+    $("progressOutput").textContent += "\n[REPORT] " + feed.report[0] + "\n[LOCAL] Scenario data generated on this device.";
     $("modalResult").hidden = false;
-    $("modalResult").textContent = "✓ SIMULATION COMPLETE\n" + operation.result.join("\n") + "\n\nSAFE MODE: ENABLED";
+    $("modalResult").textContent = "✓ " + operation.name + " / REPORT READY\n\n" + feed.visual + "\n\n" + feed.report.join("\n") + "\n\n" + feed.activity + "\n\nLOCAL SANDBOX: NO EXTERNAL CONNECTIONS";
     $("runOperation").disabled = false;
     $("runOperation").textContent = "RUN AGAIN";
-    addActivity(operation.name, "Fictional scenario completed in the local simulator.");
-    appendDashboardLog(operation.name + " simulation completed.", "term-green");
+    addActivity(operation.name, feed.activity);
+    appendDashboardLog(operation.name + " report generated locally.", "term-green");
     playSfx("success");
   }
   $("runOperation").addEventListener("click", runOperation);

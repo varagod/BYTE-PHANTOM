@@ -1,6 +1,6 @@
 {
   "name": "byte-phantom",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "BYTE PHANTOM — a cyberpunk-style, local-only hacking simulator.",
   "scripts": {
@@ -8,7 +8,8 @@
     "android:add": "npx cap add android",
     "android:sync": "npx cap sync android",
     "desktop:dev": "electron .",
-    "desktop:build": "electron-builder --win portable"
+    "desktop:build": "electron-builder --win portable",
+    "assets:generate": "python scripts/generate-brand-assets.py"
   },
   "dependencies": {
     "@capacitor/android": "6.2.1",
@@ -30,6 +31,7 @@
     "files": [
       "web/**/*",
       "electron/**/*",
+      "assets/**/*",
       "package.json"
     ],
     "win": {
@@ -40,7 +42,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "assets/byte-phantom.ico"
     },
     "portable": {
       "artifactName": "BYTE-PHANTOM-${version}-Windows-${arch}.${ext}"
