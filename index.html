@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090910">
+  <meta name="description" content="BYTE PHANTOM — Digital Ghost cyber operations simulator.">
+  <title>BYTE PHANTOM — Digital Ghost</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="brand-motion.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+</head>
+<body>
+  <div class="boot-intro" id="bootIntro" role="status" aria-label="BYTE PHANTOM startup sequence">
+    <canvas class="boot-matrix" id="matrixRain" aria-hidden="true"></canvas><div class="boot-vignette"></div><div class="boot-grid"></div>
+    <div class="boot-content">
+      <div class="boot-topline"><span>BP // SECURE SESSION</span><button id="skipBoot" type="button">SKIP INTRO <b>↗</b></button></div>
+      <div class="boot-art-frame"><div class="boot-art-glitch"></div><img src="assets/brand/brand-art.svg" alt="BYTE PHANTOM logo"></div>
+      <div class="boot-copy"><div class="boot-eyebrow">DIGITAL GHOST / CORE INITIALIZATION</div><h1>THE PHANTOM <span>IS WAKING.</span></h1><p>Decrypting the signal. Building the underground.</p></div>
+      <pre class="boot-ascii" id="bootAscii" aria-hidden="true"></pre>
+      <div class="boot-console"><div class="boot-console-head"><span>PHANTOM BOOT LOG</span><span>LOCAL / ENCRYPTED</span></div><div id="bootMessages" aria-live="polite"></div></div>
+      <div class="boot-progress"><span id="bootProgressBar"></span></div><div class="boot-status-row"><span id="bootStatus">INITIALIZING CORE 00%</span><b>LOCAL ENVIRONMENT / READY</b></div>
+    </div><div class="boot-corner boot-corner-a">BP_001</div><div class="boot-corner boot-corner-b">NO SIGNAL LEAVES THIS DEVICE</div>
+  </div>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark brand-mark-art"><img src="assets/brand/mark.svg" alt=""></div>
+        <div class="brand-copy"><strong>BYTE <em>PHANTOM</em></strong><small>DIGITAL GHOST</small></div>
+        <button class="icon-button mobile-close" id="closeSidebar" aria-label="Close menu">×</button>
+      </div>
+
+      <div class="sidebar-label">WORKSPACE</div>
+      <nav class="navigation" aria-label="Main navigation">
+        <button class="nav-link active" data-page="dashboard"><span class="nav-icon">⌂</span><span>Dashboard</span><kbd>01</kbd></button>
+        <button class="nav-link" data-page="operations"><span class="nav-icon">⌘</span><span>Hacking Operations</span><kbd>02</kbd></button>
+        <button class="nav-link" data-page="terminal"><span class="nav-icon">›_</span><span>Dark Terminal</span><kbd>03</kbd></button>
+        <button class="nav-link" data-page="profiles"><span class="nav-icon">◉</span><span>Profile Generator</span><kbd>04</kbd></button>
+      </nav>
+
+      <div class="sidebar-label sidebar-label-spaced">SYSTEM</div>
+      <nav class="navigation" aria-label="System navigation">
+        <button class="nav-link" data-page="logs"><span class="nav-icon">≋</span><span>Activity Logs</span><kbd>05</kbd></button>
+        <button class="nav-link" data-page="settings"><span class="nav-icon">⚙</span><span>Settings</span><kbd>06</kbd></button>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="safe-card">
+        <div class="safe-orbit"><span>✓</span></div>
+        <div><strong>LOCAL SANDBOX</strong><small>Local environment only</small></div>
+        <span class="live-dot"></span>
+      </div>
+      <div class="sidebar-footer"><span class="footer-dot"></span> BUILD 1.2.0 <span class="footer-sep">/</span> PHANTOM CORE</div>
+    </aside>
+
+    <div class="mobile-backdrop" id="mobileBackdrop"></div>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button menu-button" id="openSidebar" aria-label="Open menu">☰</button>
+          <div class="breadcrumb"><span>BYTE PHANTOM</span><b>/</b><strong id="currentSection">DASHBOARD</strong></div>
+        </div>
+        <div class="topbar-right">
+          <button class="top-action audio-action is-active" id="audioToggle" type="button" aria-pressed="true" title="Toggle music and sound">
+            <span class="audio-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="audioToggleLabel">AUDIO ON</span>
+          </button>
+          <button class="top-action fullscreen-action" id="fullscreenToggle" type="button" aria-pressed="false" title="Enter fullscreen">
+            <span class="fullscreen-glyph" aria-hidden="true">⛶</span><span id="fullscreenLabel">FULLSCREEN</span>
+          </button>
+          <div class="top-status"><span class="live-dot"></span> ALL SYSTEMS NOMINAL</div>
+          <div class="top-divider"></div>
+          <div class="user-chip"><div class="user-avatar">G</div><span>GHOST USER</span></div>
+        </div>
+      </header>
+
+      <div class="page-container">
+        <section class="page active" id="page-dashboard">
+          <div class="hero-panel">
+            <div class="hero-grid"></div>
+            <div class="hero-copy">
+              <div class="eyebrow"><span class="eyebrow-line"></span> PRIVATE CYBER SPACE <span class="eyebrow-tag">LOCAL SIMULATION</span></div>
+              <h1>THE PHANTOM<br><span>IS AWAKE.</span></h1>
+              <p class="hero-description">Enter your digital underground. Explore simulated cyber operations, inspect fictional systems, and command your own terminal.</p>
+              <div class="hero-actions">
+                <button class="button button-primary" data-page="operations"><span>▶</span> START SYSTEM</button>
+                <button class="button button-ghost" data-page="terminal"><span class="button-ghost-icon">›_</span> OPEN TERMINAL</button>
+              </div>
+              <div class="hero-footnote"><span class="tiny-shield">⬡</span> NO REAL TARGETS · NO EXTERNAL ACCESS</div>
+            </div>
+
+          </div>
+
+          <div class="section-heading">
+            <div><div class="eyebrow">OVERVIEW</div><h2>System Snapshot</h2></div>
+            <div class="updated-label"><span class="live-dot"></span> LIVE LOCAL SESSION</div>
+          </div>
+          <div class="stats-grid">
+            <article class="stat-card"><div class="stat-top"><span class="stat-icon violet">⌘</span><span class="stat-trend">READY</span></div><div class="stat-value">14</div><div class="stat-name">LOADED MODULES</div><div class="stat-bottom"><span class="stat-bar violet-bar"></span><small>12 operations · 2 tools</small></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-icon cyan">◉</span><span class="stat-trend">LOCAL</span></div><div class="stat-value">100<span class="stat-unit">%</span></div><div class="stat-name">SIMULATION CORE</div><div class="stat-bottom"><span class="stat-bar cyan-bar"></span><small>Isolated demo environment</small></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-icon red">ϟ</span><span class="stat-trend" id="runStatus">IDLE</span></div><div class="stat-value" id="runCount">00</div><div class="stat-name">SESSION OPERATIONS</div><div class="stat-bottom"><span class="stat-bar red-bar"></span><small>Runs this session</small></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-icon green">⌁</span><span class="stat-trend">SECURE</span></div><div class="stat-value">OFF</div><div class="stat-name">NETWORK ACCESS</div><div class="stat-bottom"><span class="stat-bar green-bar"></span><small>No network actions available</small></div></article>
+          </div>
+
+          <div class="dashboard-grid">
+            <section class="panel quick-panel">
+              <div class="panel-heading"><div><div class="eyebrow">FAST LANE</div><h3>Quick Operations</h3></div><button class="text-button" data-page="operations">ALL MODULES <span>↗</span></button></div>
+              <div class="quick-grid">
+                <button class="quick-item" data-operation="system-scan"><span class="quick-icon violet">▦</span><span><b>SYSTEM SCAN</b><small>Inspect mock environment</small></span><i>↗</i></button>
+                <button class="quick-item" data-operation="network-radar"><span class="quick-icon cyan">◎</span><span><b>NETWORK RADAR</b><small>Visualize sample nodes</small></span><i>↗</i></button>
+                <button class="quick-item" data-operation="ip-trace"><span class="quick-icon red">⌖</span><span><b>IP TRACE</b><small>Trace a demo address</small></span><i>↗</i></button>
+                <button class="quick-item" data-page="terminal"><span class="quick-icon green">›_</span><span><b>DARK TERMINAL</b><small>Run simulator commands</small></span><i>↗</i></button>
+              </div>
+            </section>
+
+            <section class="panel terminal-preview">
+              <div class="panel-heading"><div><div class="eyebrow">LIVE OUTPUT</div><h3>Phantom Terminal</h3></div><span class="mini-live"><span class="live-dot"></span> DEMO</span></div>
+              <div class="terminal-mini" id="dashboardTerminal">
+                <div class="terminal-line"><span class="term-time">14:04:01</span><span class="term-green">[CORE]</span> Phantom kernel initialized.</div>
+                <div class="terminal-line"><span class="term-time">14:04:02</span><span class="term-violet">[LOAD]</span> 14 modules standing by.</div>
+                <div class="terminal-line"><span class="term-time">14:04:02</span><span class="term-cyan">[SAFE]</span> Simulation sandbox active.</div>
+                <div class="terminal-line"><span class="term-time">14:04:03</span><span class="term-green">[READY]</span> Awaiting your command<span class="cursor">_</span></div>
+              </div>
+              <button class="terminal-open" data-page="terminal">OPEN FULL TERMINAL <span>↗</span></button>
+            </section>
+          </div>
+          <div class="bottom-note"><span>⬡</span> BYTE PHANTOM is a fictional simulator. All displayed targets, devices, identities, and results are generated locally.</div>
+        </section>
+
+        <section class="page" id="page-operations">
+          <div class="page-title-row"><div><div class="eyebrow">SIMULATION MODULES / 01</div><h1>Hacking <span>Operations</span></h1><p>Choose a scenario and launch a fictional operation inside the isolated simulator.</p></div><div class="module-count"><strong>12</strong><span>OPERATION<br>MODULES</span></div></div>
+          <div class="operation-group">
+            <div class="group-heading"><div class="group-number">01</div><div><h3>RECONNAISSANCE</h3><p>Fictional discovery and environment inspection</p></div><span class="group-count">03 MODULES</span></div>
+            <div class="operation-grid" id="reconGrid"></div>
+          </div>
+          <div class="operation-group">
+            <div class="group-heading"><div class="group-number group-number-violet">02</div><div><h3>ACCESS SIMULATION</h3><p>Imaginary access-control and override scenarios</p></div><span class="group-count">06 MODULES</span></div>
+            <div class="operation-grid" id="accessGrid"></div>
+          </div>
+          <div class="operation-group">
+            <div class="group-heading"><div class="group-number group-number-amber">03</div><div><h3>DATA & FORENSICS</h3><p>Mock data inspection, analysis, and cryptography</p></div><span class="group-count">03 MODULES</span></div>
+            <div class="operation-grid" id="dataGrid"></div>
+          </div>
+          <div class="bottom-note"><span>⬡</span> Operation modules never contact real networks or devices. Results are fictional and created on this device.</div>
+        </section>
+
+        <section class="page" id="page-terminal">
+          <div class="page-title-row"><div><div class="eyebrow">COMMAND INTERFACE / 02</div><h1>Dark <span>Terminal</span></h1><p>A cinematic command line for simulator-only instructions.</p></div><div class="terminal-badge"><span class="live-dot"></span> SANDBOX ACTIVE</div></div>
+          <div class="terminal-window">
+            <div class="terminal-titlebar"><div class="window-dots"><i></i><i></i><i></i></div><span>PHANTOM://LOCAL/CONSOLE</span><button id="clearTerminal" class="terminal-clear">CLEAR OUTPUT</button></div>
+            <div class="terminal-screen" id="terminalScreen" aria-live="polite">
+              <div class="terminal-ascii"> ____  _   _ _   _ _____   ____  _   _  ___  _   _ _____ ___  __  __<br>| __ )| | | | \ | |_   _| |  _ \| | | |/ _ \| \ | |_   _/ _ \|  \/  |<br>|  _ \| | | |  \| | | |   | |_) | |_| | | | |  \| | | || | | | |\/| |<br>| |_) | |_| | |\  | | |   |  __/|  _  | |_| | |\  | | || |_| | |  | |<br>|____/ \___/|_| \_| |_|   |_|   |_| |_|\___/|_| \_| |_| \___/|_|  |_|</div>
+              <div class="terminal-message">BYTE PHANTOM INTERACTIVE CONSOLE v1.2.0</div>
+              <div class="terminal-muted">This console accepts local simulator commands only. Type <b>help</b> to see available commands.</div>
+              <div class="terminal-entry"><span class="prompt-user">ghost@byte-phantom</span><span class="prompt-separator">:</span><span class="prompt-path">~</span><span class="prompt-symbol">$</span><span class="cursor">_</span></div>
+            </div>
+            <form class="terminal-input-row" id="terminalForm"><label for="terminalInput"><span class="prompt-symbol">›</span></label><input id="terminalInput" autocomplete="off" spellcheck="false" placeholder="Type a command (try: help)"><button type="submit">EXECUTE <span>↗</span></button></form>
+            <div class="terminal-footer"><span><i class="live-dot"></i> LOCAL SIMULATION</span><span>UTF-8 <b>·</b> SAFE MODE <b>·</b> NO NETWORK</span></div>
+          </div>
+          <div class="command-hints"><span>QUICK COMMANDS</span><button data-command="help">help</button><button data-command="status">status</button><button data-command="modules">modules</button><button data-command="scan">scan</button><button data-command="clear">clear</button></div>
+        </section>
+
+        <section class="page" id="page-profiles">
+          <div class="page-title-row"><div><div class="eyebrow">IDENTITY LAB / 03</div><h1>Profile <span>Generator</span></h1><p>Create a fictional digital identity for stories and simulator scenarios.</p></div><div class="profile-stamp">FICTION<br>ONLY</div></div>
+          <div class="profile-layout">
+            <section class="panel profile-form-panel"><div class="panel-heading"><div><div class="eyebrow">IDENTITY BUILDER</div><h3>Generate a phantom profile</h3></div><span class="panel-symbol">◉</span></div>
+              <label class="field-label" for="profileAlias">ALIAS <small>OPTIONAL</small></label><input class="text-input" id="profileAlias" maxlength="24" placeholder="e.g. NIGHT VECTOR">
+              <label class="field-label" for="profileClass">PROFILE ARCHETYPE</label><select class="text-input" id="profileClass"><option value="Ghost Operator">Ghost Operator</option><option value="Signal Architect">Signal Architect</option><option value="Data Phantom">Data Phantom</option><option value="Cyber Nomad">Cyber Nomad</option></select>
+              <label class="field-label" for="profileTone">VISUAL SIGNATURE</label><select class="text-input" id="profileTone"><option value="Violet / Phantom">Violet / Phantom</option><option value="Cyan / Signal">Cyan / Signal</option><option value="Red / Ghost">Red / Ghost</option><option value="Green / Circuit">Green / Circuit</option></select>
+              <button class="button button-primary generate-button" id="generateProfile">GENERATE IDENTITY <span>↗</span></button>
+              <p class="form-disclaimer">Generated names, handles, IDs and metadata are fictional. Nothing is searched online or verified against real people.</p>
+            </section>
+            <section class="profile-result" id="profileResult">
+              <div class="profile-placeholder"><div class="placeholder-ring">◉</div><h3>AWAITING IDENTITY</h3><p>Your generated phantom profile will appear here.</p><span>PROFILE LAB / STANDBY</span></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="page-logs">
+          <div class="page-title-row"><div><div class="eyebrow">SESSION RECORD / 04</div><h1>Activity <span>Logs</span></h1><p>A local timeline of simulator actions in this session.</p></div><button class="button button-ghost" id="clearLogs">CLEAR HISTORY</button></div>
+          <section class="panel logs-panel"><div class="panel-heading"><div><div class="eyebrow">LOCAL EVENT STREAM</div><h3>Recent activity</h3></div><span class="mini-live"><span class="live-dot"></span> RECORDING</span></div><div id="activityList" class="activity-list"><div class="empty-state"><span>≋</span><b>NO EVENTS YET</b><small>Run a simulation module to populate your local activity feed.</small></div></div></section>
+        </section>
+
+        <section class="page" id="page-settings">
+          <div class="page-title-row"><div><div class="eyebrow">PREFERENCES / 05</div><h1>System <span>Settings</span></h1><p>Personalize your local simulator experience.</p></div></div>
+          <div class="settings-grid">
+            <section class="panel settings-panel"><div class="panel-heading"><div><div class="eyebrow">INTERFACE</div><h3>Visual preferences</h3></div></div>
+              <div class="setting-row"><div><b>Animated effects</b><small>Glitch, scanline and ambient motion</small></div><label class="toggle"><input type="checkbox" id="effectsToggle" checked><span></span></label></div>
+              <div class="setting-row"><div><b>Ambient soundtrack</b><small>Original procedural cyberpunk music</small></div><label class="toggle"><input type="checkbox" id="musicToggle" checked><span></span></label></div>
+              <div class="setting-row"><div><b>Sound effects</b><small>Interface, navigation and operation sounds</small></div><label class="toggle"><input type="checkbox" id="soundToggle" checked><span></span></label></div>
+              <div class="volume-row"><label for="musicVolume">MUSIC VOLUME <output id="musicVolumeValue">32%</output></label><input type="range" id="musicVolume" min="0" max="100" value="32"></div>
+              <div class="volume-row"><label for="sfxVolume">SOUND EFFECTS VOLUME <output id="sfxVolumeValue">48%</output></label><input type="range" id="sfxVolume" min="0" max="100" value="48"></div>
+              <div class="setting-row"><div><b>Compact interface</b><small>Reduce spacing across panels</small></div><label class="toggle"><input type="checkbox" id="compactToggle"><span></span></label></div>
+            </section>
+            <section class="panel settings-panel"><div class="panel-heading"><div><div class="eyebrow">ABOUT THIS BUILD</div><h3>BYTE PHANTOM v1.2.0</h3></div><span class="panel-symbol">BP</span></div><div class="about-copy"><p><b>DIGITAL GHOST</b> is a local-only cyber operations simulator created for visual entertainment and interface experimentation.</p><div class="about-line"><span>PLATFORM</span><b>WEB / ANDROID / WINDOWS</b></div><div class="about-line"><span>ENGINE</span><b>CAPACITOR</b></div><div class="about-line"><span>NETWORK ACCESS</span><b class="text-green">DISABLED</b></div><div class="about-line"><span>BUILD</span><b>1.0.0</b></div></div></section>
+          </div>
+          <div class="bottom-note"><span>⬡</span> Your settings and activity are kept in the current app session. No account or remote service is required.</div>
+        </section>
+      </div>
+
+      <footer class="main-footer"><span>© 2026 BYTE PHANTOM</span><span>DESIGNED FOR THE DIGITAL UNDERGROUND <b>·</b> PHANTOM EXPERIENCE</span><span>MADE BY <strong>VARAGOD</strong></span></footer>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="operationModal" aria-hidden="true">
+    <section class="operation-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="closeModal" aria-label="Close operation">×</button>
+      <div class="modal-eyebrow"><span class="live-dot"></span> SIMULATION MODULE</div>
+      <div class="modal-icon" id="modalIcon">▦</div>
+      <h2 id="modalTitle">SYSTEM SCAN</h2>
+      <p class="modal-description" id="modalDescription">Inspect the fictional system profile.</p>
+      <div class="modal-target"><span>SIMULATED TARGET</span><strong id="modalTarget">LOCAL_SANDBOX_01</strong><span class="target-tag">LOCAL / FICTIONAL</span></div>
+      <div class="progress-area" id="progressArea" hidden><div class="progress-top"><span id="progressLabel">INITIALIZING</span><b id="progressPercent">0%</b></div><div class="progress-track"><span id="progressBar"></span></div><div class="progress-output" id="progressOutput"></div></div>
+      <div class="modal-result" id="modalResult" hidden></div>
+      <div class="modal-actions"><button class="button button-ghost" id="cancelOperation">CLOSE</button><button class="button button-primary" id="runOperation">INITIALIZE SIMULATION <span>▶</span></button></div>
+      <div class="modal-safety">⬡ FICTIONAL DATA ONLY · NO EXTERNAL CONNECTIONS</div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="brand-motion.js"></script>
+</body>
+</html>

@@ -14,6 +14,21 @@
   <link rel="manifest" href="manifest.webmanifest">
 </head>
 <body>
+  <canvas class="matrix-backdrop" id="ambientMatrix" aria-hidden="true"></canvas>
+  <div class="ascii-atmosphere" aria-hidden="true"><pre class="ascii-rail ascii-rail-left">01001000 01000001 01000011
+╔══════════════════════╗
+║ PHANTOM / NODE 001   ║
+╚══════════════════════╝
+// TRACE THE SIGNAL
+:: 0x7F 0xA1 0x09 ::
+╲ ╲ ╲ ╲ ╲ ╲ ╲ ╲</pre><pre class="ascii-rail ascii-rail-right">[ SIGNAL: ACTIVE ]
+┌────────────────────┐
+│ GHOST PROTOCOL     │
+│ DATA STREAM: LIVE  │
+└────────────────────┘
+10110101 00101101 11001010
+// WATCH THE GRID
+╱ ╱ ╱ ╱ ╱ ╱ ╱ ╱</pre><div class="ascii-crosshair">+</div><div class="scanline-overlay"></div></div>
   <div class="boot-intro" id="bootIntro" role="status" aria-label="BYTE PHANTOM startup sequence">
     <canvas class="boot-matrix" id="matrixRain" aria-hidden="true"></canvas><div class="boot-vignette"></div><div class="boot-grid"></div>
     <div class="boot-content">
@@ -224,5 +239,6 @@
 
   <script src="app.js"></script>
   <script src="brand-motion.js"></script>
+  <script src="ambient-matrix.js"></script>
 </body>
 </html>
