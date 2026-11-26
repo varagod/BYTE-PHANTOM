@@ -10,9 +10,36 @@ function draw(time){if(closed||!ctx)return;raf=requestAnimationFrame(draw);if(ti
 function addLine(line){if(!output)return;const row=document.createElement("div");row.className="boot-log-line";row.textContent="[OK] "+line;output.appendChild(row);while(output.children.length>5)output.removeChild(output.firstChild);}
 function finish(){if(closed)return;closed=true;if(raf)cancelAnimationFrame(raf);if(asciiTimer)window.clearInterval(asciiTimer);intro.classList.add("boot-exit");window.setTimeout(()=>{if(intro.parentNode)intro.parentNode.removeChild(intro);},900);}
 const asciiFrames=[
-"        .-========-.\\n     .-'  .----.  '-.\\n    /   /  /##\\\\  \\\\   \\\\n   |   |  |#()#|  |   |\\n   |   |   \\\\__/   |   |\\n    \\\\   \\\\       /   /\\n     '-. '------' .-'\\n        '-.____.-'",
-"        .-========-.\\n     .-'  .----.  '-.\\n    /   /  /@@\\\\  \\\\   \\\\n   |   |  |#<>#|  |   |\\n   |   |   \\\\__/   |   |\\n    \\\\   \\\\  ||   /   /\\n     '-. '------' .-'\\n        '-.____.-'",
-"        .-========-.\\n     .-'  .----.  '-.\\n    /   /  /##\\\\  \\\\   \\\\n   |   |  |()()|  |   |\\n   |   |   \\\\__/   |   |\\n    \\\\   \\\\  //   /   /\\n     '-. '------' .-'\\n        '-.____.-'"
+[
+"        .-========-.",
+"     .-'  .----.  '-.",
+"    /   /  /##\\  \\",
+"   |   |  |#()#|   |",
+"   |   |   \\__/    |",
+"    \\   \\        /",
+"     '-. '------' .-'",
+"        '-.____.-'"
+].join(String.fromCharCode(10)),
+[
+"        .-========-.",
+"     .-'  .----.  '-.",
+"    /   /  /@@\\  \\",
+"   |   |  |#<>#|   |",
+"   |   |   \\__/    |",
+"    \\   \\  ||    /",
+"     '-. '------' .-'",
+"        '-.____.-'"
+].join(String.fromCharCode(10)),
+[
+"        .-========-.",
+"     .-'  .----.  '-.",
+"    /   /  /##\\  \\",
+"   |   |  |()()|   |",
+"   |   |   \\__/    |",
+"    \\   \\  //    /",
+"     '-. '------' .-'",
+"        '-.____.-'"
+].join(String.fromCharCode(10))
 ];
 let frame=0;if(ascii){ascii.textContent=asciiFrames[0];asciiTimer=window.setInterval(()=>{frame=(frame+1)%asciiFrames.length;ascii.textContent=asciiFrames[frame];},reduced?600:240);}
 const lines=["Waking the phantom kernel...","Mounting encrypted interface modules [14/14]","Rendering signal map and ghost identity...","Audio matrix standing by / user gesture required","Local sandbox secured / external routes disabled","BYTE PHANTOM core is ready."];
