@@ -1,0 +1,19 @@
+{
+  "name": "byte-phantom",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BYTE PHANTOM — a cyberpunk-style, local-only hacking simulator.",
+  "scripts": {
+    "start": "npx serve web",
+    "android:add": "npx cap add android",
+    "android:sync": "npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "6.2.1",
+    "@capacitor/core": "6.2.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "6.2.1",
+    "serve": "14.2.4"
+  }
+}
