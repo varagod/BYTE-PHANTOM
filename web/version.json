@@ -1,7 +1,7 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.10.1",
-  "build": "1.10.1",
+  "version": "1.11.0",
+  "build": "1.11.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
@@ -11,7 +11,7 @@
     "Cross-platform private IPv4 Network Radar and persistent local journal",
     "Interactive observed LAN map",
     "Read-only gateway, DNS resolver, transport, interface, local IPv4, and default-route intelligence on Windows and Android",
-    "User-initiated DNS resolution and two HTTPS connectivity checks on Windows and Android"
+    "Layered connectivity diagnosis: active route snapshot, one local gateway ICMP echo, system DNS resolution, and two independent HTTPS/TLS checks on Windows and Android"
   ],
   "simulatedModules": [
     "IP TRACE",
@@ -36,17 +36,25 @@
   },
   "connectivityDiagnostics": {
     "dnsHost": "example.com",
+    "gatewayProbe": "One ICMP echo request to the active private IPv4 default gateway, when reported and supported",
     "httpsEndpoints": [
       "https://www.msftconnecttest.com/connecttest.txt",
       "https://connectivitycheck.gstatic.com/generate_204"
+    ],
+    "checks": [
+      "active interface and default route",
+      "default gateway ICMP response",
+      "system DNS resolution",
+      "HTTPS/TLS response and status from two fixed endpoints"
     ],
     "userInitiated": true,
     "lanScan": false,
     "portScan": false,
     "credentialTests": false,
-    "configurationChanges": false
+    "configurationChanges": false,
+    "interpretation": "A missing gateway ICMP response is inconclusive because routers or firewalls can filter echo requests. HTTPS success proves reachability to at least one test endpoint only."
   },
-  "security": "Connectivity diagnostics make one DNS lookup and two fixed HTTPS GET requests only when the user explicitly starts the check. They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network configuration.",
+  "security": "Connectivity diagnostics run only after an explicit user action. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform one system DNS lookup and two fixed HTTPS GET checks. They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings.",
   "networkPathIntelligence": {
     "dataSource": "Windows Get-NetIPConfiguration/Get-NetRoute; Android ConnectivityManager/LinkProperties",
     "fields": [
@@ -64,6 +72,7 @@
     "Rebuilt malformed Windows PowerShell route-diagnostics function",
     "Registered Android NetworkRadar through the Capacitor 6 JavaScript plugin runtime",
     "Packaged capacitor.js into Android and Windows app assets",
-    "Restored Windows DNS/HTTPS diagnostics IPC handler and network-path result"
+    "Restored Windows DNS/HTTPS diagnostics IPC handler and network-path result",
+    "Added layered gateway/DNS/HTTPS-TLS failure isolation on Windows and Android"
   ]
 }

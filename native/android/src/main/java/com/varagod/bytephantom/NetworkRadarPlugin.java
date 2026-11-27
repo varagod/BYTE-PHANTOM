@@ -75,12 +75,90 @@ public class NetworkRadarPlugin extends Plugin {
     }
 
     private JSObject runConnectivityDiagnostics() {
-        long startedAt=System.currentTimeMillis();JSObject dnsResult=new JSObject();JSArray addresses=new JSArray();long dnsStarted=System.currentTimeMillis();
-        try { InetAddress[] resolved=InetAddress.getAllByName("example.com");for(InetAddress address:resolved)addresses.put(address.getHostAddress());dnsResult.put("host","example.com");dnsResult.put("ok",resolved.length>0);dnsResult.put("addresses",addresses); }
-        catch(Exception error){dnsResult.put("host","example.com");dnsResult.put("ok",false);dnsResult.put("addresses",addresses);dnsResult.put("error",error.getClass().getSimpleName()+": "+String.valueOf(error.getMessage()));}
-        dnsResult.put("latencyMs",Math.max(0L,System.currentTimeMillis()-dnsStarted));
-        JSArray httpsResults=new JSArray();httpsResults.put(checkHttpsEndpoint("https://www.msftconnecttest.com/connecttest.txt"));httpsResults.put(checkHttpsEndpoint("https://connectivitycheck.gstatic.com/generate_204"));
-        JSObject result=new JSObject();result.put("supported",true);result.put("platform","ANDROID");result.put("collectedAt",java.time.Instant.now().toString());result.put("durationMs",Math.max(0L,System.currentTimeMillis()-startedAt));result.put("dns",dnsResult);result.put("https",httpsResults);result.put("systemChangesMade",false);result.put("scope","TWO FIXED HTTPS CONNECTIVITY ENDPOINTS AND ONE SYSTEM DNS LOOKUP");return result;
+        long startedAt = System.currentTimeMillis();
+        JSObject networkPath = collectNetworkPathInfo();
+        JSObject gatewayProbe = checkDefaultGateway(networkPath.optString("gateway", "NOT REPORTED"));
+
+        JSObject dnsResult = new JSObject();
+        JSArray addresses = new JSArray();
+        long dnsStarted = System.currentTimeMillis();
+        try {
+            InetAddress[] resolved = InetAddress.getAllByName("example.com");
+            for (InetAddress address : resolved) addresses.put(address.getHostAddress());
+            dnsResult.put("host", "example.com");
+            dnsResult.put("ok", resolved.length > 0);
+            dnsResult.put("addresses", addresses);
+        } catch (Exception error) {
+            dnsResult.put("host", "example.com");
+            dnsResult.put("ok", false);
+            dnsResult.put("addresses", addresses);
+            dnsResult.put("error", error.getClass().getSimpleName() + ": " + String.valueOf(error.getMessage()));
+        }
+        dnsResult.put("latencyMs", Math.max(0L, System.currentTimeMillis() - dnsStarted));
+
+        JSArray httpsResults = new JSArray();
+        httpsResults.put(checkHttpsEndpoint("https://www.msftconnecttest.com/connecttest.txt"));
+        httpsResults.put(checkHttpsEndpoint("https://connectivitycheck.gstatic.com/generate_204"));
+
+        JSObject result = new JSObject();
+        result.put("supported", true);
+        result.put("platform", "ANDROID");
+        result.put("collectedAt", java.time.Instant.now().toString());
+        result.put("durationMs", Math.max(0L, System.currentTimeMillis() - startedAt));
+        result.put("networkPath", networkPath);
+        result.put("gatewayProbe", gatewayProbe);
+        result.put("dns", dnsResult);
+        result.put("https", httpsResults);
+        result.put("systemChangesMade", false);
+        result.put("scope", "ACTIVE ROUTE SNAPSHOT + ONE LOCAL GATEWAY ICMP ECHO + ONE SYSTEM DNS LOOKUP + TWO FIXED HTTPS/TLS CHECKS");
+        return result;
+    }
+
+    private JSObject checkDefaultGateway(String gateway) {
+        long started = System.currentTimeMillis();
+        JSObject result = new JSObject();
+        result.put("gateway", gateway == null || gateway.trim().isEmpty() ? "NOT REPORTED" : gateway);
+
+        if (!isPrivate(gateway) || !new File(PING_BINARY).canExecute()) {
+            result.put("supported", false);
+            result.put("replied", false);
+            result.put("status", "SKIPPED");
+            result.put("latencyMs", Math.max(0L, System.currentTimeMillis() - started));
+            result.put("reason", !isPrivate(gateway)
+                ? "No private IPv4 default gateway is available on the active route."
+                : "The Android ping utility is unavailable on this device.");
+            return result;
+        }
+
+        Process process = null;
+        try {
+            process = new ProcessBuilder(PING_BINARY, "-c", "1", "-W", "1", gateway)
+                .redirectErrorStream(true)
+                .start();
+            int exitCode = process.waitFor();
+            result.put("supported", true);
+            result.put("replied", exitCode == 0);
+            result.put("status", exitCode == 0 ? "REPLIED" : "NO_REPLY");
+            result.put("method", "ONE ICMP ECHO REQUEST");
+        } catch (InterruptedException interrupted) {
+            if (process != null) process.destroy();
+            Thread.currentThread().interrupt();
+            result.put("supported", true);
+            result.put("replied", false);
+            result.put("status", "INTERRUPTED");
+            result.put("error", "Gateway probe was interrupted.");
+        } catch (Exception error) {
+            if (process != null) process.destroy();
+            result.put("supported", true);
+            result.put("replied", false);
+            result.put("status", "ERROR");
+            result.put("error", error.getClass().getSimpleName() + ": " + String.valueOf(error.getMessage()));
+        } finally {
+            if (process != null) process.destroy();
+        }
+
+        result.put("latencyMs", Math.max(0L, System.currentTimeMillis() - started));
+        return result;
     }
 
     private JSObject checkHttpsEndpoint(String endpoint) {

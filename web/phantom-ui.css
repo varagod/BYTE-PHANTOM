@@ -202,7 +202,7 @@
 .network-path-empty{padding:14px;color:#8da2af;font-size:10px;letter-spacing:1px}
 @media(max-width:720px){.network-path-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-/* v1.10.0 — explicit DNS and HTTPS connectivity diagnostics */
+/* v1.11.0 — layered gateway, DNS and HTTPS/TLS diagnosis */
 .network-diagnostics-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
 .network-diagnostics-actions>span,.network-diagnostics-note{color:#8194a1;font-size:10px;letter-spacing:.35px}
 .network-diagnostics-results{display:grid;gap:8px;margin-top:12px;padding:12px;border:1px solid rgba(68,232,255,.13);border-radius:8px;background:rgba(4,12,19,.58);color:#9aabb7;font-size:11px}
@@ -213,3 +213,7 @@
 .network-diagnostic-row strong[data-state="ok"]{color:#63ff9c}
 .network-diagnostic-row small{grid-column:1/-1;color:#8194a1;overflow-wrap:anywhere}
 @media(max-width:600px){.network-diagnostic-row{grid-template-columns:1fr auto}}
+
+/* v1.11.0 diagnostics: allow longer route, gateway and certificate details to wrap safely. */
+.network-diagnostics-summary{display:block;line-height:1.55;overflow-wrap:anywhere}
+.network-diagnostics-note{display:block;line-height:1.6;overflow-wrap:anywhere}

@@ -1,12 +1,16 @@
-# BYTE PHANTOM v1.10.1
+# BYTE PHANTOM v1.11.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.10.1 adds explicit DNS and HTTPS connectivity diagnostics to the persistent, cross-platform NETWORK RADAR.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.11.0 adds explicit DNS and HTTPS connectivity diagnostics to the persistent, cross-platform NETWORK RADAR.
 
-## v1.10.1 hotfix
+## v1.11.0 hotfix
 
 This patch repairs the Windows Electron main-process syntax error, restores the Windows diagnostics IPC route, and packages the Capacitor JavaScript runtime so the Android Network Radar plugin is registered and callable from the static HTML interface. Rebuild/install this patch rather than reusing a v1.10.0 APK or EXE.
+
+## v1.11.0 — layered connectivity diagnosis
+
+The Network Radar connectivity report now adds the active route/interface snapshot, one ICMP echo to the active private IPv4 gateway (when available), system DNS resolution for `example.com`, and two independent HTTPS/TLS checks. The report offers cautious interpretation: a gateway that does not answer ping may still forward traffic, and success against either HTTPS endpoint does not guarantee every site is reachable. These checks are started only by the operator and do not scan LAN peers or ports.
 
 ## Real modules
 
@@ -34,7 +38,7 @@ This cannot guarantee a complete list of every client connected to a router. Sle
 
 #### NETWORK CONNECTIVITY DIAGNOSTICS — Windows + Android
 
-The operator can explicitly run a read-only connectivity check from NETWORK RADAR. It performs one system DNS lookup for `example.com` and two HTTPS GET checks against fixed Microsoft and Google connectivity-check endpoints. Each HTTPS result includes its HTTP status and elapsed time. One endpoint may be blocked independently; success from either endpoint confirms outbound HTTPS reachability only to that endpoint. This is not a general website availability guarantee. The diagnostics are user-initiated, do not scan LAN hosts, do not test ports or credentials, and do not change network settings.
+The operator can explicitly run a layered connectivity check from NETWORK RADAR. It reads the active interface, default route, gateway, and configured DNS servers; sends one ICMP echo to the active private IPv4 gateway when available; resolves `example.com` through the system resolver; and makes two HTTPS GET checks against fixed Microsoft and Google connectivity-check endpoints. A gateway that does not reply may simply filter ICMP. Each HTTPS result includes status, latency, and error details; success confirms reachability only to that endpoint, not every website. Diagnostics do not scan LAN hosts or ports, test credentials, or change network settings.
 
 ## SYSTEM INTELLIGENCE — Windows desktop
 
@@ -86,7 +90,7 @@ npm run desktop:build
 
 Portable x64 executable:
 
-**BYTE-PHANTOM-v1.10.1-Windows-x64.exe**
+**BYTE-PHANTOM-v1.11.0-Windows-x64.exe**
 
 The GitHub Actions workflow uploads a version-named artifact. The EXE is portable and does not require a separate installer. It is not code-signed, so Windows SmartScreen may show an unverified publisher warning.
 
@@ -105,7 +109,7 @@ cd android
 
 CI artifact:
 
-**BYTE-PHANTOM-v1.10.1-Android-debug.apk**
+**BYTE-PHANTOM-v1.11.0-Android-debug.apk**
 
 This is a debug APK for testing, not a Play Store release.
 

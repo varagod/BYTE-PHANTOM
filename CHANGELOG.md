@@ -1,5 +1,15 @@
 # BYTE PHANTOM — Changelog
 
+## v1.11.0 — NETWORK FAILURE ISOLATION
+- Expanded the manual connectivity report with the active interface, default IPv4 route, gateway, and configured DNS servers.
+- Added exactly one ICMP echo test to the active private IPv4 gateway when available; a missing reply is reported as inconclusive because gateways may filter ping.
+- Retained the system DNS lookup and two independent HTTPS/TLS requests, now with separate route, gateway, DNS, and web-path evidence.
+- Added diagnosis guidance to distinguish likely DNS resolution failures, missing default routes, and HTTPS/TLS filtering or endpoint failures without claiming certainty from one probe.
+- Implemented the same result contract in the Windows Electron main process and native Android Capacitor plugin.
+- Diagnostics remain user-initiated and do not scan LAN peers, ports, credentials, or change network settings.
+- Updated both platform build metadata to v1.11.0.
+
+
 ## v1.10.1 — WINDOWS STARTUP + ANDROID NATIVE BRIDGE HOTFIX
 - Rebuilt the corrupted Windows Network Path PowerShell function as a valid line-array script; removed stray duplicated source fragments that prevented Electron's main process from parsing.
 - Restored the Windows connectivity-diagnostics IPC handler and included gateway/DNS/default-route data in Network Radar results.

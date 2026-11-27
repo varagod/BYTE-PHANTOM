@@ -235,8 +235,51 @@ async function collectNetworkPathInfo() {
   }
 }
 
+async function probeDefaultGateway(gateway) {
+  const started = Date.now();
+  if (!isPrivateIPv4(gateway)) {
+    return {
+      gateway: gateway || "NOT REPORTED",
+      supported: false,
+      replied: null,
+      status: "SKIPPED",
+      latencyMs: Date.now() - started,
+      reason: "No private IPv4 default gateway was reported by the active route snapshot."
+    };
+  }
+
+  try {
+    const pingPath = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "ping.exe");
+    await execFileAsync(pingPath, ["-n", "1", "-w", "1200", gateway], {
+      windowsHide: true,
+      timeout: 3000,
+      maxBuffer: 64 * 1024,
+      encoding: "utf8"
+    });
+    return {
+      gateway,
+      supported: true,
+      replied: true,
+      status: "REPLIED",
+      latencyMs: Date.now() - started,
+      method: "ONE ICMP ECHO REQUEST"
+    };
+  } catch (error) {
+    return {
+      gateway,
+      supported: true,
+      replied: false,
+      status: error && (error.killed || error.code === "ETIMEDOUT") ? "TIMEOUT" : "NO_REPLY",
+      latencyMs: Date.now() - started,
+      method: "ONE ICMP ECHO REQUEST",
+      error: String(error && (error.code || error.message) ? (error.code || error.message) : error)
+    };
+  }
+}
+
 async function runConnectivityDiagnostics() {
   const startedAt = Date.now();
+  const networkPath = await collectNetworkPathInfo();
 
   const lookup = async host => {
     const started = Date.now();
@@ -277,21 +320,22 @@ async function runConnectivityDiagnostics() {
     };
 
     const request = https.get(url, {
-      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.10.1" }
+      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.11.0" }
     }, response => {
       const statusCode = response.statusCode || 0;
       response.resume();
       finish({ ok: statusCode >= 200 && statusCode < 400, statusCode });
     });
-    request.setTimeout(4500, () => request.destroy(new Error("HTTPS request timed out")));
+    request.setTimeout(5000, () => request.destroy(new Error("HTTPS/TLS request timed out")));
     request.on("error", error => finish({
       ok: false,
       statusCode: 0,
-      error: String(error && error.message ? error.message : error)
+      error: String(error && (error.code || error.message) ? (error.code || error.message) : error)
     }));
   });
 
-  const [dnsResult, httpsResults] = await Promise.all([
+  const [gatewayProbe, dnsResult, httpsResults] = await Promise.all([
+    probeDefaultGateway(networkPath.gateway),
     lookup("example.com"),
     Promise.all([
       checkHttps("https://www.msftconnecttest.com/connecttest.txt"),
@@ -304,10 +348,12 @@ async function runConnectivityDiagnostics() {
     platform: "WINDOWS",
     collectedAt: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
+    networkPath,
+    gatewayProbe,
     dns: dnsResult,
     https: httpsResults,
     systemChangesMade: false,
-    scope: "TWO FIXED HTTPS CONNECTIVITY ENDPOINTS AND ONE SYSTEM DNS LOOKUP"
+    scope: "ACTIVE ROUTE SNAPSHOT + ONE LOCAL GATEWAY ICMP ECHO + ONE SYSTEM DNS LOOKUP + TWO FIXED HTTPS/TLS CHECKS"
   };
 }
 

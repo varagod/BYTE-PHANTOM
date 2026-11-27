@@ -631,7 +631,7 @@
   function buildNetworkRadarJsonReport() {
     return {
       application:"BYTE PHANTOM",
-      version:"1.10.1",
+      version:"1.11.0",
       generatedAt:new Date().toISOString(),
       privacy:"Generated locally. This report is copied only after the user requests it; BYTE PHANTOM does not upload this journal.",
       retentionDays:30,
@@ -858,21 +858,128 @@
   }
 
   async function runNetworkConnectivityDiagnostics() {
-    const button=$("runNetworkDiagnostics"),host=$("networkDiagnosticsResults"),bridge=getNetworkRadarBridge();
-    if(!bridge||typeof bridge.diagnose!=="function"){host.textContent="NATIVE CONNECTIVITY DIAGNOSTICS UNAVAILABLE: "+(networkRadarAndroidPluginError||"Native plugin bridge not detected.");return;}
-    button.disabled=true;button.textContent="TESTING DNS AND HTTPS...";host.textContent="Running a system DNS lookup and two HTTPS connectivity checks. No LAN hosts are scanned.";
+    const button = $("runNetworkDiagnostics");
+    const host = $("networkDiagnosticsResults");
+    const bridge = getNetworkRadarBridge();
+
+    if (!bridge || typeof bridge.diagnose !== "function") {
+      host.textContent = "NATIVE CONNECTIVITY DIAGNOSTICS UNAVAILABLE: " +
+        (networkRadarAndroidPluginError || "Native plugin bridge not detected.");
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "CHECKING PATH / DNS / HTTPS...";
+    host.textContent = "Reading the active route, probing its local gateway once, resolving DNS, and checking two HTTPS/TLS endpoints. No LAN host scan is performed.";
+
     try {
-      const result=await bridge.diagnose();host.replaceChildren();
-      const summary=document.createElement("b");summary.className="network-diagnostics-summary";
-      const dnsOk=!!(result&&result.dns&&result.dns.ok),httpsRows=Array.isArray(result&&result.https)?result.https:[],httpsOk=httpsRows.some(item=>item&&item.ok);
-      summary.textContent=httpsOk?"INTERNET REACHABILITY: CONFIRMED":dnsOk?"DNS WORKS · HTTPS NOT CONFIRMED":"CONNECTIVITY NOT CONFIRMED";host.appendChild(summary);
-      const rows=[["DNS RESOLUTION",dnsOk?"SUCCESS":"FAILED",result&&result.dns?(result.dns.latencyMs+" ms · "+(result.dns.addresses||[]).join(", ")):"No DNS result"]];
-      httpsRows.forEach((item,index)=>rows.push(["HTTPS CHECK "+(index+1),item.ok?"SUCCESS":"FAILED",(item.statusCode?"HTTP "+item.statusCode+" · ":"")+(Number.isFinite(item.latencyMs)?item.latencyMs+" ms":"")+(item.error?" · "+item.error:"")]));
-      rows.forEach(([label,state,detail])=>{const row=document.createElement("div");row.className="network-diagnostic-row";const name=document.createElement("b");name.textContent=label;const status=document.createElement("strong");status.textContent=state;status.dataset.state=state==="SUCCESS"?"ok":"warning";const info=document.createElement("small");info.textContent=detail;row.append(name,status,info);host.appendChild(row);});
-      const note=document.createElement("small");note.className="network-diagnostics-note";note.textContent="A failed endpoint can be blocked independently. HTTPS success confirms outbound connectivity to at least one test service; it does not guarantee every website is reachable. No network settings were changed.";host.appendChild(note);
-      appendDashboardLog("Connectivity diagnostics: DNS "+(dnsOk?"OK":"FAILED")+" / HTTPS "+(httpsOk?"REACHABLE":"NOT CONFIRMED"),httpsOk?"term-green":"term-amber");
-    }catch(error){host.textContent="DIAGNOSTICS FAILED: "+(error&&error.message?error.message:String(error));}
-    finally{button.disabled=false;button.textContent="RUN CONNECTIVITY DIAGNOSTICS";}
+      const result = await bridge.diagnose();
+      host.replaceChildren();
+
+      const path = result && result.networkPath ? result.networkPath : {};
+      const gateway = result && result.gatewayProbe ? result.gatewayProbe : {};
+      const dns = result && result.dns ? result.dns : {};
+      const httpsRows = Array.isArray(result && result.https) ? result.https : [];
+      const dnsOk = dns.ok === true;
+      const httpsOk = httpsRows.some(item => item && item.ok === true);
+      const gatewayReplied = gateway.replied === true;
+      let diagnosis = "RESULT INDETERMINATE";
+      let explanation = "The available checks do not identify one clear failure point.";
+
+      if (httpsOk) {
+        diagnosis = "OUTBOUND HTTPS REACHABILITY CONFIRMED";
+        explanation = "At least one fixed HTTPS test endpoint responded. This proves reachability to that service only, not to every website.";
+      } else if (path.defaultRoute === false) {
+        diagnosis = "NO DEFAULT ROUTE REPORTED";
+        explanation = "The operating system did not report an active IPv4 default route. Check the active adapter, Wi-Fi/Ethernet connection, VPN, or router.";
+      } else if (!dnsOk && gatewayReplied) {
+        diagnosis = "DNS RESOLUTION FAILURE IS LIKELY";
+        explanation = "The local gateway answered ICMP, but the system resolver could not resolve example.com. Review the configured DNS resolvers.";
+      } else if (!dnsOk && gateway.status === "NO_REPLY") {
+        diagnosis = "DNS FAILURE / LOCAL PATH NEEDS REVIEW";
+        explanation = "DNS resolution failed and the gateway did not answer ICMP. The gateway may filter ping, so this is not proof that the router is offline.";
+      } else if (dnsOk && !httpsOk) {
+        diagnosis = "DNS WORKS · HTTPS/TLS NOT CONFIRMED";
+        explanation = "Name resolution succeeded, but neither fixed HTTPS endpoint responded. Possible causes include TLS inspection, HTTPS filtering, captive portals, endpoint outages, or upstream routing.";
+      } else if (gatewayReplied) {
+        diagnosis = "LOCAL GATEWAY REACHABLE";
+        explanation = "The gateway answered ICMP. DNS or HTTPS results are incomplete; run the check again if the network is changing.";
+      }
+
+      const summary = document.createElement("b");
+      summary.className = "network-diagnostics-summary";
+      summary.textContent = diagnosis;
+      host.appendChild(summary);
+
+      const rows = [];
+      const addresses = Array.isArray(path.addresses) ? path.addresses : [];
+      const dnsServers = Array.isArray(path.dnsServers) ? path.dnsServers : [];
+      rows.push([
+        "ACTIVE NETWORK PATH",
+        path.interfaceName && path.interfaceName !== "UNKNOWN" ? "FOUND" : "UNKNOWN",
+        [path.transport || "Transport unknown", path.interfaceName || "Interface unknown", addresses.join(", ") || "No local IPv4 address reported"].join(" · ")
+      ]);
+      rows.push([
+        "DEFAULT ROUTE",
+        path.defaultRoute === true ? "PRESENT" : path.defaultRoute === false ? "MISSING" : "UNKNOWN",
+        "Gateway: " + String(path.gateway || "Not reported") + " · Resolver(s): " + (dnsServers.join(", ") || "Not reported")
+      ]);
+      rows.push([
+        "GATEWAY ICMP",
+        gateway.status || "UNKNOWN",
+        (gateway.gateway || path.gateway || "No IPv4 gateway") + " · " +
+          (Number.isFinite(gateway.latencyMs) ? gateway.latencyMs + " ms" : "latency unavailable") +
+          (gateway.error ? " · " + gateway.error : "") +
+          (gateway.reason ? " · " + gateway.reason : "")
+      ]);
+      rows.push([
+        "SYSTEM DNS LOOKUP",
+        dnsOk ? "SUCCESS" : "FAILED",
+        (dns.host || "example.com") + " · " +
+          (Number.isFinite(dns.latencyMs) ? dns.latencyMs + " ms" : "latency unavailable") + " · " +
+          ((Array.isArray(dns.addresses) ? dns.addresses : []).join(", ") || dns.error || "No address returned")
+      ]);
+
+      httpsRows.forEach((item, index) => {
+        rows.push([
+          "HTTPS / TLS " + (index + 1),
+          item && item.ok ? "SUCCESS" : "FAILED",
+          (item && item.statusCode ? "HTTP " + item.statusCode + " · " : "") +
+            (item && Number.isFinite(item.latencyMs) ? item.latencyMs + " ms" : "latency unavailable") +
+            (item && item.error ? " · " + item.error : "") +
+            (item && item.url ? " · " + item.url : "")
+        ]);
+      });
+
+      rows.forEach(([label, state, detail]) => {
+        const row = document.createElement("div");
+        row.className = "network-diagnostic-row";
+        const name = document.createElement("b");
+        name.textContent = label;
+        const status = document.createElement("strong");
+        status.textContent = state;
+        status.dataset.state = ["SUCCESS", "PRESENT", "FOUND", "REPLIED"].includes(state) ? "ok" : "warning";
+        const info = document.createElement("small");
+        info.textContent = detail;
+        row.append(name, status, info);
+        host.appendChild(row);
+      });
+
+      const note = document.createElement("small");
+      note.className = "network-diagnostics-note";
+      note.textContent = explanation + " Gateway test uses one ICMP echo; routers may block ping even while forwarding traffic. HTTPS results apply only to the two named test services. No network settings were changed.";
+      host.appendChild(note);
+
+      appendDashboardLog(
+        "Connectivity diagnosis: " + diagnosis + " / DNS " + (dnsOk ? "OK" : "FAILED") + " / HTTPS " + (httpsOk ? "REACHABLE" : "NOT CONFIRMED"),
+        httpsOk ? "term-green" : "term-amber"
+      );
+    } catch (error) {
+      host.textContent = "DIAGNOSTICS FAILED: " + (error && error.message ? error.message : String(error));
+    } finally {
+      button.disabled = false;
+      button.textContent = "RUN FULL CONNECTIVITY DIAGNOSTICS";
+    }
   }
 
   function getNetworkRadarBridge() {

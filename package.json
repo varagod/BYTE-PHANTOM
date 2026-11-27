@@ -1,8 +1,8 @@
 {
   "name": "byte-phantom",
-  "version": "1.10.1",
+  "version": "1.11.0",
   "private": true,
-  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with repaired Windows startup, a bundled Capacitor runtime, and cross-platform LAN diagnostics.",
+  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with cross-platform LAN discovery and layered gateway/DNS/HTTPS connectivity diagnosis.",
   "scripts": {
     "start": "npx serve web",
     "android:add": "npx cap add android",
