@@ -1468,7 +1468,7 @@
         name.textContent = label;
         const status = document.createElement("strong");
         status.textContent = state;
-        status.dataset.state = state.includes("VALIDATED") || ["SUCCESS","PRESENT","FOUND","REPLIED"].includes(state) || state.includes("RESOLVED") || state.includes("REACHABLE")
+        status.dataset.state = state === "VALIDATED" || ["SUCCESS","PRESENT","FOUND","REPLIED"].includes(state) || state.includes("RESOLVED") || state.includes("REACHABLE")
           ? "validated" : (state.includes("REDIRECT") ? "portal" : state.includes("MISMATCH") ? "mismatch" : state.includes("PARTIAL") ? "partial" : "warning");
         const info = document.createElement("small");
         info.textContent = detail;
