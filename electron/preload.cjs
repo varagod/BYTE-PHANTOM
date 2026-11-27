@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld("bytePhantomDesktop", Object.freeze({
   getNetworkRadar: (options) => ipcRenderer.invoke("byte-phantom:network-radar", options || {}),
   runConnectivityDiagnostics: () => ipcRenderer.invoke("byte-phantom:connectivity-diagnostics"),
   discoverDnsResolvers: () => ipcRenderer.invoke("byte-phantom:dns-discovery"),
+  getDnsFailoverState: () => ipcRenderer.invoke("byte-phantom:dns-failover-state"),
+  applyDnsResolver: (settings) => ipcRenderer.invoke("byte-phantom:dns-failover-apply", settings || {}),
+  restoreDnsResolver: (options) => ipcRenderer.invoke("byte-phantom:dns-failover-restore", options || {}),
   onFullscreenChanged: (callback) => {
     if (typeof callback !== "function") return () => {};
     const listener = () => callback();

@@ -59,6 +59,9 @@
   const DNS_RESOLVER_HISTORY_KEY = "bytePhantomDnsResolverHistory.v1";
   const DNS_RESOLVER_HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
   const DNS_RESOLVER_HISTORY_MAX = 20;
+  let dnsFailoverCandidates = [];
+  let dnsFailoverState = null;
+  let dnsFailoverActionBusy = false;
   let operationCount = 0;
   let activity = [];
   const audioState = {
@@ -1117,6 +1120,8 @@
         // The on-screen report remains available when local storage is unavailable.
       }
       saveDnsResolverHistory(result);
+      populateDnsFailoverCandidates(result);
+      refreshDnsFailoverState();
 
       host.replaceChildren();
       const summary = document.createElement("b");
@@ -1293,6 +1298,263 @@
   }
 
 
+  function populateDnsFailoverCandidates(result) {
+    const select = $("dnsFailoverResolver");
+    if (!select) return;
+    dnsFailoverCandidates = (Array.isArray(result && result.servers) ? result.servers : [])
+      .filter(item => item && item.ok === true &&
+        Number(item.stableChecks) === Number(item.totalChecks || 2) &&
+        Array.isArray(item.checks) && item.checks.length >= 2 &&
+        item.checks.every(check => check && check.stable === true) &&
+        /^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(String(item.server || "")));
+
+    select.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = dnsFailoverCandidates.length
+      ? "SELECT A REPEAT-STABLE DNS RESOLVER"
+      : "NO REPEAT-STABLE DNS CANDIDATE — RUN THE TEST FIRST";
+    select.appendChild(placeholder);
+    dnsFailoverCandidates.forEach(item => {
+      const option = document.createElement("option");
+      option.value = item.server;
+      option.textContent = (item.label || "DNS RESOLVER") + " · " + item.server +
+        " · " + (Number(item.averageLatencyMs || item.latencyMs) || 0) + " ms median · " +
+        (Number(item.jitterMs) || 0) + " ms jitter";
+      select.appendChild(option);
+    });
+    select.disabled = dnsFailoverCandidates.length === 0;
+    updateDnsFailoverControls();
+  }
+
+  function updateDnsFailoverControls() {
+    const select = $("dnsFailoverResolver");
+    const applyConfirm = $("dnsFailoverApplyConfirm");
+    const restoreConfirm = $("dnsFailoverRestoreConfirm");
+    const applyButton = $("applyDnsFailover");
+    const restoreButton = $("restoreDnsFailover");
+    const copyButton = $("copyDnsFailoverResolver");
+    const androidButton = $("openAndroidDnsSettings");
+    const bridge = getNetworkRadarBridge();
+    const isWindows = !!bridge && bridge.platform === "WINDOWS";
+    const isAndroid = !!bridge && bridge.platform === "ANDROID";
+    const hasCandidate = !!(select && select.value && dnsFailoverCandidates.some(item => item.server === select.value));
+    if (applyButton) {
+      applyButton.hidden = !isWindows;
+      applyButton.disabled = dnsFailoverActionBusy || !hasCandidate || !dnsFailoverState ||
+        dnsFailoverState.supported !== true || !dnsFailoverState.interfaceName ||
+        !(applyConfirm && applyConfirm.checked);
+    }
+    if (restoreButton) {
+      restoreButton.hidden = !isWindows || !(dnsFailoverState && dnsFailoverState.managed === true);
+      restoreButton.disabled = dnsFailoverActionBusy || !(restoreConfirm && restoreConfirm.checked);
+    }
+    if (copyButton) copyButton.disabled = !hasCandidate || dnsFailoverActionBusy;
+    if (androidButton) {
+      androidButton.hidden = !isAndroid;
+      androidButton.disabled = dnsFailoverActionBusy;
+    }
+  }
+
+  function renderDnsFailoverState(state) {
+    const host = $("dnsFailoverCurrent");
+    const instruction = $("dnsFailoverInstruction");
+    if (!host) return;
+    host.replaceChildren();
+
+    const platform = state && state.platform ? state.platform : "UNKNOWN";
+    const interfaceName = state && state.interfaceName ? state.interfaceName : "ACTIVE INTERFACE UNAVAILABLE";
+    const servers = state && Array.isArray(state.dnsServers) ? state.dnsServers : [];
+    const current = document.createElement("div");
+    current.className = "network-dns-failover-current";
+    const interfaceLine = document.createElement("b");
+    interfaceLine.textContent = platform + " · " + interfaceName;
+    const dnsLine = document.createElement("span");
+    dnsLine.textContent = "CURRENT DNS: " + (servers.length ? servers.join(" · ") : "NOT REPORTED");
+    current.append(interfaceLine, dnsLine);
+    host.appendChild(current);
+
+    if (state && state.managed && state.savedState) {
+      const saved = document.createElement("div");
+      saved.className = "network-dns-failover-backup";
+      const title = document.createElement("b");
+      title.textContent = "BYTE PHANTOM DNS OVERRIDE IS ACTIVE";
+      const details = document.createElement("small");
+      const originalMode = state.savedState.originalAutomaticDns ? "DHCP / AUTOMATIC DNS" :
+        "STATIC DNS: " + (state.savedState.originalDnsServers || []).join(", ");
+      details.textContent = "ADAPTER: " + (state.savedState.interfaceName || interfaceName) +
+        " · ORIGINAL: " + originalMode +
+        " · APPLIED: " + (state.savedState.appliedDnsServers || []).join(", ");
+      saved.append(title, details);
+      host.appendChild(saved);
+    } else {
+      const baseline = document.createElement("small");
+      baseline.className = "network-diagnostics-note";
+      baseline.textContent = "NO BYTE PHANTOM DNS OVERRIDE IS CURRENTLY RECORDED.";
+      host.appendChild(baseline);
+    }
+
+    if (instruction) {
+      instruction.textContent = state && state.instructions
+        ? state.instructions
+        : platform === "ANDROID"
+          ? "Android requires a manual change in system network settings. BYTE PHANTOM will not attempt privileged or VPN-based changes."
+          : "Windows applies DNS to the active default-route adapter after a UAC Administrator prompt. The previous DHCP/static DNS state is backed up before applying.";
+    }
+
+    const androidHelp = $("dnsFailoverAndroidHelp");
+    if (androidHelp) androidHelp.hidden = platform !== "ANDROID";
+    const windowsHelp = $("dnsFailoverWindowsHelp");
+    if (windowsHelp) windowsHelp.hidden = platform !== "WINDOWS";
+    const managedHint = $("dnsFailoverManagedHint");
+    if (managedHint) managedHint.hidden = !(state && state.managed);
+    updateDnsFailoverControls();
+  }
+
+  async function refreshDnsFailoverState() {
+    const bridge = getNetworkRadarBridge();
+    const host = $("dnsFailoverCurrent");
+    if (!bridge || typeof bridge.getDnsFailoverState !== "function") {
+      if (host) host.textContent = "DNS FAILOVER STATE IS NOT AVAILABLE IN THIS BUILD.";
+      return null;
+    }
+    try {
+      dnsFailoverState = await bridge.getDnsFailoverState();
+      renderDnsFailoverState(dnsFailoverState);
+      return dnsFailoverState;
+    } catch (error) {
+      if (host) host.textContent = "COULD NOT READ DNS FAILOVER STATE: " +
+        (error && error.message ? error.message : String(error));
+      return null;
+    }
+  }
+
+  async function copyDnsFailoverSelection() {
+    const selected = $("dnsFailoverResolver") && $("dnsFailoverResolver").value;
+    if (!selected || !dnsFailoverCandidates.some(item => item.server === selected)) return;
+    const copied = await copyNetworkRadarText(selected);
+    const feedback = $("dnsFailoverFeedback");
+    if (feedback) feedback.textContent = copied
+      ? "DNS IP " + selected + " COPIED. NO SYSTEM SETTINGS WERE CHANGED."
+      : "THE DNS IP COULD NOT BE COPIED.";
+    if (copied) playSfx("success");
+  }
+
+  async function applySelectedDnsFailover() {
+    const bridge = getNetworkRadarBridge();
+    const selected = $("dnsFailoverResolver") && $("dnsFailoverResolver").value;
+    const feedback = $("dnsFailoverFeedback");
+    const candidate = dnsFailoverCandidates.find(item => item.server === selected);
+    if (!bridge || bridge.platform !== "WINDOWS" || !candidate || !dnsFailoverState ||
+        dnsFailoverState.supported !== true || !$("dnsFailoverApplyConfirm").checked) return;
+
+    const warning = "This will change IPv4 DNS on the active Windows adapter: " +
+      dnsFailoverState.interfaceName + String.fromCharCode(10) + "New DNS: " + selected +
+      String.fromCharCode(10) + "Windows may display a UAC Administrator prompt. The original DNS mode and server list will be backed up locally. Continue?";
+    if (!window.confirm(warning)) return;
+
+    dnsFailoverActionBusy = true;
+    updateDnsFailoverControls();
+    if (feedback) feedback.textContent = "REQUESTING WINDOWS ADMINISTRATOR APPROVAL AND APPLYING DNS...";
+    try {
+      const result = await bridge.applyDnsResolver({
+        server: selected,
+        interfaceName: dnsFailoverState.interfaceName
+      });
+      if (!result || result.ok !== true) {
+        const message = result && result.error ? result.error :
+          result && result.cancelled ? "Administrator approval was cancelled. No DNS change was confirmed." :
+          "DNS configuration was not applied.";
+        if (feedback) feedback.textContent = message;
+        appendDashboardLog("DNS failover was not applied: " + message, "term-amber");
+      } else {
+        if (feedback) feedback.textContent = "DNS APPLIED AND VERIFIED ON " + result.interfaceName +
+          " · " + (result.dnsServers || []).join(", ") +
+          ". ORIGINAL " + (result.originalAutomaticDns ? "DHCP" : "STATIC DNS") + " CONFIGURATION BACKED UP.";
+        appendDashboardLog("DNS failover applied and verified on " + result.interfaceName + ".", "term-green");
+        playSfx("success");
+      }
+      $("dnsFailoverApplyConfirm").checked = false;
+      await refreshDnsFailoverState();
+    } catch (error) {
+      if (feedback) feedback.textContent = "DNS APPLY FAILED: " + (error && error.message ? error.message : String(error));
+    } finally {
+      dnsFailoverActionBusy = false;
+      updateDnsFailoverControls();
+    }
+  }
+
+  async function restoreOriginalDnsFailover() {
+    const bridge = getNetworkRadarBridge();
+    const feedback = $("dnsFailoverFeedback");
+    if (!bridge || bridge.platform !== "WINDOWS" || !dnsFailoverState ||
+        dnsFailoverState.managed !== true || !$("dnsFailoverRestoreConfirm").checked) return;
+
+    const warning = "Restore the original DNS configuration saved by BYTE PHANTOM on adapter " +
+      (dnsFailoverState.savedState.interfaceName || dnsFailoverState.interfaceName) +
+      "? If current DNS differs from the last BYTE PHANTOM setting, a second explicit confirmation may be required.";
+    if (!window.confirm(warning)) return;
+
+    dnsFailoverActionBusy = true;
+    updateDnsFailoverControls();
+    if (feedback) feedback.textContent = "REQUESTING WINDOWS ADMINISTRATOR APPROVAL TO RESTORE DNS...";
+    try {
+      let result = await bridge.restoreDnsResolver({ forceRestore: false });
+      if (result && result.requiresForce === true) {
+        const force = window.confirm(
+          "WARNING: DNS on this adapter was changed after BYTE PHANTOM applied its resolver. " +
+          "Restore the saved original configuration anyway and overwrite the current DNS values?"
+        );
+        if (force) result = await bridge.restoreDnsResolver({ forceRestore: true });
+      }
+      if (!result || result.ok !== true) {
+        const message = result && (result.error || result.message)
+          ? (result.error || result.message)
+          : "The original DNS settings were not restored.";
+        if (feedback) feedback.textContent = message;
+        appendDashboardLog("DNS restore not completed: " + message, "term-amber");
+      } else {
+        if (feedback) feedback.textContent = "ORIGINAL DNS CONFIGURATION RESTORED AND VERIFIED ON " +
+          result.interfaceName + " · " +
+          (result.restoredAutomaticDns ? "DHCP / AUTOMATIC DNS" : (result.dnsServers || []).join(", "));
+        appendDashboardLog("Original DNS configuration restored on " + result.interfaceName + ".", "term-green");
+        playSfx("success");
+      }
+      $("dnsFailoverRestoreConfirm").checked = false;
+      await refreshDnsFailoverState();
+    } catch (error) {
+      if (feedback) feedback.textContent = "DNS RESTORE FAILED: " + (error && error.message ? error.message : String(error));
+    } finally {
+      dnsFailoverActionBusy = false;
+      updateDnsFailoverControls();
+    }
+  }
+
+  async function openAndroidDnsFailoverSettings() {
+    const bridge = getNetworkRadarBridge();
+    const feedback = $("dnsFailoverFeedback");
+    if (!bridge || bridge.platform !== "ANDROID" || typeof bridge.openDnsSettings !== "function") return;
+    dnsFailoverActionBusy = true;
+    updateDnsFailoverControls();
+    try {
+      const selected = $("dnsFailoverResolver") && $("dnsFailoverResolver").value;
+      let copied = false;
+      if (selected && dnsFailoverCandidates.some(item => item.server === selected)) {
+        copied = await copyNetworkRadarText(selected);
+      }
+      const result = await bridge.openDnsSettings();
+      if (feedback) feedback.textContent = (result && result.message ? result.message : "Android network settings opened.") +
+        (copied ? " Selected resolver IP copied: " + selected + "." : " Copy a stable DNS IP before editing the network.");
+      appendDashboardLog("Opened Android network settings for manual DNS configuration. No system change was made by BYTE PHANTOM.", "term-green");
+    } catch (error) {
+      if (feedback) feedback.textContent = "COULD NOT OPEN ANDROID SETTINGS: " +
+        (error && error.message ? error.message : String(error));
+    } finally {
+      dnsFailoverActionBusy = false;
+      updateDnsFailoverControls();
+    }
+  }
+
   function getNetworkRadarBridge() {
     const desktop = window.bytePhantomDesktop;
     if (desktop && typeof desktop.getNetworkRadar === "function") {
@@ -1300,7 +1562,10 @@
         platform: "WINDOWS",
         scan: options => desktop.getNetworkRadar(options),
         diagnose: () => desktop.runConnectivityDiagnostics(),
-        discoverDns: () => desktop.discoverDnsResolvers()
+        discoverDns: () => desktop.discoverDnsResolvers(),
+        getDnsFailoverState: () => desktop.getDnsFailoverState(),
+        applyDnsResolver: settings => desktop.applyDnsResolver(settings || {}),
+        restoreDnsResolver: options => desktop.restoreDnsResolver(options || {})
       };
     }
 
@@ -1332,7 +1597,9 @@
         platform: "ANDROID",
         scan: options => networkRadarAndroidPlugin.scan(options || {}),
         diagnose: () => networkRadarAndroidPlugin.diagnoseConnectivity(),
-        discoverDns: () => networkRadarAndroidPlugin.discoverDnsResolvers()
+        discoverDns: () => networkRadarAndroidPlugin.discoverDnsResolvers(),
+        getDnsFailoverState: () => networkRadarAndroidPlugin.getDnsFailoverState(),
+        openDnsSettings: () => networkRadarAndroidPlugin.openDnsSettings()
       };
     }
     return null;
@@ -1555,12 +1822,20 @@
   $("runOperation").addEventListener("click", runOperation);
   $("runNetworkDiagnostics").addEventListener("click", runNetworkConnectivityDiagnostics);
   $("runDnsDiscovery").addEventListener("click", runDnsResolverDiscovery);
+  $("dnsFailoverResolver").addEventListener("change", updateDnsFailoverControls);
+  $("dnsFailoverApplyConfirm").addEventListener("change", updateDnsFailoverControls);
+  $("dnsFailoverRestoreConfirm").addEventListener("change", updateDnsFailoverControls);
+  $("applyDnsFailover").addEventListener("click", applySelectedDnsFailover);
+  $("restoreDnsFailover").addEventListener("click", restoreOriginalDnsFailover);
+  $("copyDnsFailoverResolver").addEventListener("click", copyDnsFailoverSelection);
+  $("openAndroidDnsSettings").addEventListener("click", openAndroidDnsFailoverSettings);
   $("clearDnsResolverHistory").addEventListener("click", function () {
     try { localStorage.removeItem(DNS_RESOLVER_HISTORY_KEY); } catch (error) { /* Ignore blocked storage. */ }
     renderDnsResolverHistory();
     appendDashboardLog("DNS resolver history cleared from this device.", "term-amber");
   });
   renderDnsResolverHistory();
+  refreshDnsFailoverState();
   document.querySelectorAll("[data-operation]").forEach(function (button) {
     button.addEventListener("click", function () { openOperation(button.dataset.operation); });
   });

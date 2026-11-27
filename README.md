@@ -1,22 +1,22 @@
-# BYTE PHANTOM v1.14.1
+# BYTE PHANTOM v1.15.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.14.1 adds explicit DNS and HTTPS connectivity diagnostics to the persistent, cross-platform NETWORK RADAR.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.15.0 adds explicit DNS and HTTPS connectivity diagnostics to the persistent, cross-platform NETWORK RADAR.
 
-## v1.14.1 hotfix
+## v1.15.0 hotfix
 
 This patch repairs the Windows Electron main-process syntax error, restores the Windows diagnostics IPC route, and packages the Capacitor JavaScript runtime so the Android Network Radar plugin is registered and callable from the static HTML interface. Rebuild/install this patch rather than reusing a v1.10.0 APK or EXE.
 
-## v1.14.1 — layered connectivity diagnosis
+## v1.15.0 — layered connectivity diagnosis
 
 The Network Radar connectivity report now adds the active route/interface snapshot, one ICMP echo to the active private IPv4 gateway (when available), system DNS resolution for `example.com`, and two independent HTTPS/TLS checks. The report offers cautious interpretation: a gateway that does not answer ping may still forward traffic, and success against either HTTPS endpoint does not guarantee every site is reachable. These checks are started only by the operator and do not scan LAN peers or ports.
 
-## v1.14.1 — DNS SERVER DISCOVERY & INTELLIGENCE
+## v1.15.0 — DNS SERVER DISCOVERY & INTELLIGENCE
 
-NETWORK RADAR includes a manual DNS stability and integrity test. It reads the active interface DNS list, tests each configured IPv4 resolver and compares it with Cloudflare (`1.1.1.1`), Google Public DNS (`8.8.8.8`), and Quad9 (`9.9.9.9`). Each resolver receives three direct DNS A-query samples for `example.com` and three for `iana.org` over UDP port 53. For each name, a repeat-stable answer requires at least two successful samples with the same normalized A-record set. The report shows sample success rate, answer consistency, median latency, latency range and median absolute deviation jitter. Cross-resolver comparison uses repeat-stable sets only. A resolver with varying repeated answers is marked inconclusive; DNS variation can be caused by load balancing, CDNs, GeoDNS, split-horizon policy or transient conditions and is not proof of poisoning. Recommendation is restricted to resolvers that return repeat-stable answers for both names and is ranked by median latency. Users can copy the IP manually; BYTE PHANTOM does not change system DNS settings. The last 20 report summaries are retained locally for up to 30 days, and the last eight tests appear as a response-rate bar trend. Configured IPv6 DNS entries are listed as skipped. No LAN-wide port scan is performed.
+NETWORK RADAR includes a manual DNS stability and integrity test. It reads the active interface DNS list, tests each configured IPv4 resolver and compares it with Cloudflare (`1.1.1.1`), Google Public DNS (`8.8.8.8`), and Quad9 (`9.9.9.9`). Each resolver receives three direct DNS A-query samples for `example.com` and three for `iana.org` over UDP port 53. For each name, a repeat-stable answer requires at least two successful samples with the same normalized A-record set. The report shows sample success rate, answer consistency, median latency, latency range and median absolute deviation jitter. Cross-resolver comparison uses repeat-stable sets only. A resolver with varying repeated answers is marked inconclusive; DNS variation can be caused by load balancing, CDNs, GeoDNS, split-horizon policy or transient conditions and is not proof of poisoning. Recommendation is restricted to resolvers that return repeat-stable answers for both names and is ranked by median latency. Users can copy the IP manually; BYTE PHANTOM does not change system DNS settings. The last 20 report summaries are retained locally for up to 30 days, and the last eight tests appear as a response-rate bar trend. Configured IPv6 DNS entries are listed as skipped. No LAN-wide port scan is performed. The DNS FAILOVER CONTROL panel lets the user select only a repeat-stable IPv4 resolver. On Windows, applying a resolver changes only the active IPv4 default-route adapter, requires explicit in-app confirmation and a Windows UAC Administrator prompt, saves the original DNS mode (automatic/DHCP or static) and server list locally, then verifies the applied address. RESTORE ORIGINAL DNS returns to the saved mode/list; if the DNS values were changed outside BYTE PHANTOM after apply, a second confirmation is required before overwriting them. On Android, BYTE PHANTOM displays current DNS and opens system wireless/network settings so the user can edit DNS manually. The app does not use root privileges or create a VPN.
 
-## v1.14.1 — DNS integrity review and history
+## v1.15.0 — DNS integrity review and history
 
 The new DNS SERVER INTELLIGENCE panel compares A-record answers from two public names across the configured DNS list and three fixed public references. It marks non-public addresses and deviations from a clear peer majority, with an explicit warning that differences can have benign causes such as CDNs and GeoDNS. It recommends the fastest resolver that answered both names and lets the operator copy its IP, but does not apply the DNS configuration. Test summaries are stored locally for 30 days, up to 20 entries.
 
@@ -98,7 +98,7 @@ npm run desktop:build
 
 Portable x64 executable:
 
-**BYTE-PHANTOM-v1.14.1-Windows-x64.exe**
+**BYTE-PHANTOM-v1.15.0-Windows-x64.exe**
 
 The GitHub Actions workflow uploads a version-named artifact. The EXE is portable and does not require a separate installer. It is not code-signed, so Windows SmartScreen may show an unverified publisher warning.
 
@@ -117,7 +117,7 @@ cd android
 
 CI artifact:
 
-**BYTE-PHANTOM-v1.14.1-Android-debug.apk**
+**BYTE-PHANTOM-v1.15.0-Android-debug.apk**
 
 This is a debug APK for testing, not a Play Store release.
 

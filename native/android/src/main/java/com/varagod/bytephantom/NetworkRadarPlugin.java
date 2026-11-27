@@ -1,6 +1,8 @@
 package com.varagod.bytephantom;
 
 import android.content.Context;
+import android.content.Intent;
+import android.provider.Settings;
 import android.net.ConnectivityManager;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
@@ -83,6 +85,62 @@ public class NetworkRadarPlugin extends Plugin {
             } catch (Exception exception) {
                 call.reject("DNS resolver discovery failed: " +
                     (exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage()));
+            }
+        });
+    }
+
+    @PluginMethod
+    public void getDnsFailoverState(PluginCall call) {
+        scanExecutor.execute(() -> {
+            try {
+                JSObject networkPath = collectNetworkPathInfo();
+                JSObject result = new JSObject();
+                result.put("supported", true);
+                result.put("platform", "ANDROID");
+                result.put("interfaceName", networkPath.optString("interfaceName", "ANDROID ACTIVE NETWORK"));
+                JSONArray configured = networkPath.optJSONArray("dnsServers");
+                JSArray dnsServers = new JSArray();
+                if (configured != null) {
+                    for (int i = 0; i < configured.length(); i++) dnsServers.put(configured.optString(i, ""));
+                }
+                result.put("dnsServers", dnsServers);
+                result.put("managed", false);
+                result.put("canApplyAutomatically", false);
+                result.put("canOpenSystemSettings", true);
+                result.put("networkPath", networkPath);
+                result.put("instructions",
+                    "Android does not allow an ordinary app to change device-wide DNS directly. Open Android network settings, choose the active Wi-Fi/mobile network and enter the recommended DNS manually. The app does not change settings or create a VPN.");
+                call.resolve(result);
+            } catch (Exception exception) {
+                call.reject("Could not read Android DNS settings: " +
+                    (exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage()));
+            }
+        });
+    }
+
+    @PluginMethod
+    public void openDnsSettings(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
+                getActivity().startActivity(intent);
+                JSObject result = new JSObject();
+                result.put("opened", true);
+                result.put("automaticChange", false);
+                result.put("message", "Android network settings opened. Select your active network and apply the copied DNS address manually.");
+                call.resolve(result);
+            } catch (Exception firstError) {
+                try {
+                    Intent fallback = new Intent(Settings.ACTION_SETTINGS);
+                    getActivity().startActivity(fallback);
+                    JSObject result = new JSObject();
+                    result.put("opened", true);
+                    result.put("automaticChange", false);
+                    result.put("message", "Android settings opened. Navigate to Network & Internet to change DNS manually.");
+                    call.resolve(result);
+                } catch (Exception secondError) {
+                    call.reject("Unable to open Android network settings: " + secondError.getMessage());
+                }
             }
         });
     }

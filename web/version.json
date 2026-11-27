@@ -1,7 +1,7 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.14.1",
-  "build": "1.14.1",
+  "version": "1.15.0",
+  "build": "1.15.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
@@ -21,7 +21,12 @@
     "Per-name answer consistency, sample response rate, median latency, latency range and median absolute deviation jitter metrics",
     "Cross-resolver comparison now uses only repeat-stable answer sets; unstable repeat answers are explicitly marked inconclusive",
     "DNS resolver recommendations require repeat-stable answers for both query names and are ranked by median latency across the stable names",
-    "Local history captures sample success rate, number of repeat-stable resolvers, best resolver median latency and jitter; visual trend covers latest eight tests"
+    "Local history captures sample success rate, number of repeat-stable resolvers, best resolver median latency and jitter; visual trend covers latest eight tests",
+    "DNS failover candidate selector populated only by repeat-stable IPv4 resolvers from the latest three-round DNS stability test",
+    "Windows DNS apply on the active default-route adapter after explicit in-app confirmation and native UAC Administrator approval",
+    "Local backup of the original Windows DNS mode (automatic/DHCP or static) and original IPv4 DNS server list before applying an override",
+    "Post-apply verification of the selected Windows DNS server, with an explicit restore operation and a second confirmation if current DNS differs from the app-applied setting",
+    "Android DNS state display and launch of Android wireless/network settings for a manual DNS configuration; no privileged device-wide setting changes or VPN tunnel"
   ],
   "simulatedModules": [
     "IP TRACE",
@@ -64,7 +69,7 @@
     "configurationChanges": false,
     "interpretation": "A missing gateway ICMP response is inconclusive because routers or firewalls can filter echo requests. HTTPS success proves reachability to at least one test endpoint only."
   },
-  "security": "Connectivity diagnostics run only after an explicit user action. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform one system DNS lookup and two fixed HTTPS GET checks. They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends one direct DNS A query for example.com to each IPv4 server in the active system DNS configuration and to up to three fixed public IPv4 resolver references. It does not scan LAN hosts or ports and does not change DNS configuration. DNS integrity review queries two fixed public names once per resolver and compares returned A-record sets. Divergence and non-public address flags are advisory indicators only, not a malware verdict. Resolver IPs may be copied manually, but no DNS setting is changed automatically. DNS resolver performance tests perform three A queries for each of two public names per IPv4 resolver. Stable answers require at least two matching successful answer sets out of three. Latency jitter uses median absolute deviation. Repeat variation is advisory and may be caused by DNS load balancing/CDNs; recommendations do not change system DNS.",
+  "security": "Connectivity diagnostics run only after an explicit user action. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform one system DNS lookup and two fixed HTTPS GET checks. They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends one direct DNS A query for example.com to each IPv4 server in the active system DNS configuration and to up to three fixed public IPv4 resolver references. It does not scan LAN hosts or ports and does not change DNS configuration. DNS integrity review queries two fixed public names once per resolver and compares returned A-record sets. Divergence and non-public address flags are advisory indicators only, not a malware verdict. Resolver IPs may be copied manually, but no DNS setting is changed automatically. DNS resolver performance tests perform three A queries for each of two public names per IPv4 resolver. Stable answers require at least two matching successful answer sets out of three. Latency jitter uses median absolute deviation. Repeat variation is advisory and may be caused by DNS load balancing/CDNs; recommendations do not change system DNS. DNS failover never changes settings during discovery. Windows changes are opt-in, limited to the active default-route adapter and require UAC Administrator approval; original DNS mode/server values are backed up and can be restored. Android opens system network settings for manual changes only.",
   "networkPathIntelligence": {
     "dataSource": "Windows Get-NetIPConfiguration/Get-NetRoute; Android ConnectivityManager/LinkProperties",
     "fields": [
@@ -88,7 +93,8 @@
     "Added two-name DNS answer comparison, peer-majority divergence review, non-public address flags, recommended resolver copy, and a 20-entry local DNS test history",
     "Fixed Android DNS report query-name JSON construction to use the Capacitor JSArray API without checked JSON exceptions",
     "Added three-round DNS resolver sampling, median latency and jitter metrics, repeat-answer stability scoring, stable-only peer comparison, and a response-rate history trend",
-    "Restored Android DNS answer signature and IPv4 address classification helper methods required by the repeat-stability comparison engine"
+    "Restored Android DNS answer signature and IPv4 address classification helper methods required by the repeat-stability comparison engine",
+    "Added assisted DNS failover with repeat-stable resolver selection, Windows UAC apply and verify, local original DNS backup, conflict-aware restore, and Android manual network-settings handoff"
   ],
   "dnsResolverIntelligence": {
     "queryNames": [
@@ -136,6 +142,34 @@
       "median DNS response latency",
       "latency range",
       "median absolute deviation jitter"
+    ]
+  },
+  "dnsFailover": {
+    "supportedPlatforms": [
+      "WINDOWS",
+      "ANDROID"
+    ],
+    "windows": {
+      "scope": "Active IPv4 default-route adapter only",
+      "requiresAdministrator": true,
+      "requiresExplicitInAppConfirmation": true,
+      "originalDnsModeDetection": "Per-adapter Tcpip interface registry NameServer value distinguishes static DNS from automatic/DHCP DNS; effective DNS server list is backed up as well.",
+      "backupStorage": "Electron app userData/dns-failover-state.json",
+      "apply": "Set-DnsClientServerAddress using the selected repeat-stable IPv4 resolver, then read back the active adapter DNS list and verify the requested server.",
+      "restore": "Restore automatic DNS using ResetServerAddresses or restore the original static server list. Verify mode/list before deleting the local backup.",
+      "conflictHandling": "If current DNS no longer matches the last app-applied value, stop and request a second explicit confirmation before overwriting it with the original configuration.",
+      "uac": "Run elevated PowerShell via the native Windows UAC prompt; cancellation is reported without claiming success."
+    },
+    "android": {
+      "automaticSystemDnsChange": false,
+      "action": "Open Android wireless/network settings so the user can manually edit the active network DNS.",
+      "vpnCreated": false,
+      "privilegedPermissionsAdded": false
+    },
+    "limitations": [
+      "Windows applies IPv4 DNS only to the active default-route adapter; other adapters are not modified.",
+      "Android ordinary apps cannot directly change device-wide DNS; the user must apply the selected resolver in system settings.",
+      "The original Windows backup is local to the app user-data directory. Keep it until the original configuration is restored or manually recorded."
     ]
   }
 }

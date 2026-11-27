@@ -1,8 +1,8 @@
 {
   "name": "byte-phantom",
-  "version": "1.14.1",
+  "version": "1.15.0",
   "private": true,
-  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with private LAN discovery, layered connectivity diagnosis, repeated DNS resolver stability analysis, median latency, jitter and local response-rate history.",
+  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with DNS repeat-stability analytics, assisted DNS failover, Windows apply/verify/restore with UAC approval, and Android manual network-settings guidance.",
   "scripts": {
     "start": "npx serve web",
     "android:add": "npx cap add android",

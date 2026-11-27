@@ -1,5 +1,18 @@
 # BYTE PHANTOM — Changelog
 
+## v1.15.0 — ASSISTED DNS FAILOVER + SAFE RESTORE
+- Added a DNS FAILOVER CONTROL panel populated only by resolvers that passed the v1.14 repeat-stability rule for both `example.com` and `iana.org`.
+- Windows can apply a selected IPv4 resolver to the active default-route adapter only after in-app confirmation and a native UAC Administrator prompt.
+- Before changing DNS, BYTE PHANTOM saves the adapter's original DNS mode and effective DNS server list in the local Electron user-data directory.
+- Original automatic/DHCP versus static DNS mode is detected from the adapter's TCP/IP interface registry configuration; it is not inferred from whether the IP address itself uses DHCP.
+- The selected DNS address is read back from Windows after apply and must match before the operation is reported as successful.
+- Added RESTORE ORIGINAL DNS. It restores automatic DNS or the original static server list and verifies the result before deleting the backup.
+- If current DNS no longer matches the last BYTE PHANTOM-applied resolver, restore stops and requests a second explicit confirmation before overwriting the changed DNS values.
+- Android shows the active network DNS and opens Android wireless/network settings for manual changes. No privileged system setting edit, root access, or VPN tunnel is used.
+- DNS discovery itself remains read-only. Windows changes affect only the selected active IPv4 default-route adapter; other adapters are not modified.
+- Updated both platform builds to v1.15.0.
+
+
 ## v1.14.1 — ANDROID DNS STABILITY BUILD HOTFIX
 - Restored the Android DNS A-record signature and IPv4 answer-scope classification helper methods used by the repeat-sampling engine.
 - No resolver sampling, latency, jitter, stability threshold, peer-comparison or recommendation rules were changed.

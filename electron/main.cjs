@@ -322,7 +322,7 @@ async function runConnectivityDiagnostics() {
     };
 
     const request = https.get(url, {
-      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.14.1" }
+      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.15.0" }
     }, response => {
       const statusCode = response.statusCode || 0;
       response.resume();
@@ -880,6 +880,269 @@ ipcMain.handle("byte-phantom:dns-discovery", async (event) => {
     throw new Error("DNS resolver discovery is only available to the local BYTE PHANTOM desktop window.");
   }
   return discoverDnsResolvers();
+});
+
+
+function getDnsFailoverStatePath() {
+  return path.join(app.getPath("userData"), "dns-failover-state.json");
+}
+
+async function readDnsFailoverSavedState() {
+  try {
+    const raw = await fs.readFile(getDnsFailoverStatePath(), "utf8");
+    const parsed = JSON.parse(raw.replace(/^\uFEFF/, ""));
+    return parsed && parsed.schema === 1 ? parsed : null;
+  } catch (error) {
+    if (error && error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function getDnsFailoverState() {
+  if (process.platform !== "win32") {
+    const networkPath = await collectNetworkPathInfo();
+    return {
+      supported: true,
+      platform: process.platform.toUpperCase(),
+      interfaceName: networkPath.interfaceName || "ANDROID ACTIVE NETWORK",
+      dnsServers: Array.isArray(networkPath.dnsServers) ? networkPath.dnsServers : [],
+      managed: false,
+      canApplyAutomatically: false,
+      canOpenSystemSettings: false,
+      instructions: "Android does not allow an ordinary app to change device-wide DNS directly. Use the Android network settings screen and enter the recommended DNS manually."
+    };
+  }
+
+  const [networkPath, savedState] = await Promise.all([
+    collectNetworkPathInfo(),
+    readDnsFailoverSavedState()
+  ]);
+  return {
+    supported: true,
+    platform: "WINDOWS",
+    interfaceName: networkPath.interfaceName || "UNKNOWN",
+    dnsServers: Array.isArray(networkPath.dnsServers) ? networkPath.dnsServers : [],
+    gateway: networkPath.gateway || "NOT FOUND",
+    defaultRoute: networkPath.defaultRoute === true,
+    managed: !!savedState,
+    savedState: savedState ? {
+      interfaceName: savedState.interfaceName,
+      originalAutomaticDns: savedState.originalAutomaticDns === true || savedState.originalDhcp === true,
+      originalDnsServers: Array.isArray(savedState.originalDnsServers) ? savedState.originalDnsServers : [],
+      appliedDnsServers: Array.isArray(savedState.appliedDnsServers) ? savedState.appliedDnsServers : [],
+      savedAt: savedState.savedAt || null,
+      appliedAt: savedState.appliedAt || null
+    } : null,
+    canApplyAutomatically: true,
+    requiresAdministrator: true,
+    canRestore: !!savedState,
+    instructions: "Applying DNS changes the selected Windows network adapter and triggers a Windows UAC Administrator prompt. The original DHCP/static DNS configuration is backed up locally before the change."
+  };
+}
+
+function encodePowerShell(script) {
+  return Buffer.from(String(script), "utf16le").toString("base64");
+}
+
+async function executeDnsMutationAsAdministrator(action, settings) {
+  const outputPath = path.join(os.tmpdir(), "byte-phantom-dns-" + process.pid + "-" + Date.now() + ".json");
+  const config = {
+    ...settings,
+    action,
+    statePath: getDnsFailoverStatePath(),
+    outputPath
+  };
+  const configBase64 = Buffer.from(JSON.stringify(config), "utf8").toString("base64");
+  const innerScript = [
+    "$ErrorActionPreference = 'Stop'",
+    "$cfg = ConvertFrom-Json ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" + configBase64 + "')))",
+    "try {",
+    "  $adapter = Get-NetAdapter -Name $cfg.interfaceName -ErrorAction Stop",
+    "  $interfaceIndex = [int]$adapter.ifIndex",
+    "  $null = Get-NetIPInterface -InterfaceIndex $interfaceIndex -AddressFamily IPv4 -ErrorAction Stop",
+    "  $currentDns = @(Get-DnsClientServerAddress -InterfaceIndex $interfaceIndex -AddressFamily IPv4 -ErrorAction Stop | ForEach-Object { $_.ServerAddresses } | Where-Object { $_ })",
+    "  if ($cfg.action -eq 'apply') {",
+    "    $saved = $null",
+    "    if (Test-Path -LiteralPath $cfg.statePath) {",
+    "      $saved = Get-Content -LiteralPath $cfg.statePath -Raw | ConvertFrom-Json",
+    "      if ([int]$saved.interfaceIndex -ne $interfaceIndex -or [string]$saved.interfaceName -ne [string]$adapter.Name) { throw 'A DNS override is already saved for a different adapter. Restore it before switching adapters.' }",
+    "      $expected = @($saved.appliedDnsServers)",
+    "      if (($currentDns -join '|') -ne ($expected -join '|')) { throw 'The adapter DNS changed outside BYTE PHANTOM after the last apply. Restore or inspect the current configuration before applying another override.' }",
+    "      $originalAutomaticDns = if ($null -ne $saved.PSObject.Properties['originalAutomaticDns']) { [bool]$saved.originalAutomaticDns } else { [bool]$saved.originalDhcp }",
+    "      $originalDns = @($saved.originalDnsServers)",
+    "      $savedAt = [string]$saved.savedAt",
+    "    } else {",
+    "      $registryPath = 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\{' + ([string]$adapter.InterfaceGuid).Trim('{}') + '}'",
+      "$registryEntry = Get-ItemProperty -LiteralPath $registryPath -ErrorAction SilentlyContinue",
+      "$registryNameServer = [string]$registryEntry.NameServer",
+      "$originalAutomaticDns = [string]::IsNullOrWhiteSpace($registryNameServer)",
+      "$originalDns = if ($originalAutomaticDns) { @($currentDns) } else { @($registryNameServer -split '[,\\s]+' | Where-Object { $_ }) }",
+      "      $savedAt = [DateTime]::UtcNow.ToString('o')",
+    "    }",
+    "    $state = [ordered]@{ schema = 1; interfaceName = [string]$adapter.Name; interfaceIndex = $interfaceIndex; originalAutomaticDns = $originalAutomaticDns; originalDnsServers = $originalDns; appliedDnsServers = @($cfg.server); savedAt = $savedAt; appliedAt = [DateTime]::UtcNow.ToString('o') }",
+    "    $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $cfg.statePath -Encoding UTF8",
+    "    Set-DnsClientServerAddress -InterfaceIndex $interfaceIndex -ServerAddresses @([string]$cfg.server) -ErrorAction Stop",
+    "    Start-Sleep -Milliseconds 350",
+    "    $verifiedDns = @(Get-DnsClientServerAddress -InterfaceIndex $interfaceIndex -AddressFamily IPv4 -ErrorAction Stop | ForEach-Object { $_.ServerAddresses } | Where-Object { $_ })",
+    "    if (($verifiedDns -join '|') -ne ([string]$cfg.server)) { throw 'Windows did not report the requested DNS server after the change. The original DNS backup remains available for restoration.' }",
+    "    $result = [pscustomobject]@{ ok = $true; action = 'APPLIED'; interfaceName = [string]$adapter.Name; dnsServers = $verifiedDns; originalAutomaticDns = $originalAutomaticDns; originalDnsServers = $originalDns; savedAt = $savedAt; appliedAt = [DateTime]::UtcNow.ToString('o'); verified = $true }",
+    "  } elseif ($cfg.action -eq 'restore') {",
+    "    if (-not (Test-Path -LiteralPath $cfg.statePath)) { throw 'No BYTE PHANTOM DNS backup is available to restore.' }",
+    "    $saved = Get-Content -LiteralPath $cfg.statePath -Raw | ConvertFrom-Json",
+    "    if ([int]$saved.interfaceIndex -ne $interfaceIndex -or [string]$saved.interfaceName -ne [string]$adapter.Name) { throw 'The saved DNS backup belongs to a different adapter. Connect that adapter before restoring it.' }",
+    "    $expected = @($saved.appliedDnsServers)",
+    "    $matchesApplied = (($currentDns -join '|') -eq ($expected -join '|'))",
+    "    if (-not $matchesApplied -and -not [bool]$cfg.forceRestore) {",
+    "      $result = [pscustomobject]@{ ok = $false; requiresForce = $true; action = 'RESTORE_REVIEW_REQUIRED'; interfaceName = [string]$adapter.Name; currentDnsServers = $currentDns; expectedAppliedDnsServers = $expected; message = 'Current DNS differs from the last BYTE PHANTOM setting. Confirm explicitly before overwriting it with the original configuration.' }",
+    "    } else {",
+    "      if ([bool]$saved.originalAutomaticDns -or ($null -eq $saved.PSObject.Properties['originalAutomaticDns'] -and [bool]$saved.originalDhcp)) {",
+    "        Set-DnsClientServerAddress -InterfaceIndex $interfaceIndex -ResetServerAddresses -ErrorAction Stop",
+    "      } else {",
+    "        $original = @($saved.originalDnsServers)",
+    "        if ($original.Count -lt 1) { throw 'The saved static DNS list is empty; refusing to guess a replacement.' }",
+    "        Set-DnsClientServerAddress -InterfaceIndex $interfaceIndex -ServerAddresses $original -ErrorAction Stop",
+    "      }",
+    "      Start-Sleep -Milliseconds 350",
+    "      $restoredDns = @(Get-DnsClientServerAddress -InterfaceIndex $interfaceIndex -AddressFamily IPv4 -ErrorAction Stop | ForEach-Object { $_.ServerAddresses } | Where-Object { $_ })",
+    "      $restoreAutomatic = ([bool]$saved.originalAutomaticDns -or ($null -eq $saved.PSObject.Properties['originalAutomaticDns'] -and [bool]$saved.originalDhcp))",
+    "      if ($restoreAutomatic) {",
+    "        $registryPath = 'HKLM:\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\Tcpip\\\\Parameters\\\\Interfaces\\\\{' + [string]$adapter.InterfaceGuid + '}'",
+    "        $registryEntry = Get-ItemProperty -LiteralPath $registryPath -ErrorAction SilentlyContinue",
+    "        if (-not [string]::IsNullOrWhiteSpace([string]$registryEntry.NameServer)) { throw 'Automatic DNS restore could not be verified because the adapter still has a static NameServer value.' }",
+    "      } else {",
+    "        $original = @($saved.originalDnsServers)",
+    "        if (($restoredDns -join '|') -ne ($original -join '|')) { throw 'Static DNS restore verification failed. The saved backup remains available.' }",
+    "      }",
+    "      Remove-Item -LiteralPath $cfg.statePath -Force -ErrorAction Stop",
+    "      $result = [pscustomobject]@{ ok = $true; action = 'RESTORED'; interfaceName = [string]$adapter.Name; dnsServers = $restoredDns; restoredAutomaticDns = $restoreAutomatic; restoredOriginalDnsServers = @($saved.originalDnsServers); verified = $true }",
+    "    }",
+    "  } else { throw 'Unsupported DNS configuration action.' }",
+    "  $result | ConvertTo-Json -Depth 6 -Compress | Set-Content -LiteralPath $cfg.outputPath -Encoding UTF8",
+    "} catch {",
+    "  @{ ok = $false; action = [string]$cfg.action; error = $_.Exception.Message; backupAvailable = (Test-Path -LiteralPath $cfg.statePath) } | ConvertTo-Json -Depth 5 -Compress | Set-Content -LiteralPath $cfg.outputPath -Encoding UTF8",
+    "  exit 1",
+    "}"
+  ].join("
+");
+
+  const innerEncoded = encodePowerShell(innerScript);
+  const adminCheckScript = "$p = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent()); if ($p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 'ADMIN' } else { 'USER' }";
+  let isAdmin = false;
+  try {
+    const check = await execFileAsync("powershell.exe", [
+      "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", adminCheckScript
+    ], { windowsHide: true, timeout: 8000, maxBuffer: 32 * 1024, encoding: "utf8" });
+    isAdmin = String(check.stdout || "").trim().includes("ADMIN");
+  } catch {
+    isAdmin = false;
+  }
+
+  try {
+    if (isAdmin) {
+      await execFileAsync("powershell.exe", [
+        "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", innerEncoded
+      ], { windowsHide: true, timeout: 90000, maxBuffer: 128 * 1024, encoding: "utf8" }).catch(() => {});
+    } else {
+      const outerScript = [
+        "$ErrorActionPreference = 'Stop'",
+        "$cfg = ConvertFrom-Json ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" + configBase64 + "')))",
+        "$childArgs = '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand " + innerEncoded + "'",
+        "try {",
+        "  $child = Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList $childArgs -Verb RunAs -Wait -PassThru",
+        "  if (-not (Test-Path -LiteralPath $cfg.outputPath)) { @{ ok = $false; cancelled = $true; error = 'Administrator elevation was cancelled or the elevated operation did not return a result.' } | ConvertTo-Json -Compress | Set-Content -LiteralPath $cfg.outputPath -Encoding UTF8 }",
+        "} catch {",
+        "  $message = $_.Exception.Message",
+        "  $cancelled = ($message -match '1223|cancel|canceled|cancelled')",
+        "  @{ ok = $false; cancelled = $cancelled; error = $message } | ConvertTo-Json -Compress | Set-Content -LiteralPath $cfg.outputPath -Encoding UTF8",
+        "}"
+      ].join("
+");
+      await execFileAsync("powershell.exe", [
+        "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encodePowerShell(outerScript)
+      ], { windowsHide: true, timeout: 120000, maxBuffer: 128 * 1024, encoding: "utf8" });
+    }
+
+    const raw = await fs.readFile(outputPath, "utf8");
+    return JSON.parse(raw.replace(/^\uFEFF/, "").trim());
+  } finally {
+    await fs.rm(outputPath, { force: true }).catch(() => {});
+  }
+}
+
+async function applyDnsResolver(settings) {
+  if (process.platform !== "win32") return { ok: false, supported: false, message: "Automatic system DNS changes are not supported on this platform." };
+  const server = String(settings && settings.server || "").trim();
+  const interfaceName = String(settings && settings.interfaceName || "").trim();
+  if (net.isIP(server) !== 4) throw new Error("Select a valid IPv4 DNS resolver from the verified test results.");
+  const answerScope = classifyDnsAnswerAddress(server);
+  if (answerScope && answerScope !== "PRIVATE") throw new Error("This DNS address belongs to a non-routable or reserved IPv4 range and cannot be applied.");
+  const networkPath = await collectNetworkPathInfo();
+  if (!interfaceName || interfaceName !== networkPath.interfaceName) throw new Error("The selected adapter is no longer the active default-route interface. Refresh Network Radar and test again.");
+  const state = await readDnsFailoverSavedState();
+  if (state && state.interfaceName !== interfaceName) throw new Error("A DNS backup already exists for a different adapter. Restore it before applying DNS to another adapter.");
+  const result = await executeDnsMutationAsAdministrator("apply", { interfaceName, server });
+  if (result.ok) appendDnsFailoverAudit("APPLIED", interfaceName, [server]);
+  return result;
+}
+
+async function restoreDnsResolver(options = {}) {
+  if (process.platform !== "win32") return { ok: false, supported: false, message: "Use Android network settings to restore the previous network configuration." };
+  const saved = await readDnsFailoverSavedState();
+  if (!saved) return { ok: false, message: "No saved BYTE PHANTOM DNS backup was found." };
+  const networkPath = await collectNetworkPathInfo();
+  const interfaceName = String(saved.interfaceName || "");
+  if (!interfaceName) throw new Error("The saved adapter name is missing.");
+  const result = await executeDnsMutationAsAdministrator("restore", {
+    interfaceName,
+    forceRestore: options && options.forceRestore === true
+  });
+  if (result.ok) appendDnsFailoverAudit("RESTORED", interfaceName, result.dnsServers || []);
+  return result;
+}
+
+async function appendDnsFailoverAudit(action, interfaceName, servers) {
+  const file = path.join(app.getPath("userData"), "dns-failover-audit.json");
+  let events = [];
+  try {
+    const parsed = JSON.parse(await fs.readFile(file, "utf8"));
+    if (Array.isArray(parsed)) events = parsed;
+  } catch {
+    // A missing or unreadable local audit starts a fresh history.
+  }
+  events.unshift({
+    at: new Date().toISOString(),
+    action,
+    interfaceName,
+    dnsServers: Array.isArray(servers) ? servers : []
+  });
+  await fs.writeFile(file, JSON.stringify(events.slice(0, 40), null, 2), "utf8").catch(() => {});
+}
+
+ipcMain.handle("byte-phantom:dns-failover-state", async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const senderUrl = event.senderFrame && event.senderFrame.url;
+  if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) {
+    throw new Error("DNS failover state is only available to the local BYTE PHANTOM desktop window.");
+  }
+  return getDnsFailoverState();
+});
+
+ipcMain.handle("byte-phantom:dns-failover-apply", async (event, settings) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const senderUrl = event.senderFrame && event.senderFrame.url;
+  if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) {
+    throw new Error("DNS failover changes are only available to the local BYTE PHANTOM desktop window.");
+  }
+  return applyDnsResolver(settings || {});
+});
+
+ipcMain.handle("byte-phantom:dns-failover-restore", async (event, options) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const senderUrl = event.senderFrame && event.senderFrame.url;
+  if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) {
+    throw new Error("DNS restore is only available to the local BYTE PHANTOM desktop window.");
+  }
+  return restoreDnsResolver(options || {});
 });
 
 ipcMain.handle("byte-phantom:system-snapshot", async (event) => {
