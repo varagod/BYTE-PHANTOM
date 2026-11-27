@@ -630,7 +630,7 @@
   function buildNetworkRadarJsonReport() {
     return {
       application:"BYTE PHANTOM",
-      version:"1.8.0",
+      version:"1.9.0",
       generatedAt:new Date().toISOString(),
       privacy:"Generated locally. This report is copied only after the user requests it; BYTE PHANTOM does not upload this journal.",
       retentionDays:30,
@@ -782,6 +782,13 @@
     $("networkTopologyEmpty").hidden=known.length!==0;
   }
 
+  function renderNetworkPathDetails(path) {
+    const host=$("networkPathGrid"); if(!host) return; host.replaceChildren();
+    const rows=[["DEFAULT GATEWAY",path&&path.gateway||"NOT REPORTED"],["DNS RESOLVERS",path&&Array.isArray(path.dnsServers)&&path.dnsServers.length?path.dnsServers.join(" · "):"NOT REPORTED"],["ACTIVE LINK",path&&path.transport||"UNKNOWN"],["NETWORK INTERFACE",path&&path.interfaceName||"UNKNOWN"],["LOCAL ADDRESSES",path&&Array.isArray(path.addresses)&&path.addresses.length?path.addresses.join(" · "):"NOT REPORTED"],["DEFAULT ROUTE",path&&path.defaultRoute===true?"PRESENT":path&&path.defaultRoute===false?"NOT FOUND":"UNKNOWN"]];
+    rows.forEach(([label,value])=>{const card=document.createElement("div");card.className="network-path-card";const title=document.createElement("small");title.textContent=label;const content=document.createElement("b");content.textContent=value;card.append(title,content);host.appendChild(card);});
+    const note=document.createElement("p");note.className="network-path-note";note.textContent=path&&path.source?path.source+" · READ-ONLY CONFIGURATION SNAPSHOT":"Routing and DNS details are unavailable on this platform.";host.appendChild(note);
+  }
+
   function renderNetworkRadarResults(data) {
     $("networkDeviceCount").textContent=String(data.deviceCount).padStart(2,"0");
     $("networkInterfaceCount").textContent=String(data.interfaces.length).padStart(2,"0");
@@ -804,6 +811,7 @@
     }else{
       const empty=document.createElement("div");empty.className="network-empty";empty.textContent="NO PRIVATE IPV4 INTERFACE FOUND";interfaceHost.appendChild(empty);
     }
+    renderNetworkPathDetails(data.networkPath||null);
     const nodeHost=$("networkNodeList");nodeHost.replaceChildren();
     updateNetworkRadarJournalStatus();
     const nodes=Array.from(networkRadarKnownDevices.values()).sort((a,b)=>{
