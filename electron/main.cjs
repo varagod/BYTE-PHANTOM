@@ -322,7 +322,7 @@ async function runConnectivityDiagnostics() {
     };
 
     const request = https.get(url, {
-      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.13.1" }
+      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.14.0" }
     }, response => {
       const statusCode = response.statusCode || 0;
       response.resume();
@@ -528,6 +528,7 @@ async function discoverDnsResolvers() {
   const networkPath = await collectNetworkPathInfo();
   const configured = Array.isArray(networkPath.dnsServers) ? networkPath.dnsServers : [];
   const queryNames = ["example.com", "iana.org"];
+  const samplingRounds = 3;
   const publicResolvers = [
     { server: "1.1.1.1", label: "CLOUDFLARE", source: "PUBLIC REFERENCE" },
     { server: "8.8.8.8", label: "GOOGLE PUBLIC DNS", source: "PUBLIC REFERENCE" },
@@ -564,46 +565,101 @@ async function discoverDnsResolvers() {
     }
   }
 
+  const medianOf = values => {
+    const sorted = values.slice().sort((a, b) => a - b);
+    if (!sorted.length) return 0;
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+  };
+
   const tested = await Promise.all(Array.from(candidates.values()).map(async candidate => {
-    const checks = await Promise.all(queryNames.map(host => queryDnsResolver(candidate.server, host)));
-    const normalizedChecks = checks.map((check, index) => {
-      const addresses = normalizeDnsAnswerAddresses(check.addresses);
-      const nonPublicAddresses = addresses
+    const checks = await Promise.all(queryNames.map(async host => {
+      const attempts = await Promise.all(Array.from({ length: samplingRounds }, () => queryDnsResolver(candidate.server, host)));
+      const successful = attempts.filter(item => item.ok === true);
+      const answerGroups = new Map();
+      for (const item of successful) {
+        const addresses = normalizeDnsAnswerAddresses(item.addresses);
+        const signature = addresses.join("|");
+        if (!answerGroups.has(signature)) answerGroups.set(signature, { addresses, count: 0 });
+        answerGroups.get(signature).count++;
+      }
+      const groups = Array.from(answerGroups.values()).sort((a, b) => b.count - a.count);
+      const dominant = groups[0] || { addresses: [], count: 0 };
+      const stable = dominant.count >= 2;
+      const latencies = successful.map(item => Number(item.latencyMs) || 0);
+      const medianLatencyMs = medianOf(latencies);
+      const latencyRangeMs = latencies.length > 1 ? Math.max(...latencies) - Math.min(...latencies) : 0;
+      const absoluteDeviations = latencies.map(value => Math.abs(value - medianLatencyMs));
+      const jitterMs = medianOf(absoluteDeviations);
+      const allAddresses = normalizeDnsAnswerAddresses(successful.flatMap(item => item.addresses || []));
+      const nonPublicAddresses = allAddresses
         .map(address => ({ address, scope: classifyDnsAnswerAddress(address) }))
         .filter(item => item.scope)
         .map(item => item.address + " (" + item.scope + ")");
       return {
-        host: queryNames[index],
-        ok: check.ok === true,
-        status: check.status || "UNKNOWN",
-        latencyMs: Number(check.latencyMs) || 0,
-        responseCodeName: check.responseCodeName || "",
-        addresses,
+        host,
+        ok: successful.length > 0,
+        stable,
+        status: stable ? "STABLE" : successful.length ? "UNSTABLE" : (attempts[0] && attempts[0].status) || "NO_RESPONSE",
+        successfulSamples: successful.length,
+        totalSamples: samplingRounds,
+        stabilityPercent: Math.round(dominant.count / samplingRounds * 100),
+        medianLatencyMs,
+        latencyMs: medianLatencyMs,
+        latencyRangeMs,
+        jitterMs,
+        addresses: stable ? dominant.addresses : allAddresses,
         nonPublicAddresses,
-        comparisonStatus: "PENDING"
+        answerVariants: groups.length,
+        comparisonStatus: "PENDING",
+        samples: attempts.map((item, index) => ({
+          sample: index + 1,
+          ok: item.ok === true,
+          status: item.status || "UNKNOWN",
+          latencyMs: Number(item.latencyMs) || 0,
+          addresses: normalizeDnsAnswerAddresses(item.addresses)
+        }))
       };
-    });
-    const successfulChecks = normalizedChecks.filter(check => check.ok).length;
-    const averageLatencyMs = successfulChecks
-      ? Math.round(normalizedChecks.filter(check => check.ok).reduce((sum, check) => sum + check.latencyMs, 0) / successfulChecks)
+    }));
+
+    const successfulChecks = checks.filter(check => check.ok).length;
+    const stableChecks = checks.filter(check => check.stable).length;
+    const successfulSamples = checks.reduce((sum, check) => sum + check.successfulSamples, 0);
+    const totalSamples = queryNames.length * samplingRounds;
+    const stableAnswers = checks.reduce((sum, check) => sum + (check.stable ? check.samples.filter(sample => sample.ok && sample.addresses.join("|") === check.addresses.join("|")).length : 0), 0);
+    const latencyValues = checks.filter(check => check.stable).map(check => check.medianLatencyMs);
+    const averageLatencyMs = latencyValues.length
+      ? Math.round(latencyValues.reduce((sum, value) => sum + value, 0) / latencyValues.length)
       : 0;
+    const allLatencies = checks.flatMap(check => check.samples.filter(sample => sample.ok).map(sample => sample.latencyMs));
+    const overallMedianLatencyMs = medianOf(allLatencies);
+    const overallLatencyRangeMs = allLatencies.length > 1 ? Math.max(...allLatencies) - Math.min(...allLatencies) : 0;
+    const overallJitterMs = medianOf(allLatencies.map(value => Math.abs(value - overallMedianLatencyMs)));
     return {
       ...candidate,
-      ok: successfulChecks === queryNames.length,
-      status: successfulChecks === queryNames.length ? "RESPONDED" : successfulChecks ? "PARTIAL" : "NO_RESPONSE",
+      ok: stableChecks === queryNames.length,
+      status: stableChecks === queryNames.length ? "RESPONDED" : stableChecks ? "PARTIAL" : successfulSamples ? "UNSTABLE" : "NO_RESPONSE",
       successfulChecks,
+      stableChecks,
       totalChecks: queryNames.length,
-      latencyMs: averageLatencyMs,
+      successfulSamples,
+      totalSamples,
+      samplingSuccessPercent: Math.round(successfulSamples / totalSamples * 100),
+      answerStabilityPercent: successfulSamples ? Math.round(stableAnswers / successfulSamples * 100) : 0,
+      latencyMs: averageLatencyMs || overallMedianLatencyMs,
       averageLatencyMs,
-      addresses: normalizedChecks[0] ? normalizedChecks[0].addresses : [],
-      checks: normalizedChecks,
-      nonPublicAddresses: Array.from(new Set(normalizedChecks.flatMap(check => check.nonPublicAddresses))),
+      medianLatencyMs: overallMedianLatencyMs,
+      latencyRangeMs: overallLatencyRangeMs,
+      jitterMs: overallJitterMs,
+      addresses: checks[0] ? checks[0].addresses : [],
+      checks,
+      nonPublicAddresses: Array.from(new Set(checks.flatMap(check => check.nonPublicAddresses))),
       integrityStatus: "PENDING"
     };
   }));
 
   const domainComparisons = queryNames.map((host, checkIndex) => {
-    const responders = tested.filter(item => item.checks[checkIndex] && item.checks[checkIndex].ok);
+    const responders = tested.filter(item => item.checks[checkIndex] && item.checks[checkIndex].stable);
     const groups = new Map();
     for (const resolver of responders) {
       const addresses = resolver.checks[checkIndex].addresses.slice().sort();
@@ -623,8 +679,8 @@ async function discoverDnsResolvers() {
 
     for (const resolver of tested) {
       const check = resolver.checks[checkIndex];
-      if (!check.ok) {
-        check.comparisonStatus = "NOT_COMPARED";
+      if (!check.stable) {
+        check.comparisonStatus = check.ok ? "REPEAT_ANSWER_UNSTABLE" : "NOT_COMPARED";
         continue;
       }
       const matchingGroup = orderedGroups.find(group => group.servers.includes(resolver.server));
@@ -653,10 +709,10 @@ async function discoverDnsResolvers() {
       status,
       groups: orderedGroups.map(({ addresses, servers, count }) => ({ addresses, servers, count })),
       note: orderedGroups.length > 1
-        ? "Different A-record sets were observed. CDN, GeoDNS, split-horizon DNS, filtering, or a changing answer can explain differences; this is not proof of poisoning."
+        ? "Different stable A-record sets were observed. CDN, GeoDNS, split-horizon DNS, filtering, or regional routing can explain differences; this is not proof of poisoning."
         : responders.length >= 2
-          ? "All responding resolvers returned the same A-record set in this snapshot."
-          : "Fewer than two resolvers returned a comparable A-record set."
+          ? "All stable responding resolvers returned the same A-record set in this snapshot."
+          : "Fewer than two resolvers produced a repeat-stable answer set."
     };
   });
 
@@ -669,25 +725,33 @@ async function discoverDnsResolvers() {
     if (resolver.checks.some(check => check.comparisonStatus === "INCONCLUSIVE_DIVERGENCE")) {
       flags.push("INCONCLUSIVE_DIVERGENCE");
     }
+    if (resolver.checks.some(check => check.ok && !check.stable)) flags.push("REPEAT_ANSWER_INSTABILITY");
     resolver.flags = flags;
     resolver.integrityStatus = flags.includes("NON_PUBLIC_ANSWER_REVIEW") || flags.includes("ANSWER_DIVERGENCE_REVIEW")
       ? "REVIEW"
-      : flags.includes("INCONCLUSIVE_DIVERGENCE") ? "INCONCLUSIVE" : "NO_DIVERGENCE_OBSERVED";
+      : flags.includes("INCONCLUSIVE_DIVERGENCE") || flags.includes("REPEAT_ANSWER_INSTABILITY")
+        ? "INCONCLUSIVE" : "NO_DIVERGENCE_OBSERVED";
   }
 
   tested.sort((a, b) => {
-    if (a.successfulChecks !== b.successfulChecks) return b.successfulChecks - a.successfulChecks;
+    if (a.stableChecks !== b.stableChecks) return b.stableChecks - a.stableChecks;
+    if (a.successfulSamples !== b.successfulSamples) return b.successfulSamples - a.successfulSamples;
     return a.averageLatencyMs - b.averageLatencyMs;
   });
-  const eligible = tested.filter(item => item.successfulChecks === queryNames.length);
+  const eligible = tested.filter(item => item.stableChecks === queryNames.length);
   const best = eligible[0] || null;
   const nonPublicCount = tested.reduce((count, item) => count + item.nonPublicAddresses.length, 0);
   const divergenceReviewCount = domainComparisons.filter(item => item.status === "DIVERGENCE_REVIEW").length;
   const inconclusiveCount = domainComparisons.filter(item => item.status === "INCONCLUSIVE_DIVERGENCE").length;
+  const unstableResolverCount = tested.filter(item => item.flags.includes("REPEAT_ANSWER_INSTABILITY")).length;
+  const allSamples = tested.reduce((sum, item) => sum + item.successfulSamples, 0);
+  const possibleSamples = tested.reduce((sum, item) => sum + item.totalSamples, 0);
+  const sampleSuccessPercent = possibleSamples ? Math.round(allSamples / possibleSamples * 100) : 0;
   let integritySummary = "INSUFFICIENT RESPONDERS FOR COMPARISON";
   if (nonPublicCount) integritySummary = "NON-PUBLIC DNS ANSWER — REVIEW";
   else if (divergenceReviewCount) integritySummary = "DNS ANSWER DIVERGENCE — REVIEW";
   else if (inconclusiveCount) integritySummary = "MIXED DNS ANSWERS — INCONCLUSIVE";
+  else if (unstableResolverCount) integritySummary = "REPEATED DNS ANSWERS VARY — INCONCLUSIVE";
   else if (domainComparisons.every(item => item.status === "CONSISTENT")) integritySummary = "RESPONDERS CONSISTENT";
 
   return {
@@ -696,20 +760,26 @@ async function discoverDnsResolvers() {
     collectedAt: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
     queryNames,
+    samplingRounds,
+    samplesPerResolver: queryNames.length * samplingRounds,
+    totalDnsQueries: tested.length * queryNames.length * samplingRounds,
     queryType: "A",
     transport: "DNS OVER UDP / PORT 53",
     configuredDnsServers: configured,
     testedCount: tested.length,
     respondingCount: tested.filter(item => item.successfulChecks > 0).length,
     completeRespondingCount: eligible.length,
-    bestResolver: best ? { server: best.server, label: best.label, latencyMs: best.averageLatencyMs } : null,
+    stableResolverCount: eligible.length,
+    unstableResolverCount,
+    sampleSuccessPercent,
+    bestResolver: best ? { server: best.server, label: best.label, latencyMs: best.averageLatencyMs, jitterMs: best.jitterMs, answerStabilityPercent: best.answerStabilityPercent } : null,
     integritySummary,
-    integrityNote: "This is a two-name, one-query-per-name snapshot. Non-public answers and peer divergence are review indicators, not proof of malicious DNS. CDNs, GeoDNS, split-horizon policies, content filters, or DNS changes can legitimately produce different A records.",
+    integrityNote: "Each resolver receives three samples for each of two names. A repeat-stable answer requires at least two matching successful A-record sets out of three. Repeat variation can result from load balancing, CDN/GeoDNS, regional routing, or transient network conditions; it is not proof of poisoning.",
     domainComparisons,
     servers: tested,
     skipped,
     systemChangesMade: false,
-    limitations: "The active system DNS list and three fixed public IPv4 resolver references are queried directly for example.com and iana.org over UDP/53. IPv6 DNS entries are listed as skipped. This is not a scan of all devices or all port-53 hosts on the LAN."
+    limitations: "The active system DNS list and three fixed public IPv4 resolver references are queried directly for example.com and iana.org, three samples each over UDP/53. IPv6 DNS entries are listed as skipped. This is not a scan of all devices or all port-53 hosts on the LAN."
   };
 }
 

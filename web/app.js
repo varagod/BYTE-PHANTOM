@@ -1009,7 +1009,13 @@
       reviewCount: (Array.isArray(result.servers) ? result.servers : [])
         .filter(item => item.integrityStatus === "REVIEW").length,
       nonPublicCount: (Array.isArray(result.servers) ? result.servers : [])
-        .reduce((count, item) => count + (Array.isArray(item.nonPublicAddresses) ? item.nonPublicAddresses.length : 0), 0)
+        .reduce((count, item) => count + (Array.isArray(item.nonPublicAddresses) ? item.nonPublicAddresses.length : 0), 0),
+      sampleSuccessPercent: Number(result.sampleSuccessPercent) || 0,
+      stableResolverCount: Number(result.stableResolverCount) || 0,
+      unstableResolverCount: Number(result.unstableResolverCount) || 0,
+      bestMedianLatencyMs: result.bestResolver ? Number(result.bestResolver.latencyMs) || 0 : 0,
+      bestJitterMs: result.bestResolver ? Number(result.bestResolver.jitterMs) || 0 : 0,
+      bestAnswerStabilityPercent: result.bestResolver ? Number(result.bestResolver.answerStabilityPercent) || 0 : 0
     };
     const history = readDnsResolverHistory();
     history.unshift(snapshot);
@@ -1037,6 +1043,31 @@
       return;
     }
 
+    const trend = document.createElement("div");
+    trend.className = "network-dns-history-trend";
+    const trendTitle = document.createElement("small");
+    trendTitle.textContent = "QUERY RESPONSE RATE · LAST " + Math.min(8, history.length) + " TESTS";
+    const bars = document.createElement("div");
+    bars.className = "network-dns-history-bars";
+    history.slice(0, 8).reverse().forEach(item => {
+      const barWrap = document.createElement("div");
+      barWrap.className = "network-dns-history-bar-wrap";
+      const bar = document.createElement("span");
+      const rate = Math.max(0, Math.min(100, Number(item.sampleSuccessPercent) || 0));
+      bar.style.height = Math.max(3, rate * 0.34) + "px";
+      bar.dataset.rate = rate >= 80 ? "high" : rate >= 45 ? "mid" : "low";
+      bar.title = rate + "% query response rate";
+      const label = document.createElement("small");
+      const timeValue = Date.parse(item.collectedAt);
+      label.textContent = Number.isFinite(timeValue)
+        ? new Date(timeValue).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        : "—";
+      barWrap.append(bar, label);
+      bars.appendChild(barWrap);
+    });
+    trend.append(trendTitle, bars);
+    host.appendChild(trend);
+
     history.slice(0, 8).forEach(item => {
       const row = document.createElement("article");
       row.className = "network-dns-history-row";
@@ -1050,15 +1081,18 @@
       const meta = document.createElement("small");
       const best = item.bestResolver
         ? " · FASTEST " + item.bestResolver.server + " / " + item.bestResolver.latencyMs + " ms"
-        : " · NO COMPLETE RECOMMENDATION";
+        : " · NO REPEAT-STABLE RECOMMENDATION";
       meta.textContent = (Number(item.respondingCount) || 0) + " / " + (Number(item.testedCount) || 0) +
-        " RESPONDED · " + (Number(item.completeRespondingCount) || 0) + " COMPLETE · " +
-        (item.platform || "UNKNOWN") + best;
+        " RESPONDED · " + (Number(item.stableResolverCount) || Number(item.completeRespondingCount) || 0) +
+        " STABLE · " + (Number(item.sampleSuccessPercent) || 0) + "% QUERY SUCCESS · " +
+        (item.platform || "UNKNOWN") + best +
+        (item.bestJitterMs !== undefined ? " · JITTER " + (Number(item.bestJitterMs) || 0) + " ms" : "");
       detail.append(title, meta);
       row.append(date, detail);
       host.appendChild(row);
     });
   }
+
 
   async function runDnsResolverDiscovery() {
     const button = $("runDnsDiscovery");
@@ -1071,8 +1105,8 @@
     }
 
     button.disabled = true;
-    button.textContent = "COMPARING DNS ANSWERS...";
-    host.textContent = "Querying example.com and iana.org through each configured IPv4 resolver and public reference. This takes two direct UDP/53 queries per resolver.";
+    button.textContent = "RUNNING REPEAT-STABILITY TEST...";
+    host.textContent = "Each resolver receives 3 direct DNS A-query samples for example.com and 3 for iana.org. Median latency, answer consistency, jitter and peer comparison are being measured.";
     try {
       const result = await bridge.discoverDns();
       if (!result || result.supported !== true) throw new Error("DNS resolver intelligence is not supported by this build.");
@@ -1090,19 +1124,39 @@
       summary.dataset.state = String(result.integritySummary || "").includes("REVIEW") ? "warning" : "ok";
       const responding = Number(result.respondingCount) || 0;
       const tested = Number(result.testedCount) || 0;
-      const complete = Number(result.completeRespondingCount) || 0;
+      const complete = Number(result.stableResolverCount || result.completeRespondingCount) || 0;
+      const successRate = Number(result.sampleSuccessPercent) || 0;
       const best = result.bestResolver;
-      summary.textContent = (result.integritySummary || "DNS COMPARISON COMPLETE") + " · " +
-        responding + " / " + tested + " RESPONDED · " + complete + " COMPLETE" +
-        (best ? " · FASTEST " + best.server + " / " + best.latencyMs + " ms" : "");
+      summary.textContent = (result.integritySummary || "DNS STABILITY TEST COMPLETE") + " · " +
+        responding + " / " + tested + " RESPONDED · " + complete + " REPEAT-STABLE · " +
+        successRate + "% QUERY SUCCESS";
       host.appendChild(summary);
+
+      const globalMetrics = document.createElement("div");
+      globalMetrics.className = "network-dns-global-metrics";
+      [
+        ["REPEAT SAMPLES", String(Number(result.samplingRounds) || 3) + " × 2 NAMES"],
+        ["TOTAL DNS QUERIES", String(Number(result.totalDnsQueries) || tested * 6)],
+        ["UNSTABLE RESOLVERS", String(Number(result.unstableResolverCount) || 0)]
+      ].forEach(([label, value]) => {
+        const metric = document.createElement("div");
+        const valueNode = document.createElement("b");
+        valueNode.textContent = value;
+        const labelNode = document.createElement("small");
+        labelNode.textContent = label;
+        metric.append(valueNode, labelNode);
+        globalMetrics.appendChild(metric);
+      });
+      host.appendChild(globalMetrics);
 
       if (best) {
         const recommendation = document.createElement("div");
         recommendation.className = "network-dns-recommendation";
         const text = document.createElement("span");
-        text.textContent = "FASTEST COMPLETE RESOLVER: " + best.label + " · " + best.server +
-          " · " + best.latencyMs + " ms average. This is a manual recommendation only; system DNS has not been changed.";
+        text.textContent = "FASTEST REPEAT-STABLE RESOLVER: " + best.label + " · " + best.server +
+          " · " + best.latencyMs + " ms median · " + (Number(best.jitterMs) || 0) +
+          " ms jitter · " + (Number(best.answerStabilityPercent) || 0) +
+          "% answer consistency. Manual recommendation only; system DNS has not been changed.";
         const copy = document.createElement("button");
         copy.type = "button";
         copy.className = "network-dns-copy-button";
@@ -1135,18 +1189,21 @@
         identity.append(label, address);
 
         const status = document.createElement("strong");
-        status.textContent = item.status === "PARTIAL" ? "PARTIAL RESPONSE" :
-          item.ok === true ? "RESPONDED" : String(item.status || "NO RESPONSE").replace(/_/g, " ");
+        status.textContent = item.status === "PARTIAL" ? "PARTIALLY STABLE" :
+          item.status === "UNSTABLE" ? "REPEAT VARIATION" :
+          item.ok === true ? "REPEAT-STABLE" : String(item.status || "NO RESPONSE").replace(/_/g, " ");
         status.dataset.state = item.ok === true ? "ok" : "warning";
         top.append(identity, status);
 
         const meta = document.createElement("div");
         meta.className = "network-dns-resolver-meta";
         const sourceList = Array.isArray(item.sources) ? item.sources.join(" + ") : "Unknown source";
-        const latency = Number.isFinite(Number(item.averageLatencyMs || item.latencyMs))
-          ? Number(item.averageLatencyMs || item.latencyMs) + " ms average" : "Latency unavailable";
+        const latency = Number.isFinite(Number(item.medianLatencyMs || item.latencyMs))
+          ? Number(item.medianLatencyMs || item.latencyMs) + " ms median" : "Latency unavailable";
         meta.textContent = sourceList + " · " + latency + " · " +
-          (Number(item.successfulChecks) || 0) + " / " + (Number(item.totalChecks) || 2) + " names resolved";
+          (Number(item.stableChecks) || 0) + " / " + (Number(item.totalChecks) || 2) +
+          " names repeat-stable · " + (Number(item.successfulSamples) || 0) +
+          " / " + (Number(item.totalSamples) || 6) + " samples answered";
 
         const checksHost = document.createElement("div");
         checksHost.className = "network-dns-check-list";
@@ -1158,13 +1215,24 @@
           const checkStatus = document.createElement("strong");
           checkStatus.textContent = check.comparisonStatus === "DIFFERS_FROM_PEER_MAJORITY" ? "DIVERGENT" :
             check.comparisonStatus === "INCONCLUSIVE_DIVERGENCE" ? "MIXED" :
-            check.ok ? "ANSWERED" : String(check.status || "FAILED");
+            check.comparisonStatus === "REPEAT_ANSWER_UNSTABLE" ? "REPEAT VARIATION" :
+            check.stable ? "STABLE" : check.ok ? "UNSTABLE" : String(check.status || "FAILED");
           checkStatus.dataset.state = check.comparisonStatus === "DIFFERS_FROM_PEER_MAJORITY" ||
-            (Array.isArray(check.nonPublicAddresses) && check.nonPublicAddresses.length) ? "warning" : check.ok ? "ok" : "warning";
+            (Array.isArray(check.nonPublicAddresses) && check.nonPublicAddresses.length) ||
+            (check.ok && !check.stable) ? "warning" : check.ok ? "ok" : "warning";
           const answer = document.createElement("small");
           answer.textContent = (Array.isArray(check.addresses) ? check.addresses.join(", ") : "") ||
-            check.error || "No A record returned";
-          checkRow.append(checkName, checkStatus, answer);
+            "No repeat-stable A-record set";
+          const sampleMeta = document.createElement("small");
+          const samples = Array.isArray(check.samples) ? check.samples : [];
+          const latencySamples = samples.filter(sample => sample && sample.ok).map(sample => Number(sample.latencyMs) || 0);
+          sampleMeta.className = "network-dns-sample-meta";
+          sampleMeta.textContent = (Number(check.successfulSamples) || 0) + " / " +
+            (Number(check.totalSamples) || 3) + " answered · " +
+            (Number(check.stabilityPercent) || 0) + "% answer consistency · median " +
+            (Number(check.medianLatencyMs || check.latencyMs) || 0) + " ms · jitter " +
+            (Number(check.jitterMs) || 0) + " ms · samples " + latencySamples.join(" / ") + " ms";
+          checkRow.append(checkName, checkStatus, answer, sampleMeta);
           checksHost.appendChild(checkRow);
         });
 
@@ -1174,6 +1242,9 @@
         const flagItems = Array.isArray(item.flags) ? item.flags : [];
         flag.textContent = flagItems.length ? flagItems.join(" · ").replace(/_/g, " ") :
           item.integrityStatus === "NO_DIVERGENCE_OBSERVED" ? "NO DIVERGENCE OBSERVED IN THIS SNAPSHOT" : String(item.integrityStatus || "NOT ANALYZED");
+        const jitter = document.createElement("small");
+        jitter.textContent = "TOTAL JITTER " + (Number(item.jitterMs) || 0) + " ms · RANGE " +
+          (Number(item.latencyRangeMs) || 0) + " ms";
         const copy = document.createElement("button");
         copy.type = "button";
         copy.className = "network-dns-copy-button";
@@ -1183,7 +1254,7 @@
           copy.textContent = success ? "COPIED" : "BLOCKED";
           if (success) playSfx("success");
         });
-        cardFooter.append(flag, copy);
+        cardFooter.append(flag, jitter, copy);
         card.append(top, meta, checksHost, cardFooter);
         host.appendChild(card);
       });
@@ -1193,7 +1264,7 @@
         const note = document.createElement("small");
         note.className = "network-diagnostics-note";
         note.textContent = (comparison.host || "DOMAIN") + " · " + (comparison.status || "NOT ANALYZED") +
-          " · " + (Number(comparison.responderCount) || 0) + " responders · " + (comparison.note || "");
+          " · " + (Number(comparison.responderCount) || 0) + " repeat-stable responders · " + (comparison.note || "");
         host.appendChild(note);
       });
 
@@ -1208,16 +1279,16 @@
       const note = document.createElement("small");
       note.className = "network-diagnostics-note";
       note.textContent = (result.integrityNote || "Different DNS answers may have benign causes.") +
-        " Resolver ranking is based on the fastest server that successfully answered both names. Copying an IP does not apply it to system settings.";
+        " A resolver is recommended only when both names have repeat-stable answers. Copying an IP does not apply it to system settings.";
       host.appendChild(note);
 
-      appendDashboardLog("DNS intelligence: " + responding + " / " + tested + " resolvers responded · " +
-        (result.integritySummary || "comparison complete"), responding ? "term-green" : "term-amber");
+      appendDashboardLog("DNS stability: " + responding + " / " + tested + " resolvers responded · " +
+        complete + " stable · " + successRate + "% query success", responding ? "term-green" : "term-amber");
     } catch (error) {
-      host.textContent = "DNS INTELLIGENCE FAILED: " + (error && error.message ? error.message : String(error));
+      host.textContent = "DNS STABILITY TEST FAILED: " + (error && error.message ? error.message : String(error));
     } finally {
       button.disabled = false;
-      button.textContent = "RUN DNS COMPARISON";
+      button.textContent = "RUN DNS STABILITY TEST";
     }
   }
 

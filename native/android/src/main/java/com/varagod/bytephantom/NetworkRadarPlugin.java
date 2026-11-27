@@ -203,6 +203,7 @@ public class NetworkRadarPlugin extends Plugin {
         }
 
         String[] queryNames = new String[] {"example.com", "iana.org"};
+        final int samplingRounds = 3;
         LinkedHashMap<String, DnsCandidate> candidates = new LinkedHashMap<>();
         JSArray skipped = new JSArray();
         for (String server : configured) {
@@ -241,12 +242,16 @@ public class NetworkRadarPlugin extends Plugin {
         }
 
         List<DnsCandidate> ordered = new ArrayList<>(candidates.values());
-        ExecutorService queryPool = Executors.newFixedThreadPool(Math.min(8, Math.max(1, ordered.size() * queryNames.length)));
-        Map<String, Map<String, Future<JSObject>>> pending = new LinkedHashMap<>();
+        ExecutorService queryPool = Executors.newFixedThreadPool(Math.min(12, Math.max(6, ordered.size() * queryNames.length * samplingRounds)));
+        Map<String, Map<String, List<Future<JSObject>>>> pending = new LinkedHashMap<>();
         for (DnsCandidate candidate : ordered) {
-            Map<String, Future<JSObject>> byName = new LinkedHashMap<>();
+            Map<String, List<Future<JSObject>>> byName = new LinkedHashMap<>();
             for (String host : queryNames) {
-                byName.put(host, queryPool.submit(() -> queryDnsResolver(candidate.server, host)));
+                List<Future<JSObject>> attempts = new ArrayList<>();
+                for (int sample = 0; sample < samplingRounds; sample++) {
+                    attempts.add(queryPool.submit(() -> queryDnsResolver(candidate.server, host)));
+                }
+                byName.put(host, attempts);
             }
             pending.put(candidate.server, byName);
         }
@@ -256,74 +261,160 @@ public class NetworkRadarPlugin extends Plugin {
             for (DnsCandidate candidate : ordered) {
                 JSArray checks = new JSArray();
                 int successfulChecks = 0;
-                long totalLatency = 0L;
+                int stableChecks = 0;
+                int successfulSamples = 0;
+                int stableAnswerSamples = 0;
+                long totalStableMedianLatency = 0L;
+                List<Long> allLatencies = new ArrayList<>();
                 JSArray nonPublicAddresses = new JSArray();
+
                 for (String host : queryNames) {
-                    JSObject response;
-                    try {
-                        response = pending.get(candidate.server).get(host).get(2400L, TimeUnit.MILLISECONDS);
-                    } catch (Exception failure) {
-                        response = new JSObject();
-                        response.put("ok", false);
-                        response.put("status", "QUERY_TIMEOUT");
-                        response.put("latencyMs", 2400L);
-                        response.put("addresses", new JSArray());
-                        response.put("error", failure.getClass().getSimpleName() + ": " + String.valueOf(failure.getMessage()));
-                    }
+                    JSArray samples = new JSArray();
+                    Map<String, Integer> answerCounts = new LinkedHashMap<>();
+                    Map<String, List<String>> answerGroups = new LinkedHashMap<>();
+                    List<Long> successfulLatencies = new ArrayList<>();
+                    List<String> unionAddresses = new ArrayList<>();
+                    int hostSuccessCount = 0;
 
-                    JSONArray addresses = response.optJSONArray("addresses");
-                    if (addresses == null) addresses = new JSONArray();
-                    JSArray flagged = new JSArray();
-                    for (int i = 0; i < addresses.length(); i++) {
-                        String address = addresses.optString(i, "");
-                        String scope = classifyDnsAnswerAddress(address);
-                        if (scope != null) flagged.put(address + " (" + scope + ")");
-                    }
-
-                    boolean ok = response.optBoolean("ok", false);
-                    long latency = response.optLong("latencyMs", 0L);
-                    if (ok) {
-                        successfulChecks++;
-                        totalLatency += latency;
-                    }
-                    for (int i = 0; i < flagged.length(); i++) {
-                        String value = flagged.optString(i);
-                        boolean exists = false;
-                        for (int j = 0; j < nonPublicAddresses.length(); j++) {
-                            if (value.equals(nonPublicAddresses.optString(j))) { exists = true; break; }
+                    for (Future<JSObject> future : pending.get(candidate.server).get(host)) {
+                        JSObject response;
+                        try {
+                            response = future.get(2500L, TimeUnit.MILLISECONDS);
+                        } catch (Exception failure) {
+                            response = new JSObject();
+                            response.put("ok", false);
+                            response.put("status", "QUERY_TIMEOUT");
+                            response.put("latencyMs", 2500L);
+                            response.put("addresses", new JSArray());
+                            response.put("error", failure.getClass().getSimpleName() + ": " + String.valueOf(failure.getMessage()));
                         }
-                        if (!exists) nonPublicAddresses.put(value);
+
+                        boolean sampleOk = response.optBoolean("ok", false);
+                        long latency = response.optLong("latencyMs", 0L);
+                        JSONArray addressArray = response.optJSONArray("addresses");
+                        List<String> addresses = new ArrayList<>();
+                        if (sampleOk && addressArray != null) {
+                            for (int i = 0; i < addressArray.length(); i++) {
+                                String address = addressArray.optString(i, "");
+                                if (!address.isEmpty() && !addresses.contains(address)) addresses.add(address);
+                            }
+                        }
+                        Collections.sort(addresses);
+                        if (sampleOk) {
+                            hostSuccessCount++;
+                            successfulSamples++;
+                            successfulLatencies.add(latency);
+                            allLatencies.add(latency);
+                            String signature = dnsAddressSignature(addresses);
+                            answerCounts.put(signature, answerCounts.containsKey(signature) ? answerCounts.get(signature) + 1 : 1);
+                            answerGroups.put(signature, addresses);
+                            for (String address : addresses) if (!unionAddresses.contains(address)) unionAddresses.add(address);
+                        }
+
+                        JSObject sampleJson = new JSObject();
+                        sampleJson.put("ok", sampleOk);
+                        sampleJson.put("status", response.optString("status", "UNKNOWN"));
+                        sampleJson.put("latencyMs", latency);
+                        sampleJson.put("addresses", new JSONArray(addresses));
+                        if (response.has("error")) sampleJson.put("error", response.optString("error"));
+                        samples.put(sampleJson);
+                    }
+
+                    String dominantSignature = null;
+                    int dominantCount = 0;
+                    for (Map.Entry<String, Integer> entry : answerCounts.entrySet()) {
+                        if (entry.getValue() > dominantCount) {
+                            dominantCount = entry.getValue();
+                            dominantSignature = entry.getKey();
+                        }
+                    }
+                    boolean stable = dominantCount >= 2;
+                    if (hostSuccessCount > 0) successfulChecks++;
+                    if (stable) stableChecks++;
+                    List<String> selectedAddresses = stable && dominantSignature != null
+                        ? new ArrayList<>(answerGroups.get(dominantSignature)) : new ArrayList<>(unionAddresses);
+                    List<Long> sortedLatencies = new ArrayList<>(successfulLatencies);
+                    Collections.sort(sortedLatencies);
+                    long medianLatency = medianLongValues(sortedLatencies);
+                    long latencyRange = sortedLatencies.size() > 1
+                        ? sortedLatencies.get(sortedLatencies.size() - 1) - sortedLatencies.get(0) : 0L;
+                    List<Long> deviations = new ArrayList<>();
+                    for (Long latency : sortedLatencies) deviations.add(Math.abs(latency - medianLatency));
+                    long jitter = medianLongValues(deviations);
+                    if (stable) {
+                        totalStableMedianLatency += medianLatency;
+                        stableAnswerSamples += dominantCount;
+                    }
+
+                    JSArray flagged = new JSArray();
+                    for (String address : selectedAddresses) {
+                        String scope = classifyDnsAnswerAddress(address);
+                        if (scope != null) {
+                            String value = address + " (" + scope + ")";
+                            flagged.put(value);
+                            boolean exists = false;
+                            for (int i = 0; i < nonPublicAddresses.length(); i++) {
+                                if (value.equals(nonPublicAddresses.optString(i))) { exists = true; break; }
+                            }
+                            if (!exists) nonPublicAddresses.put(value);
+                        }
                     }
 
                     JSObject check = new JSObject();
                     check.put("host", host);
-                    check.put("ok", ok);
-                    check.put("status", response.optString("status", "UNKNOWN"));
-                    check.put("latencyMs", latency);
-                    check.put("responseCodeName", response.optString("responseCodeName", ""));
-                    check.put("addresses", addresses);
+                    check.put("ok", hostSuccessCount > 0);
+                    check.put("stable", stable);
+                    check.put("status", stable ? "STABLE" : hostSuccessCount > 0 ? "UNSTABLE" : "NO_RESPONSE");
+                    check.put("successfulSamples", hostSuccessCount);
+                    check.put("totalSamples", samplingRounds);
+                    check.put("stabilityPercent", Math.round((double) dominantCount / samplingRounds * 100.0));
+                    check.put("medianLatencyMs", medianLatency);
+                    check.put("latencyMs", medianLatency);
+                    check.put("latencyRangeMs", latencyRange);
+                    check.put("jitterMs", jitter);
+                    check.put("addresses", new JSONArray(selectedAddresses));
                     check.put("nonPublicAddresses", flagged);
+                    check.put("answerVariants", answerCounts.size());
                     check.put("comparisonStatus", "PENDING");
-                    if (response.has("error")) check.put("error", response.optString("error"));
+                    check.put("samples", samples);
                     checks.put(check);
                 }
+
+                List<Long> sortedAll = new ArrayList<>(allLatencies);
+                Collections.sort(sortedAll);
+                long overallMedian = medianLongValues(sortedAll);
+                long overallRange = sortedAll.size() > 1
+                    ? sortedAll.get(sortedAll.size() - 1) - sortedAll.get(0) : 0L;
+                List<Long> allDeviations = new ArrayList<>();
+                for (Long latency : sortedAll) allDeviations.add(Math.abs(latency - overallMedian));
+                long overallJitter = medianLongValues(allDeviations);
+                long averageStableLatency = stableChecks > 0
+                    ? Math.round((double) totalStableMedianLatency / stableChecks) : 0L;
+                int totalSamples = queryNames.length * samplingRounds;
 
                 JSObject row = new JSObject();
                 row.put("server", candidate.server);
                 row.put("label", candidate.label);
                 row.put("sources", new JSONArray(candidate.sources));
-                row.put("ok", successfulChecks == queryNames.length);
-                row.put("status", successfulChecks == queryNames.length ? "RESPONDED" : successfulChecks > 0 ? "PARTIAL" : "NO_RESPONSE");
+                row.put("ok", stableChecks == queryNames.length);
+                row.put("status", stableChecks == queryNames.length ? "RESPONDED" : stableChecks > 0 ? "PARTIAL" : successfulSamples > 0 ? "UNSTABLE" : "NO_RESPONSE");
                 row.put("successfulChecks", successfulChecks);
+                row.put("stableChecks", stableChecks);
                 row.put("totalChecks", queryNames.length);
-                long averageLatency = successfulChecks > 0 ? Math.round((double) totalLatency / successfulChecks) : 0L;
-                row.put("latencyMs", averageLatency);
-                row.put("averageLatencyMs", averageLatency);
-                row.put("checks", checks);
-                Object firstCheckObject = checks.opt(0);
-                JSONArray firstAddresses = firstCheckObject instanceof JSObject
-                    ? ((JSObject) firstCheckObject).optJSONArray("addresses") : new JSONArray();
+                row.put("successfulSamples", successfulSamples);
+                row.put("totalSamples", totalSamples);
+                row.put("samplingSuccessPercent", Math.round((double) successfulSamples / totalSamples * 100.0));
+                row.put("answerStabilityPercent", successfulSamples > 0
+                    ? Math.round((double) stableAnswerSamples / successfulSamples * 100.0) : 0);
+                row.put("latencyMs", averageStableLatency > 0 ? averageStableLatency : overallMedian);
+                row.put("averageLatencyMs", averageStableLatency);
+                row.put("medianLatencyMs", overallMedian);
+                row.put("latencyRangeMs", overallRange);
+                row.put("jitterMs", overallJitter);
+                JSONArray firstAddresses = checks.optJSONObject(0) == null
+                    ? new JSONArray() : checks.optJSONObject(0).optJSONArray("addresses");
                 row.put("addresses", firstAddresses == null ? new JSONArray() : firstAddresses);
+                row.put("checks", checks);
                 row.put("nonPublicAddresses", nonPublicAddresses);
                 row.put("integrityStatus", "PENDING");
                 serverRows.add(row);
@@ -340,12 +431,11 @@ public class NetworkRadarPlugin extends Plugin {
             List<JSObject> responders = new ArrayList<>();
             Map<String, List<String>> groupServers = new LinkedHashMap<>();
             Map<String, List<String>> groupAddresses = new LinkedHashMap<>();
-
             for (JSObject serverRow : serverRows) {
                 JSONArray checks = serverRow.optJSONArray("checks");
                 Object rawCheck = checks == null ? null : checks.opt(checkIndex);
                 JSObject check = rawCheck instanceof JSObject ? (JSObject) rawCheck : null;
-                if (check == null || !check.optBoolean("ok", false)) continue;
+                if (check == null || !check.optBoolean("stable", false)) continue;
                 responders.add(serverRow);
                 JSONArray addressArray = check.optJSONArray("addresses");
                 List<String> addresses = new ArrayList<>();
@@ -376,8 +466,9 @@ public class NetworkRadarPlugin extends Plugin {
                 JSONArray checks = serverRow.optJSONArray("checks");
                 Object rawCheck = checks == null ? null : checks.opt(checkIndex);
                 JSObject check = rawCheck instanceof JSObject ? (JSObject) rawCheck : null;
-                if (check == null || !check.optBoolean("ok", false)) {
-                    if (check != null) check.put("comparisonStatus", "NOT_COMPARED");
+                if (check == null || !check.optBoolean("stable", false)) {
+                    if (check != null) check.put("comparisonStatus", check.optBoolean("ok", false)
+                        ? "REPEAT_ANSWER_UNSTABLE" : "NOT_COMPARED");
                     continue;
                 }
                 JSONArray addressArray = check.optJSONArray("addresses");
@@ -419,20 +510,27 @@ public class NetworkRadarPlugin extends Plugin {
             comparison.put("status", status);
             comparison.put("groups", groups);
             comparison.put("note", groupServers.size() > 1
-                ? "Different A-record sets were observed. CDN, GeoDNS, split-horizon DNS, filtering, or a changing answer can explain differences; this is not proof of poisoning."
+                ? "Different repeat-stable A-record sets were observed. CDN, GeoDNS, split-horizon DNS, filtering, or regional routing can explain differences; this is not proof of poisoning."
                 : responders.size() >= 2
-                    ? "All responding resolvers returned the same A-record set in this snapshot."
-                    : "Fewer than two resolvers returned a comparable A-record set.");
+                    ? "All repeat-stable responding resolvers returned the same A-record set in this snapshot."
+                    : "Fewer than two resolvers produced a repeat-stable answer set.");
             domainComparisons.put(comparison);
         }
 
         int respondingCount = 0;
         int completeCount = 0;
+        int unstableResolverCount = 0;
         int nonPublicCount = 0;
+        int allSuccessSamples = 0;
+        int possibleSamples = 0;
         for (JSObject row : serverRows) {
             int successCount = row.optInt("successfulChecks", 0);
+            int stableCount = row.optInt("stableChecks", 0);
             if (successCount > 0) respondingCount++;
-            if (successCount == queryNames.length) completeCount++;
+            if (stableCount == queryNames.length) completeCount++;
+            allSuccessSamples += row.optInt("successfulSamples", 0);
+            possibleSamples += row.optInt("totalSamples", 0);
+
             JSArray flags = new JSArray();
             JSONArray badAddresses = row.optJSONArray("nonPublicAddresses");
             if (badAddresses != null && badAddresses.length() > 0) {
@@ -440,6 +538,7 @@ public class NetworkRadarPlugin extends Plugin {
                 nonPublicCount += badAddresses.length();
             }
             JSONArray checks = row.optJSONArray("checks");
+            boolean repeatUnstable = false;
             if (checks != null) {
                 for (int i = 0; i < checks.length(); i++) {
                     Object rawCheck = checks.opt(i);
@@ -448,32 +547,44 @@ public class NetworkRadarPlugin extends Plugin {
                     String comparison = check.optString("comparisonStatus", "");
                     if ("DIFFERS_FROM_PEER_MAJORITY".equals(comparison)) flags.put("ANSWER_DIVERGENCE_REVIEW");
                     else if ("INCONCLUSIVE_DIVERGENCE".equals(comparison)) flags.put("INCONCLUSIVE_DIVERGENCE");
+                    if (check.optBoolean("ok", false) && !check.optBoolean("stable", false)) repeatUnstable = true;
                 }
             }
+            if (repeatUnstable) {
+                flags.put("REPEAT_ANSWER_INSTABILITY");
+                unstableResolverCount++;
+            }
+
             boolean review = false;
             boolean inconclusive = false;
             for (int i = 0; i < flags.length(); i++) {
                 String flag = flags.optString(i);
                 if ("NON_PUBLIC_ANSWER_REVIEW".equals(flag) || "ANSWER_DIVERGENCE_REVIEW".equals(flag)) review = true;
-                if ("INCONCLUSIVE_DIVERGENCE".equals(flag)) inconclusive = true;
+                if ("INCONCLUSIVE_DIVERGENCE".equals(flag) || "REPEAT_ANSWER_INSTABILITY".equals(flag)) inconclusive = true;
             }
             row.put("flags", flags);
             row.put("integrityStatus", review ? "REVIEW" : inconclusive ? "INCONCLUSIVE" : "NO_DIVERGENCE_OBSERVED");
         }
 
         Collections.sort(serverRows, (a, b) -> {
-            int complete = Integer.compare(b.optInt("successfulChecks", 0), a.optInt("successfulChecks", 0));
-            if (complete != 0) return complete;
+            int stable = Integer.compare(b.optInt("stableChecks", 0), a.optInt("stableChecks", 0));
+            if (stable != 0) return stable;
+            int samples = Integer.compare(b.optInt("successfulSamples", 0), a.optInt("successfulSamples", 0));
+            if (samples != 0) return samples;
             return Long.compare(a.optLong("averageLatencyMs", Long.MAX_VALUE), b.optLong("averageLatencyMs", Long.MAX_VALUE));
         });
         JSArray ranked = new JSArray();
         DnsCandidate bestCandidate = null;
         long bestLatency = Long.MAX_VALUE;
+        long bestJitter = 0L;
+        int bestStability = 0;
         for (JSObject row : serverRows) {
             ranked.put(row);
-            if (row.optInt("successfulChecks", 0) == queryNames.length &&
+            if (row.optInt("stableChecks", 0) == queryNames.length &&
                 row.optLong("averageLatencyMs", Long.MAX_VALUE) < bestLatency) {
                 bestLatency = row.optLong("averageLatencyMs", Long.MAX_VALUE);
+                bestJitter = row.optLong("jitterMs", 0L);
+                bestStability = row.optInt("answerStabilityPercent", 0);
                 for (DnsCandidate candidate : ordered) {
                     if (candidate.server.equals(row.optString("server"))) { bestCandidate = candidate; break; }
                 }
@@ -484,6 +595,7 @@ public class NetworkRadarPlugin extends Plugin {
         if (nonPublicCount > 0) integritySummary = "NON-PUBLIC DNS ANSWER — REVIEW";
         else if (divergenceReviewCount > 0) integritySummary = "DNS ANSWER DIVERGENCE — REVIEW";
         else if (inconclusiveCount > 0) integritySummary = "MIXED DNS ANSWERS — INCONCLUSIVE";
+        else if (unstableResolverCount > 0) integritySummary = "REPEATED DNS ANSWERS VARY — INCONCLUSIVE";
         else if (domainComparisons.length() == queryNames.length) {
             boolean allConsistent = true;
             for (int i = 0; i < domainComparisons.length(); i++) {
@@ -501,58 +613,47 @@ public class NetworkRadarPlugin extends Plugin {
         JSArray queryNamesJson = new JSArray();
         for (String queryName : queryNames) queryNamesJson.put(queryName);
         result.put("queryNames", queryNamesJson);
+        result.put("samplingRounds", samplingRounds);
+        result.put("samplesPerResolver", queryNames.length * samplingRounds);
+        result.put("totalDnsQueries", ranked.length() * queryNames.length * samplingRounds);
         result.put("queryType", "A");
         result.put("transport", "DNS OVER UDP / PORT 53");
         result.put("configuredDnsServers", new JSONArray(configured));
         result.put("testedCount", ranked.length());
         result.put("respondingCount", respondingCount);
         result.put("completeRespondingCount", completeCount);
+        result.put("stableResolverCount", completeCount);
+        result.put("unstableResolverCount", unstableResolverCount);
+        result.put("sampleSuccessPercent", possibleSamples > 0 ? Math.round((double) allSuccessSamples / possibleSamples * 100.0) : 0);
         if (bestCandidate != null) {
             JSObject bestJson = new JSObject();
             bestJson.put("server", bestCandidate.server);
             bestJson.put("label", bestCandidate.label);
             bestJson.put("latencyMs", bestLatency);
+            bestJson.put("jitterMs", bestJitter);
+            bestJson.put("answerStabilityPercent", bestStability);
             result.put("bestResolver", bestJson);
         }
         result.put("integritySummary", integritySummary);
-        result.put("integrityNote", "This is a two-name, one-query-per-name snapshot. Non-public answers and peer divergence are review indicators, not proof of malicious DNS. CDNs, GeoDNS, split-horizon policies, content filters, or DNS changes can legitimately produce different A records.");
+        result.put("integrityNote", "Each resolver receives three samples for each of two names. A repeat-stable answer requires at least two matching successful A-record sets out of three. Repeat variation can result from load balancing, CDN/GeoDNS, regional routing, or transient network conditions; it is not proof of poisoning.");
         result.put("domainComparisons", domainComparisons);
         result.put("servers", ranked);
         result.put("skipped", skipped);
         result.put("systemChangesMade", false);
         result.put("limitations",
-            "The active system DNS list and three fixed public IPv4 resolver references are queried directly for example.com and iana.org over UDP/53. " +
-            "IPv6 DNS entries are listed as skipped. This is not a scan of all devices or all port-53 hosts on the LAN.");
+            "The active system DNS list and three fixed public IPv4 resolver references are queried directly for example.com and iana.org, three samples each over UDP/53. IPv6 DNS entries are listed as skipped. This is not a scan of all devices or all port-53 hosts on the LAN.");
         return result;
     }
 
-    private static String dnsAddressSignature(List<String> addresses) {
-        StringBuilder builder = new StringBuilder();
-        for (String address : addresses) {
-            if (builder.length() > 0) builder.append('|');
-            builder.append(address);
-        }
-        return builder.toString();
+    private static long medianLongValues(List<Long> values) {
+        if (values == null || values.isEmpty()) return 0L;
+        List<Long> sorted = new ArrayList<>(values);
+        Collections.sort(sorted);
+        int middle = sorted.size() / 2;
+        if (sorted.size() % 2 == 1) return sorted.get(middle);
+        return Math.round((sorted.get(middle - 1) + sorted.get(middle)) / 2.0);
     }
 
-    private static String classifyDnsAnswerAddress(String value) {
-        if (!isIPv4Literal(value)) return "INVALID";
-        String[] parts = value.split("\\.");
-        int a = Integer.parseInt(parts[0]);
-        int b = Integer.parseInt(parts[1]);
-        int c = Integer.parseInt(parts[2]);
-        if (a == 0) return "UNSPECIFIED";
-        if (a == 10 || (a == 172 && b >= 16 && b <= 31) || (a == 192 && b == 168)) return "PRIVATE";
-        if (a == 127) return "LOOPBACK";
-        if (a == 169 && b == 254) return "LINK_LOCAL";
-        if (a == 100 && b >= 64 && b <= 127) return "CARRIER_GRADE_NAT";
-        if (a == 192 && b == 0 && c == 2) return "DOCUMENTATION";
-        if (a == 198 && (b == 18 || b == 19)) return "BENCHMARK";
-        if (a == 198 && b == 51 && c == 100) return "DOCUMENTATION";
-        if (a == 203 && b == 0 && c == 113) return "DOCUMENTATION";
-        if (a >= 224) return "MULTICAST_OR_RESERVED";
-        return null;
-    }
 
     private JSObject queryDnsResolver(String server, String host) {
         long started = System.currentTimeMillis();

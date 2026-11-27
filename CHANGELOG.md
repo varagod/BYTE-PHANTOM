@@ -1,5 +1,17 @@
 # BYTE PHANTOM — Changelog
 
+## v1.14.0 — DNS REPEAT-STABILITY & LATENCY ANALYTICS
+- Each configured IPv4 DNS resolver and fixed public reference now receives three direct UDP/53 A-query samples for `example.com` and three for `iana.org`.
+- Per-name answers are considered repeat-stable only when at least two successful samples return the same normalized A-record set.
+- Reports per-name sample success, answer consistency, median response latency, latency range, and median absolute deviation (MAD) jitter.
+- Cross-resolver peer comparisons now use only repeat-stable answers; a resolver whose repeated answers vary is marked `INCONCLUSIVE` rather than being treated as DNS poisoning.
+- Resolver ranking prefers the number of repeat-stable names, then successful sample count, then median latency. A manual recommendation is shown only when both query names are repeat-stable.
+- Local DNS history now stores query success rate, stable resolver count, best resolver median latency and jitter; the last eight tests appear as a response-rate bar trend.
+- Windows Electron and Android native Java use the same sampling and scoring rules.
+- DNS tests remain user-initiated, IPv4-only, limited to configured DNS servers and three public references; no LAN-wide port scan or system DNS setting changes are made.
+- Updated both platform builds to v1.14.0.
+
+
 ## v1.13.1 — ANDROID DNS BUILD HOTFIX
 - Replaced a checked-exception JSON array constructor in the Android DNS report with Capacitor `JSArray` population.
 - No DNS query, comparison, recommendation, history, or network-scope behavior changed.
