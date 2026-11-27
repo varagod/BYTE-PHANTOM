@@ -630,7 +630,7 @@
   function buildNetworkRadarJsonReport() {
     return {
       application:"BYTE PHANTOM",
-      version:"1.9.0",
+      version:"1.10.0",
       generatedAt:new Date().toISOString(),
       privacy:"Generated locally. This report is copied only after the user requests it; BYTE PHANTOM does not upload this journal.",
       retentionDays:30,
@@ -856,10 +856,28 @@
     $("networkRadarResults").hidden=false;
   }
 
+  async function runNetworkConnectivityDiagnostics() {
+    const button=$("runNetworkDiagnostics"),host=$("networkDiagnosticsResults"),bridge=getNetworkRadarBridge();
+    if(!bridge||typeof bridge.diagnose!=="function"){host.textContent="NATIVE CONNECTIVITY DIAGNOSTICS ARE NOT AVAILABLE IN THIS BUILD.";return;}
+    button.disabled=true;button.textContent="TESTING DNS AND HTTPS...";host.textContent="Running a system DNS lookup and two HTTPS connectivity checks. No LAN hosts are scanned.";
+    try {
+      const result=await bridge.diagnose();host.replaceChildren();
+      const summary=document.createElement("b");summary.className="network-diagnostics-summary";
+      const dnsOk=!!(result&&result.dns&&result.dns.ok),httpsRows=Array.isArray(result&&result.https)?result.https:[],httpsOk=httpsRows.some(item=>item&&item.ok);
+      summary.textContent=httpsOk?"INTERNET REACHABILITY: CONFIRMED":dnsOk?"DNS WORKS · HTTPS NOT CONFIRMED":"CONNECTIVITY NOT CONFIRMED";host.appendChild(summary);
+      const rows=[["DNS RESOLUTION",dnsOk?"SUCCESS":"FAILED",result&&result.dns?(result.dns.latencyMs+" ms · "+(result.dns.addresses||[]).join(", ")):"No DNS result"]];
+      httpsRows.forEach((item,index)=>rows.push(["HTTPS CHECK "+(index+1),item.ok?"SUCCESS":"FAILED",(item.statusCode?"HTTP "+item.statusCode+" · ":"")+(Number.isFinite(item.latencyMs)?item.latencyMs+" ms":"")+(item.error?" · "+item.error:"")]));
+      rows.forEach(([label,state,detail])=>{const row=document.createElement("div");row.className="network-diagnostic-row";const name=document.createElement("b");name.textContent=label;const status=document.createElement("strong");status.textContent=state;status.dataset.state=state==="SUCCESS"?"ok":"warning";const info=document.createElement("small");info.textContent=detail;row.append(name,status,info);host.appendChild(row);});
+      const note=document.createElement("small");note.className="network-diagnostics-note";note.textContent="A failed endpoint can be blocked independently. HTTPS success confirms outbound connectivity to at least one test service; it does not guarantee every website is reachable. No network settings were changed.";host.appendChild(note);
+      appendDashboardLog("Connectivity diagnostics: DNS "+(dnsOk?"OK":"FAILED")+" / HTTPS "+(httpsOk?"REACHABLE":"NOT CONFIRMED"),httpsOk?"term-green":"term-amber");
+    }catch(error){host.textContent="DIAGNOSTICS FAILED: "+(error&&error.message?error.message:String(error));}
+    finally{button.disabled=false;button.textContent="RUN CONNECTIVITY DIAGNOSTICS";}
+  }
+
   function getNetworkRadarBridge() {
     const desktop=window.bytePhantomDesktop;
     if(desktop&&typeof desktop.getNetworkRadar==="function") {
-      return {platform:"WINDOWS",scan:(options)=>desktop.getNetworkRadar(options)};
+      return {platform:"WINDOWS",scan:(options)=>desktop.getNetworkRadar(options),diagnose:()=>desktop.runConnectivityDiagnostics()};
     }
     const capacitor=window.Capacitor;
     if(capacitor) {
@@ -877,7 +895,7 @@
         }
       }
       if(networkRadarAndroidPlugin&&typeof networkRadarAndroidPlugin.scan==="function") {
-        return {platform:"ANDROID",scan:(options)=>networkRadarAndroidPlugin.scan(options)};
+        return {platform:"ANDROID",scan:(options)=>networkRadarAndroidPlugin.scan(options),diagnose:()=>networkRadarAndroidPlugin.diagnoseConnectivity()};
       }
     }
     return null;
@@ -1098,6 +1116,7 @@
     playSfx("success");
   }
   $("runOperation").addEventListener("click", runOperation);
+  $("runNetworkDiagnostics").addEventListener("click", runNetworkConnectivityDiagnostics);
   document.querySelectorAll("[data-operation]").forEach(function (button) {
     button.addEventListener("click", function () { openOperation(button.dataset.operation); });
   });

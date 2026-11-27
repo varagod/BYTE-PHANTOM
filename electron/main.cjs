@@ -4,6 +4,8 @@ const os = require("node:os");
 const fs = require("node:fs/promises");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
+const dnsPromises = require("node:dns").promises;
+const https = require("node:https");
 const execFileAsync = promisify(execFile);
 
 let mainWindow;
@@ -260,6 +262,20 @@ ipcMain.handle("byte-phantom:network-radar", async (event, options={}) => {
   return collectNetworkRadar({activeSweep:!!(options&&options.activeSweep===true)});
 });
 
+
+async function runConnectivityDiagnostics() {
+  const startedAt=Date.now();
+  const lookup=async host=>{const start=Date.now();try{const addresses=await Promise.race([dnsPromises.lookup(host,{all:true,verbatim:true}),new Promise((_,reject)=>setTimeout(()=>reject(new Error("DNS lookup timed out")),5000))]);return {host,ok:Array.isArray(addresses)&&addresses.length>0,latencyMs:Date.now()-start,addresses:(addresses||[]).map(item=>item.address)};}catch(error){return {host,ok:false,latencyMs:Date.now()-start,addresses:[],error:String(error.message||error)};}};
+  const checkHttps=url=>new Promise(resolve=>{const start=Date.now();let settled=false;const finish=value=>{if(settled)return;settled=true;resolve({...value,url,latencyMs:Date.now()-start});};const request=https.get(url,{headers:{"User-Agent":"BYTE-PHANTOM-Network-Diagnostics/1.10"}},response=>{const statusCode=response.statusCode||0;response.resume();finish({ok:statusCode>=200&&statusCode<400,statusCode});});request.setTimeout(4500,()=>request.destroy(new Error("HTTPS request timed out")));request.on("error",error=>finish({ok:false,statusCode:0,error:String(error.message||error)}));});
+  const [dnsResult,httpsResults]=await Promise.all([lookup("example.com"),Promise.all([checkHttps("https://www.msftconnecttest.com/connecttest.txt"),checkHttps("https://connectivitycheck.gstatic.com/generate_204")])]);
+  return {supported:true,platform:"WINDOWS",collectedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,dns:dnsResult,https:httpsResults,systemChangesMade:false,scope:"TWO FIXED HTTPS CONNECTIVITY ENDPOINTS AND ONE SYSTEM DNS LOOKUP"};
+}
+
+ipcMain.handle("byte-phantom:connectivity-diagnostics", async (event) => {
+  const win=BrowserWindow.fromWebContents(event.sender);const senderUrl=event.senderFrame&&event.senderFrame.url;
+  if(!win||typeof senderUrl!=="string"||!senderUrl.startsWith("file://")) throw new Error("Connectivity diagnostics are only available to the local BYTE PHANTOM desktop window.");
+  return runConnectivityDiagnostics();
+});
 
 ipcMain.handle("byte-phantom:system-snapshot", async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);

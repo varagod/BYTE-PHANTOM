@@ -20,6 +20,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.URL;
+import java.net.HttpURLConnection;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
@@ -61,6 +64,31 @@ public class NetworkRadarPlugin extends Plugin {
                     (message == null ? exception.getClass().getSimpleName() : message));
             }
         });
+    }
+
+    @PluginMethod
+    public void diagnoseConnectivity(PluginCall call) {
+        scanExecutor.execute(() -> {
+            try { call.resolve(runConnectivityDiagnostics()); }
+            catch (Exception exception) { call.reject("Connectivity diagnostics failed: " + (exception.getMessage()==null?exception.getClass().getSimpleName():exception.getMessage())); }
+        });
+    }
+
+    private JSObject runConnectivityDiagnostics() {
+        long startedAt=System.currentTimeMillis();JSObject dnsResult=new JSObject();JSArray addresses=new JSArray();long dnsStarted=System.currentTimeMillis();
+        try { InetAddress[] resolved=InetAddress.getAllByName("example.com");for(InetAddress address:resolved)addresses.put(address.getHostAddress());dnsResult.put("host","example.com");dnsResult.put("ok",resolved.length>0);dnsResult.put("addresses",addresses); }
+        catch(Exception error){dnsResult.put("host","example.com");dnsResult.put("ok",false);dnsResult.put("addresses",addresses);dnsResult.put("error",error.getClass().getSimpleName()+": "+String.valueOf(error.getMessage()));}
+        dnsResult.put("latencyMs",Math.max(0L,System.currentTimeMillis()-dnsStarted));
+        JSArray httpsResults=new JSArray();httpsResults.put(checkHttpsEndpoint("https://www.msftconnecttest.com/connecttest.txt"));httpsResults.put(checkHttpsEndpoint("https://connectivitycheck.gstatic.com/generate_204"));
+        JSObject result=new JSObject();result.put("supported",true);result.put("platform","ANDROID");result.put("collectedAt",java.time.Instant.now().toString());result.put("durationMs",Math.max(0L,System.currentTimeMillis()-startedAt));result.put("dns",dnsResult);result.put("https",httpsResults);result.put("systemChangesMade",false);result.put("scope","TWO FIXED HTTPS CONNECTIVITY ENDPOINTS AND ONE SYSTEM DNS LOOKUP");return result;
+    }
+
+    private JSObject checkHttpsEndpoint(String endpoint) {
+        long started=System.currentTimeMillis();HttpURLConnection connection=null;JSObject result=new JSObject();
+        try {connection=(HttpURLConnection)new URL(endpoint).openConnection();connection.setRequestMethod("GET");connection.setConnectTimeout(4500);connection.setReadTimeout(4500);connection.setInstanceFollowRedirects(true);connection.setUseCaches(false);int status=connection.getResponseCode();result.put("url",endpoint);result.put("statusCode",status);result.put("ok",status>=200&&status<400);}
+        catch(Exception error){result.put("url",endpoint);result.put("statusCode",0);result.put("ok",false);result.put("error",error.getClass().getSimpleName()+": "+String.valueOf(error.getMessage()));}
+        finally{if(connection!=null)connection.disconnect();}
+        result.put("latencyMs",Math.max(0L,System.currentTimeMillis()-started));return result;
     }
 
     private JSObject scanLocalNetwork(boolean activeSweep) throws Exception {
