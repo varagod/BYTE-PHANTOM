@@ -1,8 +1,13 @@
-# BYTE PHANTOM v1.19.0
+# BYTE PHANTOM v1.19.1
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
 BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.19.0 adds captive-portal detection and strict HTTPS response-integrity checks on Windows and Android. Connectivity probes validate each provider's expected HTTP status and body, do not follow redirects, and show Android's native captive-portal / validated-network indicators.
+
+## v1.19.1 — WINDOWS STARTUP HOTFIX
+- Fixed two malformed JavaScript string literals in the Windows Electron main process. The PowerShell script builders now join lines using escaped CRLF sequences (`"\\r\\n"`) rather than a raw line break inside a quoted JavaScript string.
+- This fixes the startup-time `SyntaxError: Invalid or unexpected token` shown before the main UI opens.
+- Confirmed `electron/main.cjs` parses successfully after the fix. The Windows build workflow checks this entrypoint with `node --check` before packaging.
 
 ## v1.19.0 — CAPTIVE PORTAL & HTTPS RESPONSE INTEGRITY
 - Each connectivity endpoint now has a specific expected response: Microsoft NCSI must include `Microsoft Connect Test`; Google and Cloudflare connectivity probes must return an empty 200/204; Apple's captive-portal page must include `Success`.

@@ -1,5 +1,11 @@
 # BYTE PHANTOM — Changelog
 
+## v1.19.1 — WINDOWS STARTUP HOTFIX
+- Fixed two malformed JavaScript string literals in the Windows Electron main process. The PowerShell script builders now join lines using escaped CRLF sequences (`"\\r\\n"`) rather than a raw line break inside a quoted JavaScript string.
+- This fixes the startup-time `SyntaxError: Invalid or unexpected token` shown before the main UI opens.
+- Confirmed `electron/main.cjs` parses successfully after the fix. The Windows build workflow checks this entrypoint with `node --check` before packaging.
+
+
 ## v1.19.0 — CAPTIVE PORTAL & HTTPS RESPONSE INTEGRITY
 - Each connectivity endpoint now has a specific expected response: Microsoft NCSI must include `Microsoft Connect Test`; Google and Cloudflare connectivity probes must return an empty 200/204; Apple's captive-portal page must include `Success`.
 - HTTPS redirects are not followed. Each result records status, expected status, response byte count, body validation, redirect state, redirect host, and response-integrity outcome.
