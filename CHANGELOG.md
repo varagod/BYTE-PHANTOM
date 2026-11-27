@@ -1,5 +1,11 @@
 # BYTE PHANTOM — Changelog
 
+## v1.14.1 — ANDROID DNS STABILITY BUILD HOTFIX
+- Restored the Android DNS A-record signature and IPv4 answer-scope classification helper methods used by the repeat-sampling engine.
+- No resolver sampling, latency, jitter, stability threshold, peer-comparison or recommendation rules were changed.
+- Rebuilt both platform packages as v1.14.1.
+
+
 ## v1.14.0 — DNS REPEAT-STABILITY & LATENCY ANALYTICS
 - Each configured IPv4 DNS resolver and fixed public reference now receives three direct UDP/53 A-query samples for `example.com` and three for `iana.org`.
 - Per-name answers are considered repeat-stable only when at least two successful samples return the same normalized A-record set.

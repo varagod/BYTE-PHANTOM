@@ -218,7 +218,7 @@
 .network-diagnostics-summary{display:block;line-height:1.55;overflow-wrap:anywhere}
 .network-diagnostics-note{display:block;line-height:1.6;overflow-wrap:anywhere}
 
-/* v1.14.0 — repeat-sample stability and latency analysis */
+/* v1.14.1 — repeat-sample stability and latency analysis */
 .network-dns-resolver-list{display:grid;gap:8px;margin-top:12px;padding:12px;border:1px solid rgba(68,232,255,.13);border-radius:8px;background:rgba(4,12,19,.58);color:#9aabb7;font-size:11px}
 .network-dns-resolver-card{min-width:0;padding:10px;border:1px solid rgba(130,160,180,.14);border-radius:7px;background:rgba(6,16,24,.7)}
 .network-dns-resolver-card[data-state="online"]{border-color:rgba(99,255,156,.22)}
@@ -265,7 +265,7 @@
   .network-dns-history-row time{white-space:normal}
 }
 
-/* v1.14.0 — repeated DNS sample performance */
+/* v1.14.1 — repeated DNS sample performance */
 .network-dns-global-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
 .network-dns-global-metrics>div{display:grid;gap:4px;padding:9px 7px;border:1px solid rgba(68,232,255,.14);border-radius:6px;background:rgba(3,13,20,.62);text-align:center;min-width:0}
 .network-dns-global-metrics b{color:var(--bp-cyan);font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}

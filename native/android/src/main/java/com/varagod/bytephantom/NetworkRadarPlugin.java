@@ -655,6 +655,34 @@ public class NetworkRadarPlugin extends Plugin {
     }
 
 
+    private static String dnsAddressSignature(List<String> addresses) {
+        StringBuilder builder = new StringBuilder();
+        for (String address : addresses) {
+            if (builder.length() > 0) builder.append('|');
+            builder.append(address);
+        }
+        return builder.toString();
+    }
+
+    private static String classifyDnsAnswerAddress(String value) {
+        if (!isIPv4Literal(value)) return "INVALID";
+        String[] parts = value.split("\\.");
+        int a = Integer.parseInt(parts[0]);
+        int b = Integer.parseInt(parts[1]);
+        int c = Integer.parseInt(parts[2]);
+        if (a == 0) return "UNSPECIFIED";
+        if (a == 10 || (a == 172 && b >= 16 && b <= 31) || (a == 192 && b == 168)) return "PRIVATE";
+        if (a == 127) return "LOOPBACK";
+        if (a == 169 && b == 254) return "LINK_LOCAL";
+        if (a == 100 && b >= 64 && b <= 127) return "CARRIER_GRADE_NAT";
+        if (a == 192 && b == 0 && c == 2) return "DOCUMENTATION";
+        if (a == 198 && (b == 18 || b == 19)) return "BENCHMARK";
+        if (a == 198 && b == 51 && c == 100) return "DOCUMENTATION";
+        if (a == 203 && b == 0 && c == 113) return "DOCUMENTATION";
+        if (a >= 224) return "MULTICAST_OR_RESERVED";
+        return null;
+    }
+
     private JSObject queryDnsResolver(String server, String host) {
         long started = System.currentTimeMillis();
         JSObject result = new JSObject();

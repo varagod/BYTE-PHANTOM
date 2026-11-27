@@ -1,7 +1,7 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.14.0",
-  "build": "1.14.0",
+  "version": "1.14.1",
+  "build": "1.14.1",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
@@ -87,7 +87,8 @@
     "Added direct DNS-over-UDP resolver tests for configured DNS servers and fixed public resolver references",
     "Added two-name DNS answer comparison, peer-majority divergence review, non-public address flags, recommended resolver copy, and a 20-entry local DNS test history",
     "Fixed Android DNS report query-name JSON construction to use the Capacitor JSArray API without checked JSON exceptions",
-    "Added three-round DNS resolver sampling, median latency and jitter metrics, repeat-answer stability scoring, stable-only peer comparison, and a response-rate history trend"
+    "Added three-round DNS resolver sampling, median latency and jitter metrics, repeat-answer stability scoring, stable-only peer comparison, and a response-rate history trend",
+    "Restored Android DNS answer signature and IPv4 address classification helper methods required by the repeat-stability comparison engine"
   ],
   "dnsResolverIntelligence": {
     "queryNames": [
