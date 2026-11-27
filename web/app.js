@@ -969,14 +969,14 @@
     };
   }
 
-  function outageWatchIsIssue(state) {
-    return state === "NO DEFAULT ROUTE" || state === "DNS FAILURE" || state === "HTTPS UNREACHABLE";
-  }
-
   function recordOutageWatchResult(result) {
     const classification = classifyOutageWatchResult(result);
     const at = new Date().toISOString();
-    const previous = outageWatchSamples[0] || null;
+    const previousCandidate = outageWatchSamples[0] || null;
+    const previousAgeMs = previousCandidate ? Date.now() - Date.parse(previousCandidate.at) : Infinity;
+    const previous = previousCandidate && previousAgeMs >= 0 && previousAgeMs <= getOutageWatchIntervalMs() * 2.5
+      ? previousCandidate
+      : null;
     const sample = {
       at,
       state: classification.state,
@@ -993,6 +993,7 @@
     };
 
     const openIncident = outageWatchEvents.find(item => !item.resolvedAt);
+    if (openIncident && openIncident.recoveryPendingAt && !previous) openIncident.recoveryPendingAt = null;
     let transition = null;
     if (openIncident) {
       if (outageWatchIsIssue(classification.state)) {

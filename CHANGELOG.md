@@ -3,6 +3,7 @@
 ## v1.17.0 — OUTAGE WATCH CONFIRMATION + NETWORK QUALITY TREND
 - Added two-consecutive-sample confirmation before opening an outage incident; a single failed check is labelled pending and does not create an incident.
 - Added two-consecutive-success confirmation before resolving an open incident. A renewed failure or inconclusive probe resets the pending recovery streak.
+- Consecutive confirmation is cadence-aware: a saved sample older than 2.5 times the selected interval cannot confirm a new incident or complete an old recovery streak after the monitor was paused.
 - Incident start time is anchored to the first qualifying failed sample; the UI also records when the incident was confirmed.
 - Captures successful DNS lookup latency, successful HTTPS endpoint median latency, and gateway ICMP reply latency when those measurements are available.
 - Adds rolling medians and a recent DNS/HTTPS latency bar trend using up to the latest 12 successful measurements.
