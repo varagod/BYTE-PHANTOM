@@ -1,8 +1,17 @@
-# BYTE PHANTOM v1.18.0
+# BYTE PHANTOM v1.19.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.18.0 adds cross-platform Network Shutdown Intelligence with three system DNS names and four independent HTTPS providers. It distinguishes missing routes, likely DNS failures, upstream HTTPS failures, partial connectivity, and indeterminate results.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.19.0 adds captive-portal detection and strict HTTPS response-integrity checks on Windows and Android. Connectivity probes validate each provider's expected HTTP status and body, do not follow redirects, and show Android's native captive-portal / validated-network indicators.
+
+## v1.19.0 — CAPTIVE PORTAL & HTTPS RESPONSE INTEGRITY
+- Each connectivity endpoint now has a specific expected response: Microsoft NCSI must include `Microsoft Connect Test`; Google and Cloudflare connectivity probes must return an empty 200/204; Apple's captive-portal page must include `Success`.
+- HTTPS redirects are not followed. Each result records status, expected status, response byte count, body validation, redirect state, redirect host, and response-integrity outcome.
+- A redirect to a different host, HTTP 511, or repeated unexpected response signatures can indicate a captive portal / interception. A single response mismatch is only a warning, not conclusive proof.
+- Android additionally reads ConnectivityManager's captive-portal, validated-network, and internet-capability indicators when those flags are available.
+- NETWORK RADAR shows per-provider validation and OUTAGE WATCH stores portal status, redirect counts and unexpected-response counts in local JSON/CSV history.
+- HTTP response body samples are bounded and are not retained in history or exported. No new Android permissions, DNS changes, VPN, port scan, credential testing, or background service were added.
+- Both platforms retain user-initiated diagnostics and the existing 30-day local OUTAGE WATCH retention.
 
 ## v1.17.0 — OUTAGE WATCH CONFIRMATION + NETWORK QUALITY TREND
 

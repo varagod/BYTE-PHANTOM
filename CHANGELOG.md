@@ -1,5 +1,15 @@
 # BYTE PHANTOM — Changelog
 
+## v1.19.0 — CAPTIVE PORTAL & HTTPS RESPONSE INTEGRITY
+- Each connectivity endpoint now has a specific expected response: Microsoft NCSI must include `Microsoft Connect Test`; Google and Cloudflare connectivity probes must return an empty 200/204; Apple's captive-portal page must include `Success`.
+- HTTPS redirects are not followed. Each result records status, expected status, response byte count, body validation, redirect state, redirect host, and response-integrity outcome.
+- A redirect to a different host, HTTP 511, or repeated unexpected response signatures can indicate a captive portal / interception. A single response mismatch is only a warning, not conclusive proof.
+- Android additionally reads ConnectivityManager's captive-portal, validated-network, and internet-capability indicators when those flags are available.
+- NETWORK RADAR shows per-provider validation and OUTAGE WATCH stores portal status, redirect counts and unexpected-response counts in local JSON/CSV history.
+- HTTP response body samples are bounded and are not retained in history or exported. No new Android permissions, DNS changes, VPN, port scan, credential testing, or background service were added.
+- Both platforms retain user-initiated diagnostics and the existing 30-day local OUTAGE WATCH retention.
+
+
 ## v1.18.0 — NETWORK SHUTDOWN INTELLIGENCE
 - Expanded cross-platform connectivity diagnosis from one system DNS lookup to three independent names: `example.com`, `iana.org`, and `cloudflare.com`.
 - Expanded HTTPS/TLS reachability checks from two to four independent test providers: Microsoft, Google, Cloudflare, and Apple. Android runs the DNS and HTTPS probes concurrently with bounded waits.
