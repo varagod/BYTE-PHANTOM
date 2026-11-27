@@ -192,3 +192,12 @@
 .network-topology-disclaimer{margin:0;color:#8493a3;font:10px/1.65 var(--mono)}
 @media(max-width:600px){.network-topology-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.network-topology-canvas svg{min-height:190px}.network-topology-legend{gap:7px 10px}.network-topology-legend #networkTopologyOverflow{width:100%;margin-left:0}}
 @media(prefers-reduced-motion:reduce){.topology-node *{transition:none!important}}
+
+/* v1.9.0 — local gateway and DNS intelligence */
+.network-path-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}
+.network-path-card{min-width:0;padding:12px;border:1px solid rgba(68,232,255,.16);border-radius:8px;background:rgba(5,15,22,.62)}
+.network-path-card small{display:block;color:var(--bp-cyan);font-size:9px;letter-spacing:1px;margin-bottom:7px}
+.network-path-card b{display:block;color:#e8f4fa;font-size:12px;line-height:1.45;overflow-wrap:anywhere;font-weight:600}
+.network-path-note{grid-column:1/-1;margin:2px 0 0;color:#7f929f;font-size:10px;line-height:1.5}
+.network-path-empty{padding:14px;color:#8da2af;font-size:10px;letter-spacing:1px}
+@media(max-width:720px){.network-path-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
