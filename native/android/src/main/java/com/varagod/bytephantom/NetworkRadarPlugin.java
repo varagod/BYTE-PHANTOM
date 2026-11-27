@@ -223,6 +223,61 @@ public class NetworkRadarPlugin extends Plugin {
         result.put("latencyMs",Math.max(0L,System.currentTimeMillis()-started));return result;
     }
 
+    private JSObject checkDefaultGateway(String gateway) {
+        long started = System.currentTimeMillis();
+        JSObject result = new JSObject();
+        result.put("gateway", gateway == null || gateway.trim().isEmpty() ? "NOT REPORTED" : gateway);
+
+        if (!isPrivate(gateway) || !new File(PING_BINARY).canExecute()) {
+            result.put("supported", false);
+            result.put("replied", false);
+            result.put("status", "SKIPPED");
+            result.put("latencyMs", Math.max(0L, System.currentTimeMillis() - started));
+            result.put("reason", !isPrivate(gateway)
+                ? "No private IPv4 default gateway is available on the active route."
+                : "The Android ping utility is unavailable on this device.");
+            return result;
+        }
+
+        Process process = null;
+        try {
+            process = new ProcessBuilder(PING_BINARY, "-c", "1", "-W", "1", gateway)
+                .redirectErrorStream(true)
+                .start();
+            int exitCode = process.waitFor();
+            result.put("supported", true);
+            result.put("replied", exitCode == 0);
+            result.put("status", exitCode == 0 ? "REPLIED" : "NO_REPLY");
+            result.put("method", "ONE ICMP ECHO REQUEST");
+        } catch (InterruptedException interrupted) {
+            if (process != null) process.destroy();
+            Thread.currentThread().interrupt();
+            result.put("supported", true);
+            result.put("replied", false);
+            result.put("status", "INTERRUPTED");
+            result.put("error", "Gateway probe was interrupted.");
+        } catch (Exception error) {
+            if (process != null) process.destroy();
+            result.put("supported", true);
+            result.put("replied", false);
+            result.put("status", "ERROR");
+            result.put("error", error.getClass().getSimpleName() + ": " + String.valueOf(error.getMessage()));
+        } finally {
+            if (process != null) process.destroy();
+        }
+
+        result.put("latencyMs", Math.max(0L, System.currentTimeMillis() - started));
+        return result;
+    }
+
+    private JSObject checkHttpsEndpoint(String endpoint) {
+        long started=System.currentTimeMillis();HttpURLConnection connection=null;JSObject result=new JSObject();
+        try {connection=(HttpURLConnection)new URL(endpoint).openConnection();connection.setRequestMethod("GET");connection.setConnectTimeout(4500);connection.setReadTimeout(4500);connection.setInstanceFollowRedirects(true);connection.setUseCaches(false);int status=connection.getResponseCode();result.put("url",endpoint);result.put("statusCode",status);result.put("ok",status>=200&&status<400);}
+        catch(Exception error){result.put("url",endpoint);result.put("statusCode",0);result.put("ok",false);result.put("error",error.getClass().getSimpleName()+": "+String.valueOf(error.getMessage()));}
+        finally{if(connection!=null)connection.disconnect();}
+        result.put("latencyMs",Math.max(0L,System.currentTimeMillis()-started));return result;
+    }
+
     private JSObject runDnsResolverDiscovery() {
         long startedAt = System.currentTimeMillis();
         JSObject networkPath = collectNetworkPathInfo();
