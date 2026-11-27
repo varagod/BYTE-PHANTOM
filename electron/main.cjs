@@ -280,88 +280,40 @@ async function probeDefaultGateway(gateway) {
 }
 
 async function runConnectivityDiagnostics() {
-  const startedAt = Date.now();
-  const networkPath = await collectNetworkPathInfo();
-  const dnsHosts = ["example.com", "iana.org", "cloudflare.com"];
-  const httpsEndpoints = [
-    "https://www.msftconnecttest.com/connecttest.txt",
-    "https://connectivitycheck.gstatic.com/generate_204",
-    "https://cp.cloudflare.com/generate_204",
-    "https://www.apple.com/library/test/success.html"
+  const startedAt=Date.now(),networkPath=await collectNetworkPathInfo();
+  const dnsHosts=["example.com","iana.org","cloudflare.com"];
+  const endpoints=[
+    {provider:"MICROSOFT NCSI",url:"https://www.msftconnecttest.com/connecttest.txt",codes:[200],body:"Microsoft Connect Test",empty:false},
+    {provider:"GOOGLE CONNECTIVITY",url:"https://connectivitycheck.gstatic.com/generate_204",codes:[200,204],body:"",empty:true},
+    {provider:"CLOUDFLARE CONNECTIVITY",url:"https://cp.cloudflare.com/generate_204",codes:[200,204],body:"",empty:true},
+    {provider:"APPLE CAPTIVE PORTAL",url:"https://captive.apple.com/hotspot-detect.html",codes:[200],body:"Success",empty:false}
   ];
-
-  const lookup = async host => {
-    const started = Date.now();
-    let timeoutId;
-    try {
-      const addresses = await Promise.race([
-        dnsPromises.lookup(host, { all: true, verbatim: true }),
-        new Promise((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error("DNS lookup timed out")), 5000);
-        })
-      ]);
-      return {
-        host,
-        ok: Array.isArray(addresses) && addresses.length > 0,
-        latencyMs: Date.now() - started,
-        addresses: (addresses || []).map(item => item.address)
-      };
-    } catch (error) {
-      return {
-        host,
-        ok: false,
-        latencyMs: Date.now() - started,
-        addresses: [],
-        error: String(error && error.message ? error.message : error)
-      };
-    } finally {
-      if (timeoutId) clearTimeout(timeoutId);
-    }
+  const lookup=async host=>{
+    const started=Date.now();let timer;
+    try{const addresses=await Promise.race([dnsPromises.lookup(host,{all:true,verbatim:true}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("DNS lookup timed out")),5000);})]);return{host,ok:Array.isArray(addresses)&&addresses.length>0,latencyMs:Date.now()-started,addresses:(addresses||[]).map(x=>x.address)};}
+    catch(error){return{host,ok:false,latencyMs:Date.now()-started,addresses:[],error:String(error&&error.message?error.message:error)};}
+    finally{if(timer)clearTimeout(timer);}
   };
-
-  const checkHttps = url => new Promise(resolve => {
-    const started = Date.now();
-    let settled = false;
-    const finish = result => {
-      if (settled) return;
-      settled = true;
-      resolve({ ...result, url, latencyMs: Date.now() - started });
-    };
-
-    const request = https.get(url, {
-      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.18.0" }
-    }, response => {
-      const statusCode = response.statusCode || 0;
-      response.resume();
-      finish({ ok: statusCode >= 200 && statusCode < 400, statusCode });
+  const redirectHost=(location,source)=>{if(!location)return"";try{return new URL(location,source).hostname.toLowerCase();}catch(e){return"";}};
+  const checkHttps=endpoint=>new Promise(resolve=>{
+    const started=Date.now();let settled=false;
+    const finish=value=>{if(settled)return;settled=true;resolve({...value,url:endpoint.url,provider:endpoint.provider,expectedStatusCodes:endpoint.codes,expectedBody:endpoint.body,latencyMs:Date.now()-started});};
+    const request=https.get(endpoint.url,{headers:{"User-Agent":"BYTE-PHANTOM-Network-Diagnostics/1.19.0"}},response=>{
+      const status=response.statusCode||0,chunks=[];let stored=0,total=0;
+      response.on("data",chunk=>{total+=chunk.length;if(stored<4096){const part=chunk.subarray(0,Math.min(chunk.length,4096-stored));chunks.push(part);stored+=part.length;}});
+      response.once("error",error=>finish({ok:false,responseReceived:true,statusCode:status,responseBytes:total,bodyMatches:false,redirected:status>=300&&status<400,locationHost:redirectHost(response.headers.location,endpoint.url),contentType:response.headers["content-type"]||"",responseIntegrity:"RESPONSE_READ_ERROR",portalSignal:status===511||(status>=300&&status<400),error:String(error&&error.message?error.message:error)}));
+      response.once("end",()=>{
+        const body=Buffer.concat(chunks).toString("utf8"),statusMatches=endpoint.codes.includes(status);
+        const bodyMatches=endpoint.empty?total===0:body.includes(endpoint.body),location=response.headers.location||"";
+        const redirected=(status>=300&&status<400)||!!location,host=redirectHost(location,endpoint.url),ok=statusMatches&&bodyMatches&&!redirected;
+        finish({ok,responseReceived:true,statusCode:status,expectedStatusCode:endpoint.codes.join(" OR "),bodyMatches,responseBytes:total,bodyTruncated:total>stored,contentType:response.headers["content-type"]||"",redirected,locationHost:host,responseIntegrity:ok?"VALIDATED":redirected?"REDIRECTED":!statusMatches?"STATUS_MISMATCH":"CONTENT_MISMATCH",portalSignal:status===511||redirected||(status>=200&&status<300&&!bodyMatches)});
+      });
     });
-    request.setTimeout(5000, () => request.destroy(new Error("HTTPS/TLS request timed out")));
-    request.on("error", error => finish({
-      ok: false,
-      statusCode: 0,
-      error: String(error && (error.code || error.message) ? (error.code || error.message) : error)
-    }));
+    request.setTimeout(5000,()=>request.destroy(new Error("HTTPS/TLS request timed out")));
+    request.on("error",error=>finish({ok:false,responseReceived:false,statusCode:0,responseBytes:0,bodyMatches:false,redirected:false,locationHost:"",responseIntegrity:"NO_HTTP_RESPONSE",portalSignal:false,error:String(error&&(error.code||error.message)?(error.code||error.message):error)}));
   });
-
-  const [gatewayProbe, dnsChecks, httpsResults] = await Promise.all([
-    probeDefaultGateway(networkPath.gateway),
-    Promise.all(dnsHosts.map(lookup)),
-    Promise.all(httpsEndpoints.map(checkHttps))
-  ]);
-
-  return {
-    supported: true,
-    platform: "WINDOWS",
-    collectedAt: new Date().toISOString(),
-    durationMs: Date.now() - startedAt,
-    networkPath,
-    gatewayProbe,
-    dns: dnsChecks[0] || { host: dnsHosts[0], ok: false, addresses: [] },
-    dnsChecks,
-    https: httpsResults,
-    systemChangesMade: false,
-    scope: "ACTIVE ROUTE + ONE LOCAL GATEWAY ICMP ECHO + THREE SYSTEM DNS LOOKUPS + FOUR INDEPENDENT HTTPS/TLS CHECKS"
-  };
+  const [gatewayProbe,dnsChecks,httpsResults]=await Promise.all([probeDefaultGateway(networkPath.gateway),Promise.all(dnsHosts.map(lookup)),Promise.all(endpoints.map(checkHttps))]);
+  return{supported:true,platform:"WINDOWS",collectedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,networkPath,gatewayProbe,dns:dnsChecks[0]||{host:dnsHosts[0],ok:false,addresses:[]},dnsChecks,https:httpsResults,systemChangesMade:false,scope:"ACTIVE ROUTE + GATEWAY ICMP + THREE SYSTEM DNS LOOKUPS + FOUR STRICT HTTPS RESPONSE-INTEGRITY PROBES; REDIRECTS ARE NOT FOLLOWED"};
 }
 
 function buildDnsAQuery(host) {

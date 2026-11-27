@@ -154,148 +154,72 @@ public class NetworkRadarPlugin extends Plugin {
     }
 
     private JSObject runConnectivityDiagnostics() {
-        long startedAt = System.currentTimeMillis();
-        JSObject networkPath = collectNetworkPathInfo();
-        JSObject gatewayProbe = checkDefaultGateway(networkPath.optString("gateway", "NOT REPORTED"));
-
-        String[] dnsHosts = new String[] {"example.com", "iana.org", "cloudflare.com"};
-        String[] endpoints = new String[] {
-            "https://www.msftconnecttest.com/connecttest.txt",
-            "https://connectivitycheck.gstatic.com/generate_204",
-            "https://cp.cloudflare.com/generate_204",
-            "https://www.apple.com/library/test/success.html"
-        };
-        ExecutorService probeExecutor = Executors.newFixedThreadPool(dnsHosts.length + endpoints.length);
-        List<Future<JSObject>> dnsFutures = new ArrayList<>();
-        List<Future<JSObject>> httpsFutures = new ArrayList<>();
-        JSArray dnsChecks = new JSArray();
-        JSArray httpsResults = new JSArray();
-        JSObject dnsPrimary = new JSObject();
-
-        try {
-            for (String host : dnsHosts) dnsFutures.add(probeExecutor.submit(() -> checkSystemDns(host)));
-            for (String endpoint : endpoints) httpsFutures.add(probeExecutor.submit(() -> checkHttpsEndpoint(endpoint)));
-
-            for (int i = 0; i < dnsFutures.size(); i++) {
-                JSObject item = awaitConnectivityProbe(dnsFutures.get(i), "DNS", dnsHosts[i]);
-                dnsChecks.put(item);
-                if (i == 0) dnsPrimary = item;
-            }
-            for (int i = 0; i < httpsFutures.size(); i++) {
-                httpsResults.put(awaitConnectivityProbe(httpsFutures.get(i), "HTTPS", endpoints[i]));
-            }
-        } finally {
-            probeExecutor.shutdownNow();
-        }
-
-        JSObject result = new JSObject();
-        result.put("supported", true);
-        result.put("platform", "ANDROID");
-        result.put("collectedAt", java.time.Instant.now().toString());
-        result.put("durationMs", Math.max(0L, System.currentTimeMillis() - startedAt));
-        result.put("networkPath", networkPath);
-        result.put("gatewayProbe", gatewayProbe);
-        result.put("dns", dnsPrimary);
-        result.put("dnsChecks", dnsChecks);
-        result.put("https", httpsResults);
-        result.put("systemChangesMade", false);
-        result.put("scope", "ACTIVE ROUTE + ONE LOCAL GATEWAY ICMP ECHO + THREE SYSTEM DNS LOOKUPS + FOUR INDEPENDENT HTTPS/TLS CHECKS");
+        long startedAt=System.currentTimeMillis();JSObject networkPath=collectNetworkPathInfo();
+        JSObject gatewayProbe=checkDefaultGateway(networkPath.optString("gateway","NOT REPORTED"));
+        String[] dnsHosts={"example.com","iana.org","cloudflare.com"};
+        String[] endpoints={"https://www.msftconnecttest.com/connecttest.txt","https://connectivitycheck.gstatic.com/generate_204","https://cp.cloudflare.com/generate_204","https://captive.apple.com/hotspot-detect.html"};
+        int[][] expectedCodes={{200},{200,204},{200,204},{200}};
+        String[] expectedBodies={"Microsoft Connect Test","","","Success"};
+        boolean[] emptyBodies={false,true,true,false};
+        ExecutorService executor=Executors.newFixedThreadPool(dnsHosts.length+endpoints.length);
+        List<Future<JSObject>> dnsJobs=new ArrayList<>(),httpsJobs=new ArrayList<>();
+        JSArray dnsChecks=new JSArray(),httpsResults=new JSArray();JSObject primaryDns=new JSObject();
+        try{
+            for(String host:dnsHosts)dnsJobs.add(executor.submit(()->checkSystemDns(host)));
+            for(int i=0;i<endpoints.length;i++){final int index=i;httpsJobs.add(executor.submit(()->checkHttpsEndpoint(endpoints[index],expectedCodes[index],expectedBodies[index],emptyBodies[index])));}
+            for(int i=0;i<dnsJobs.size();i++){JSObject row=awaitConnectivityProbe(dnsJobs.get(i),"DNS",dnsHosts[i]);dnsChecks.put(row);if(i==0)primaryDns=row;}
+            for(int i=0;i<httpsJobs.size();i++)httpsResults.put(awaitConnectivityProbe(httpsJobs.get(i),"HTTPS",endpoints[i]));
+        }finally{executor.shutdownNow();}
+        JSObject result=new JSObject();result.put("supported",true);result.put("platform","ANDROID");
+        result.put("collectedAt",java.time.Instant.now().toString());result.put("durationMs",Math.max(0L,System.currentTimeMillis()-startedAt));
+        result.put("networkPath",networkPath);result.put("gatewayProbe",gatewayProbe);result.put("dns",primaryDns);
+        result.put("dnsChecks",dnsChecks);result.put("https",httpsResults);result.put("systemChangesMade",false);
+        result.put("scope","ACTIVE ROUTE + ANDROID CAPTIVE PORTAL CAPABILITY + GATEWAY ICMP + THREE SYSTEM DNS LOOKUPS + FOUR STRICT HTTPS RESPONSE-INTEGRITY PROBES");
         return result;
     }
 
-    private JSObject checkSystemDns(String host) {
-        long started = System.currentTimeMillis();
-        JSObject result = new JSObject();
-        JSArray addresses = new JSArray();
-        try {
-            InetAddress[] resolved = InetAddress.getAllByName(host);
-            for (InetAddress address : resolved) addresses.put(address.getHostAddress());
-            result.put("host", host);
-            result.put("ok", resolved.length > 0);
-            result.put("addresses", addresses);
-        } catch (Exception error) {
-            result.put("host", host);
-            result.put("ok", false);
-            result.put("addresses", addresses);
-            result.put("error", error.getClass().getSimpleName() + ": " + String.valueOf(error.getMessage()));
-        }
-        result.put("latencyMs", Math.max(0L, System.currentTimeMillis() - started));
-        return result;
+    private JSObject checkSystemDns(String host){
+        long started=System.currentTimeMillis();JSObject result=new JSObject();JSArray addresses=new JSArray();
+        try{InetAddress[] resolved=InetAddress.getAllByName(host);for(InetAddress address:resolved)addresses.put(address.getHostAddress());result.put("host",host);result.put("ok",resolved.length>0);result.put("addresses",addresses);}
+        catch(Exception error){result.put("host",host);result.put("ok",false);result.put("addresses",addresses);result.put("error",error.getClass().getSimpleName()+": "+String.valueOf(error.getMessage()));}
+        result.put("latencyMs",Math.max(0L,System.currentTimeMillis()-started));return result;
     }
 
-    private JSObject awaitConnectivityProbe(Future<JSObject> future, String kind, String target) {
-        try {
-            return future.get(6500L, TimeUnit.MILLISECONDS);
-        } catch (Exception error) {
-            future.cancel(true);
-            if (error instanceof InterruptedException) Thread.currentThread().interrupt();
-            JSObject failed = new JSObject();
-            failed.put("ok", false);
-            failed.put("latencyMs", 6500);
-            failed.put("error", error.getClass().getSimpleName() + ": " + String.valueOf(error.getMessage()));
-            if ("DNS".equals(kind)) {
-                failed.put("host", target);
-                failed.put("addresses", new JSArray());
-            } else {
-                failed.put("url", target);
-                failed.put("statusCode", 0);
-            }
+    private JSObject awaitConnectivityProbe(Future<JSObject> future,String kind,String target){
+        try{return future.get(6500L,TimeUnit.MILLISECONDS);}
+        catch(Exception error){
+            future.cancel(true);if(error instanceof InterruptedException)Thread.currentThread().interrupt();
+            JSObject failed=new JSObject();failed.put("ok",false);failed.put("latencyMs",6500);failed.put("error",error.getClass().getSimpleName()+": "+String.valueOf(error.getMessage()));
+            if("DNS".equals(kind)){failed.put("host",target);failed.put("addresses",new JSArray());}
+            else{failed.put("url",target);failed.put("responseReceived",false);failed.put("statusCode",0);failed.put("bodyMatches",false);failed.put("redirected",false);failed.put("portalSignal",false);failed.put("responseIntegrity","PROBE_TIMEOUT");}
             return failed;
         }
     }
 
-    private JSObject checkDefaultGateway(String gateway) {
-        long started = System.currentTimeMillis();
-        JSObject result = new JSObject();
-        result.put("gateway", gateway == null || gateway.trim().isEmpty() ? "NOT REPORTED" : gateway);
-
-        if (!isPrivate(gateway) || !new File(PING_BINARY).canExecute()) {
-            result.put("supported", false);
-            result.put("replied", false);
-            result.put("status", "SKIPPED");
-            result.put("latencyMs", Math.max(0L, System.currentTimeMillis() - started));
-            result.put("reason", !isPrivate(gateway)
-                ? "No private IPv4 default gateway is available on the active route."
-                : "The Android ping utility is unavailable on this device.");
-            return result;
-        }
-
-        Process process = null;
-        try {
-            process = new ProcessBuilder(PING_BINARY, "-c", "1", "-W", "1", gateway)
-                .redirectErrorStream(true)
-                .start();
-            int exitCode = process.waitFor();
-            result.put("supported", true);
-            result.put("replied", exitCode == 0);
-            result.put("status", exitCode == 0 ? "REPLIED" : "NO_REPLY");
-            result.put("method", "ONE ICMP ECHO REQUEST");
-        } catch (InterruptedException interrupted) {
-            if (process != null) process.destroy();
-            Thread.currentThread().interrupt();
-            result.put("supported", true);
-            result.put("replied", false);
-            result.put("status", "INTERRUPTED");
-            result.put("error", "Gateway probe was interrupted.");
-        } catch (Exception error) {
-            if (process != null) process.destroy();
-            result.put("supported", true);
-            result.put("replied", false);
-            result.put("status", "ERROR");
-            result.put("error", error.getClass().getSimpleName() + ": " + String.valueOf(error.getMessage()));
-        } finally {
-            if (process != null) process.destroy();
-        }
-
-        result.put("latencyMs", Math.max(0L, System.currentTimeMillis() - started));
-        return result;
-    }
-
-    private JSObject checkHttpsEndpoint(String endpoint) {
+    private JSObject checkHttpsEndpoint(String endpoint,int[] expectedCodes,String expectedBody,boolean requireEmptyBody){
         long started=System.currentTimeMillis();HttpURLConnection connection=null;JSObject result=new JSObject();
-        try {connection=(HttpURLConnection)new URL(endpoint).openConnection();connection.setRequestMethod("GET");connection.setConnectTimeout(4500);connection.setReadTimeout(4500);connection.setInstanceFollowRedirects(true);connection.setUseCaches(false);int status=connection.getResponseCode();result.put("url",endpoint);result.put("statusCode",status);result.put("ok",status>=200&&status<400);}
-        catch(Exception error){result.put("url",endpoint);result.put("statusCode",0);result.put("ok",false);result.put("error",error.getClass().getSimpleName()+": "+String.valueOf(error.getMessage()));}
-        finally{if(connection!=null)connection.disconnect();}
+        try{
+            connection=(HttpURLConnection)new URL(endpoint).openConnection();connection.setRequestMethod("GET");connection.setConnectTimeout(5000);connection.setReadTimeout(5000);
+            connection.setInstanceFollowRedirects(false);connection.setUseCaches(false);connection.setRequestProperty("User-Agent","BYTE-PHANTOM-Network-Diagnostics/1.19.0");
+            int status=connection.getResponseCode();String location=connection.getHeaderField("Location");
+            boolean redirected=(status>=300&&status<400)||(location!=null&&!location.trim().isEmpty());String locationHost="";
+            if(location!=null&&!location.trim().isEmpty())try{locationHost=new URL(new URL(endpoint),location).getHost().toLowerCase(Locale.ROOT);}catch(Exception ignored){}
+            ByteArrayOutputStream body=new ByteArrayOutputStream();int responseBytes=0;boolean truncated=false;
+            java.io.InputStream stream=status>=400?connection.getErrorStream():connection.getInputStream();
+            if(stream!=null)try(java.io.InputStream input=stream){byte[] buffer=new byte[512];int count;while((count=input.read(buffer))!=-1){responseBytes+=count;int keep=Math.min(count,Math.max(0,4096-body.size()));if(keep>0)body.write(buffer,0,keep);if(body.size()>=4096){truncated=true;break;}}}
+            String text=new String(body.toByteArray(),StandardCharsets.UTF_8);boolean statusMatches=false;for(int expected:expectedCodes)if(status==expected)statusMatches=true;
+            boolean bodyMatches=requireEmptyBody?responseBytes==0:text.contains(expectedBody);boolean ok=statusMatches&&bodyMatches&&!redirected;
+            result.put("url",endpoint);result.put("statusCode",status);result.put("expectedStatusCode",expectedCodes.length==1?String.valueOf(expectedCodes[0]):expectedCodes[0]+" OR "+expectedCodes[1]);
+            result.put("ok",ok);result.put("responseReceived",true);result.put("bodyMatches",bodyMatches);result.put("responseBytes",responseBytes);result.put("bodyTruncated",truncated);
+            result.put("contentType",connection.getContentType()==null?"":connection.getContentType());result.put("redirected",redirected);result.put("locationHost",locationHost);
+            result.put("responseIntegrity",ok?"VALIDATED":redirected?"REDIRECTED":!statusMatches?"STATUS_MISMATCH":"CONTENT_MISMATCH");
+            result.put("portalSignal",status==511||redirected||(status>=200&&status<300&&!ok));
+            if(location!=null&&!location.trim().isEmpty())result.put("location",location.substring(0,Math.min(256,location.length())));
+        }catch(Exception error){
+            result.put("url",endpoint);result.put("statusCode",0);result.put("ok",false);result.put("responseReceived",false);result.put("bodyMatches",false);
+            result.put("responseBytes",0);result.put("redirected",false);result.put("locationHost","");result.put("responseIntegrity","NO_HTTP_RESPONSE");result.put("portalSignal",false);
+            result.put("error",error.getClass().getSimpleName()+": "+String.valueOf(error.getMessage()));
+        }finally{if(connection!=null)connection.disconnect();}
         result.put("latencyMs",Math.max(0L,System.currentTimeMillis()-started));return result;
     }
 
@@ -1096,7 +1020,11 @@ public class NetworkRadarPlugin extends Plugin {
                 for(java.net.InetAddress server:properties.getDnsServers())dns.put(server.getHostAddress());
                 for(LinkAddress address:properties.getLinkAddresses())if(address.getAddress() instanceof Inet4Address&&isPrivate(address.getAddress().getHostAddress()))addresses.put(address.getAddress().getHostAddress()+"/"+address.getPrefixLength());
             }
-            if(caps!=null){if(caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))transport="WI-FI";else if(caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))transport="ETHERNET";else if(caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR))transport="CELLULAR";else if(caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN))transport="VPN";else transport="OTHER";}
+            if(caps!=null){
+                if(caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))transport="WI-FI";else if(caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))transport="ETHERNET";else if(caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR))transport="CELLULAR";else if(caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN))transport="VPN";else transport="OTHER";
+                result.put("captivePortalKnown",true);result.put("captivePortal",caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL));
+                result.put("networkValidated",caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED));result.put("internetCapability",caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+            }else{result.put("captivePortalKnown",false);result.put("captivePortal",false);result.put("networkValidated",false);result.put("internetCapability",false);}
         }catch(Exception ignored){source="ANDROID CONNECTIVITY SNAPSHOT PARTIALLY AVAILABLE";}
         result.put("gateway",gateway);result.put("dnsServers",dns);result.put("transport",transport);result.put("interfaceName",iface);result.put("addresses",addresses);result.put("defaultRoute",defaultRoute);result.put("source",source);return result;
     }

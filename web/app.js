@@ -803,6 +803,8 @@
   function renderNetworkPathDetails(path) {
     const host=$("networkPathGrid"); if(!host) return; host.replaceChildren();
     const rows=[["DEFAULT GATEWAY",path&&path.gateway||"NOT REPORTED"],["DNS RESOLVERS",path&&Array.isArray(path.dnsServers)&&path.dnsServers.length?path.dnsServers.join(" · "):"NOT REPORTED"],["ACTIVE LINK",path&&path.transport||"UNKNOWN"],["NETWORK INTERFACE",path&&path.interfaceName||"UNKNOWN"],["LOCAL ADDRESSES",path&&Array.isArray(path.addresses)&&path.addresses.length?path.addresses.join(" · "):"NOT REPORTED"],["DEFAULT ROUTE",path&&path.defaultRoute===true?"PRESENT":path&&path.defaultRoute===false?"NOT FOUND":"UNKNOWN"]];
+    if(path&&path.captivePortalKnown===true)rows.push(["ANDROID OS CAPTIVE PORTAL",path.captivePortal===true?"DETECTED":"NOT REPORTED"]);
+    if(path&&typeof path.networkValidated==="boolean")rows.push(["ANDROID INTERNET VALIDATION",path.networkValidated?"VALIDATED":"NOT VALIDATED"]);
     rows.forEach(([label,value])=>{const card=document.createElement("div");card.className="network-path-card";const title=document.createElement("small");title.textContent=label;const content=document.createElement("b");content.textContent=value;card.append(title,content);host.appendChild(card);});
     const note=document.createElement("p");note.className="network-path-note";note.textContent=path&&path.source?path.source+" · READ-ONLY CONFIGURATION SNAPSHOT":"Routing and DNS details are unavailable on this platform.";host.appendChild(note);
   }
@@ -911,76 +913,44 @@
     }
   }
 
-  function outageWatchIsIssue(state) {
-    return state === "NO DEFAULT ROUTE" || state === "DNS FAILURE" || state === "HTTPS UNREACHABLE";
+  function inspectNetworkPortalResponse(result){
+    const path=result&&result.networkPath?result.networkPath:{},rows=Array.isArray(result&&result.https)?result.https:[];
+    const redirects=rows.filter(x=>x&&(x.redirected===true||(Number(x.statusCode)>=300&&Number(x.statusCode)<400)));
+    const mismatches=rows.filter(x=>x&&x.responseReceived===true&&x.bodyMatches===false&&Number(x.statusCode)>=200&&Number(x.statusCode)<300);
+    const explicit=rows.some(x=>x&&Number(x.statusCode)===511);
+    const cross=redirects.filter(x=>{try{return !!x.locationHost&&String(x.locationHost).toLowerCase()!==new URL(x.url).hostname.toLowerCase();}catch(e){return false;}});
+    const hosts=redirects.map(x=>String(x.locationHost||"").toLowerCase()).filter(Boolean),shared=hosts.length>=2&&hosts.every(h=>h===hosts[0]);
+    let status="NOT CONFIRMED",detail="No captive-portal signature was found in the tested HTTPS responses.";
+    if(path.captivePortal===true||explicit){status="DETECTED";detail=path.captivePortal===true?"Android ConnectivityManager reports the active network as a captive portal.":"An HTTPS probe returned HTTP 511 (Network Authentication Required).";}
+    else if(cross.length>0||shared||mismatches.length>=2){status="SUSPECTED";detail=cross.length>0?"A known HTTPS connectivity probe redirected to a different host. A sign-in portal or HTTPS interception may be present.":shared?"Multiple independent probes redirected to the same host, consistent with a sign-in portal.":"Multiple independent probes returned a successful HTTP status but not their expected response content.";}
+    else if(redirects.length>0||mismatches.length>0){status="POSSIBLE";detail="At least one HTTPS probe returned a redirect or unexpected response. This may be a portal, proxy, filter, or endpoint-side change; it is not conclusive.";}
+    else if(path.captivePortalKnown===true){status="NOT REPORTED BY ANDROID";detail=path.networkValidated===true?"Android reports the active network as validated and does not report a captive portal.":"Android does not currently report a captive portal; its network validation capability is not confirmed.";}
+    return{status,detail,redirectCount:redirects.length,crossHostRedirectCount:cross.length,integrityMismatchCount:mismatches.length,explicitPortal:explicit};
   }
 
-  function classifyOutageWatchResult(result) {
-    const path = result && result.networkPath ? result.networkPath : {};
-    const gateway = result && result.gatewayProbe ? result.gatewayProbe : {};
-    const legacyDns = result && result.dns ? result.dns : {};
-    const dnsRows = Array.isArray(result && result.dnsChecks) && result.dnsChecks.length
-      ? result.dnsChecks : (result && result.dns ? [legacyDns] : []);
-    const httpsRows = Array.isArray(result && result.https) ? result.https : [];
-    const dnsSuccessful = dnsRows.filter(item => item && item.ok === true);
-    const httpsSuccessful = httpsRows.filter(item => item && item.ok === true);
-    const dnsSuccessCount = dnsSuccessful.length;
-    const httpsSuccessCount = httpsSuccessful.length;
-    const dnsOk = dnsSuccessCount > 0;
-    const httpsOk = httpsSuccessCount > 0;
-    const validLatency = value => {
-      const number = Number(value);
-      return Number.isFinite(number) && number >= 0 ? Math.round(number) : null;
-    };
-    const median = values => {
-      const sorted = values.filter(value => value !== null).sort((a, b) => a - b);
-      if (!sorted.length) return null;
-      const middle = Math.floor(sorted.length / 2);
-      return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
-    };
-    const dnsLatencyMs = median(dnsSuccessful.map(item => validLatency(item.latencyMs)));
-    const httpsLatencyMs = median(httpsSuccessful.map(item => validLatency(item.latencyMs)));
-    let state = "INDETERMINATE";
-    let diagnosis = "The available probes did not establish a clear connectivity state.";
+  function outageWatchIsIssue(state){
+    return state==="NO DEFAULT ROUTE"||state==="DNS FAILURE"||state==="HTTPS UNREACHABLE"||state==="CAPTIVE PORTAL DETECTED"||state==="CAPTIVE PORTAL SUSPECTED"||state==="UNEXPECTED HTTPS RESPONSE";
+  }
 
-    if (path.defaultRoute === false) {
-      state = "NO DEFAULT ROUTE";
-      diagnosis = "The operating system did not report an active IPv4 default route.";
-    } else if (httpsSuccessCount > 0) {
-      const dnsPartial = dnsRows.length > 0 && dnsSuccessCount < dnsRows.length;
-      if (httpsSuccessCount < httpsRows.length || dnsPartial) {
-        state = "PARTIAL CONNECTIVITY";
-        diagnosis = "At least one independent HTTPS target is reachable, but one or more DNS names or endpoints failed. General reachability exists; review the individual failed targets.";
-      } else {
-        state = "ONLINE";
-        diagnosis = "All tested DNS names and HTTPS targets responded. This confirms reachability to these test services only.";
-      }
-    } else if (dnsRows.length > 0 && dnsSuccessCount === 0 && gateway.replied === true) {
-      state = "DNS FAILURE";
-      diagnosis = "All system DNS name lookups failed while the local gateway answered ICMP. A DNS-path failure is likely; this does not identify which resolver is responsible.";
-    } else if (dnsOk && httpsRows.length > 0) {
-      state = "HTTPS UNREACHABLE";
-      diagnosis = "System DNS resolved at least one test name, but all independent HTTPS targets failed. A captive portal, TLS/HTTPS filtering, or upstream routing problem is possible.";
-    } else {
-      diagnosis = "The path is unconfirmed. A gateway that ignores ICMP may still forward traffic; gateway silence alone is not proof of a local-network failure.";
-    }
-
-    return {
-      state,
-      diagnosis,
-      dnsOk,
-      httpsOk,
-      dnsSuccessCount,
-      dnsCheckCount: dnsRows.length,
-      httpsSuccessCount,
-      httpsCheckCount: httpsRows.length,
-      gatewayStatus: String(gateway.status || "UNKNOWN"),
-      defaultRoute: path.defaultRoute === true ? true : path.defaultRoute === false ? false : null,
-      durationMs: validLatency(result && result.durationMs),
-      gatewayLatencyMs: gateway.replied === true ? validLatency(gateway.latencyMs) : null,
-      dnsLatencyMs,
-      httpsLatencyMs
-    };
+  function classifyOutageWatchResult(result){
+    const path=result&&result.networkPath?result.networkPath:{},gateway=result&&result.gatewayProbe?result.gatewayProbe:{},legacy=result&&result.dns?result.dns:{};
+    const dnsRows=Array.isArray(result&&result.dnsChecks)&&result.dnsChecks.length?result.dnsChecks:(result&&result.dns?[legacy]:[]);
+    const httpsRows=Array.isArray(result&&result.https)?result.https:[],dnsGood=dnsRows.filter(x=>x&&x.ok===true),httpsGood=httpsRows.filter(x=>x&&x.ok===true);
+    const dnsCount=dnsGood.length,httpsCount=httpsGood.length,dnsOk=dnsCount>0,httpsOk=httpsCount>0,portalState=inspectNetworkPortalResponse(result);
+    const valid=v=>{const n=Number(v);return Number.isFinite(n)&&n>=0?Math.round(n):null;};
+    const median=a=>{const x=a.filter(v=>v!==null).sort((p,q)=>p-q);if(!x.length)return null;const m=Math.floor(x.length/2);return x.length%2?x[m]:Math.round((x[m-1]+x[m])/2);};
+    let state="INDETERMINATE",diagnosis="The available probes did not establish a clear connectivity state.";
+    if(path.defaultRoute===false){state="NO DEFAULT ROUTE";diagnosis="The operating system did not report an active IPv4 default route.";}
+    else if(portalState.status==="DETECTED"){state="CAPTIVE PORTAL DETECTED";diagnosis=portalState.detail;}
+    else if(portalState.status==="SUSPECTED"){state="CAPTIVE PORTAL SUSPECTED";diagnosis=portalState.detail;}
+    else if(httpsCount>0){if(httpsCount<httpsRows.length||(dnsRows.length>0&&dnsCount<dnsRows.length)||portalState.status==="POSSIBLE"){state="PARTIAL CONNECTIVITY";diagnosis="At least one HTTPS endpoint passed its expected-response check, but one or more DNS names or HTTPS responses did not. Review individual destinations.";}else{state="ONLINE";diagnosis="All tested DNS names and HTTPS response signatures matched. This confirms reachability to these test services only.";}}
+    else if(portalState.status==="POSSIBLE"){state="UNEXPECTED HTTPS RESPONSE";diagnosis=portalState.detail;}
+    else if(dnsRows.length>0&&dnsCount===0&&gateway.replied===true){state="DNS FAILURE";diagnosis="All system DNS name lookups failed while the local gateway answered ICMP. A DNS-path failure is likely.";}
+    else if(dnsOk&&httpsRows.length>0){state="HTTPS UNREACHABLE";diagnosis="System DNS resolved at least one test name, but no HTTPS endpoint returned its expected response. Check a portal, TLS filtering, proxy or upstream routing.";}
+    return{state,diagnosis,dnsOk,httpsOk,dnsSuccessCount:dnsCount,dnsCheckCount:dnsRows.length,httpsSuccessCount:httpsCount,httpsCheckCount:httpsRows.length,
+      portalStatus:portalState.status,portalDetail:portalState.detail,portalRedirectCount:portalState.redirectCount,portalCrossHostRedirectCount:portalState.crossHostRedirectCount,integrityMismatchCount:portalState.integrityMismatchCount,
+      gatewayStatus:String(gateway.status||"UNKNOWN"),defaultRoute:path.defaultRoute===true?true:path.defaultRoute===false?false:null,durationMs:valid(result&&result.durationMs),
+      gatewayLatencyMs:gateway.replied===true?valid(gateway.latencyMs):null,dnsLatencyMs:median(dnsGood.map(x=>valid(x.latencyMs))),httpsLatencyMs:median(httpsGood.map(x=>valid(x.latencyMs)))}; 
   }
 
   function recordOutageWatchResult(result) {
@@ -1003,6 +973,11 @@
       dnsCheckCount: classification.dnsCheckCount,
       httpsSuccessCount: classification.httpsSuccessCount,
       httpsCheckCount: classification.httpsCheckCount,
+      portalStatus: classification.portalStatus,
+      portalDetail: classification.portalDetail,
+      portalRedirectCount: classification.portalRedirectCount,
+      portalCrossHostRedirectCount: classification.portalCrossHostRedirectCount,
+      integrityMismatchCount: classification.integrityMismatchCount,
       durationMs: classification.durationMs,
       gatewayLatencyMs: classification.gatewayLatencyMs,
       dnsLatencyMs: classification.dnsLatencyMs,
@@ -1182,6 +1157,7 @@
             " · HTTPS " + (item.httpsOk === true ? "REACHABLE" : item.httpsOk === false ? "NOT CONFIRMED" : "N/A") +
             " (" + (item.httpsSuccessCount == null ? (item.httpsOk === true ? "1/1" : "0/1") : item.httpsSuccessCount + "/" + item.httpsCheckCount) + ")" +
             " · DNS " + (item.dnsSuccessCount == null ? (item.dnsOk === true ? "1/1" : "0/1") : item.dnsSuccessCount + "/" + item.dnsCheckCount) +
+            " · PORTAL " + String(item.portalStatus || "NOT CHECKED") +
             " · GATEWAY " + String(item.gatewayStatus || "UNKNOWN") +
             (item.durationMs != null && Number.isFinite(Number(item.durationMs)) ? " · " + Number(item.durationMs) + " MS TOTAL" : "") +
             " · DNS " + (item.dnsLatencyMs != null ? Math.round(Number(item.dnsLatencyMs)) + " MS" : "N/A") +
@@ -1240,12 +1216,8 @@
     let value;
     if (format === "csv") {
       const cell = item => '"' + String(item == null ? "" : item).replace(/"/g, '""') + '"';
-      const lines = [["timestamp", "state", "incident_status", "gateway", "default_route", "dns_ok", "dns_success_count", "dns_check_count", "https_ok", "https_success_count", "https_check_count", "gateway_latency_ms", "dns_latency_ms", "https_latency_ms", "duration_ms", "diagnosis"]];
-      outageWatchSamples.forEach(item => lines.push([
-        item.at, item.state, item.incidentStatus, item.gatewayStatus, item.defaultRoute, item.dnsOk,
-        item.dnsSuccessCount, item.dnsCheckCount, item.httpsOk, item.httpsSuccessCount, item.httpsCheckCount,
-        item.gatewayLatencyMs, item.dnsLatencyMs, item.httpsLatencyMs, item.durationMs, item.diagnosis
-      ]));
+      const lines = [["timestamp","state","incident_status","gateway","default_route","dns_ok","dns_success_count","dns_check_count","https_ok","https_success_count","https_check_count","portal_status","portal_redirect_count","portal_cross_host_redirect_count","integrity_mismatch_count","gateway_latency_ms","dns_latency_ms","https_latency_ms","duration_ms","diagnosis"]];
+      outageWatchSamples.forEach(item=>lines.push([item.at,item.state,item.incidentStatus,item.gatewayStatus,item.defaultRoute,item.dnsOk,item.dnsSuccessCount,item.dnsCheckCount,item.httpsOk,item.httpsSuccessCount,item.httpsCheckCount,item.portalStatus,item.portalRedirectCount,item.portalCrossHostRedirectCount,item.integrityMismatchCount,item.gatewayLatencyMs,item.dnsLatencyMs,item.httpsLatencyMs,item.durationMs,item.diagnosis]));
       value = lines.map(line => line.map(cell).join(",")).join("\r\n");
     } else {
       value = JSON.stringify(payload, null, 2);
@@ -1291,7 +1263,7 @@
 
     networkConnectivityProbeBusy = true;
     const feedback = $("outageWatchFeedback");
-    if (feedback) feedback.textContent = "PROBING ACTIVE ROUTE + GATEWAY, THREE SYSTEM DNS NAMES AND FOUR HTTPS PROVIDERS…";
+    if (feedback) feedback.textContent = "PROBING ROUTE, DNS, FOUR HTTPS RESPONSE SIGNATURES AND CAPTIVE-PORTAL STATUS…";
     try {
       const result = await bridge.diagnose();
       const recorded = recordOutageWatchResult(result);
@@ -1371,6 +1343,8 @@
       const result = await bridge.diagnose();
       host.replaceChildren();
 
+      const classification = classifyOutageWatchResult(result);
+      const portalAssessment = inspectNetworkPortalResponse(result);
       const path = result && result.networkPath ? result.networkPath : {};
       const gateway = result && result.gatewayProbe ? result.gatewayProbe : {};
       const dnsRows = Array.isArray(result && result.dnsChecks) && result.dnsChecks.length
@@ -1389,6 +1363,10 @@
         diagnosis = "NO DEFAULT ROUTE REPORTED";
         explanation = "The operating system did not report an active IPv4 default route. Check the active adapter, Wi-Fi/Ethernet connection, VPN, or router.";
         diagnosisState = "critical";
+      } else if (portalAssessment.status === "DETECTED" || portalAssessment.status === "SUSPECTED") {
+        diagnosis = portalAssessment.status === "DETECTED" ? "CAPTIVE PORTAL DETECTED" : "CAPTIVE PORTAL / HTTPS INTERCEPTION SUSPECTED";
+        explanation = portalAssessment.detail;
+        diagnosisState = "critical";
       } else if (httpsOkCount > 0) {
         const hasPartialDns = dnsRows.length > 0 && dnsOkCount < dnsRows.length;
         if (httpsOkCount < httpsRows.length || hasPartialDns) {
@@ -1401,6 +1379,10 @@
           explanation = "All tested DNS names and independent HTTPS services responded. This confirms reachability to these endpoints only, not unrestricted access to every website or service.";
           diagnosisState = "ok";
         }
+      } else if (portalAssessment.status === "POSSIBLE") {
+        diagnosis = "UNEXPECTED HTTPS RESPONSE";
+        explanation = portalAssessment.detail;
+        diagnosisState = "warning";
       } else if (dnsRows.length > 0 && dnsOkCount === 0 && gatewayReplied) {
         diagnosis = "LIKELY DNS RESOLUTION FAILURE";
         explanation = "All three system DNS name lookups failed while the local gateway answered ICMP. A DNS-path failure is likely; review the configured resolvers and DNS filtering.";
@@ -1444,6 +1426,7 @@
           (gateway.error ? " · " + gateway.error : "") +
           (gateway.reason ? " · " + gateway.reason : "")
       ]);
+      rows.push(["CAPTIVE PORTAL / RESPONSE INTEGRITY",portalAssessment.status,portalAssessment.detail+" · Redirects "+portalAssessment.redirectCount+" · Cross-host redirects "+portalAssessment.crossHostRedirectCount+" · Unexpected bodies "+portalAssessment.integrityMismatchCount]);
       rows.push([
         "SYSTEM DNS SUMMARY",
         dnsOkCount + "/" + dnsRows.length + " RESOLVED",
@@ -1466,9 +1449,13 @@
         let target = item && item.url ? item.url : "UNKNOWN TARGET";
         try { target = new URL(target).hostname; } catch (error) { /* Keep the returned target text. */ }
         rows.push([
-          "HTTPS / TLS · " + target,
-          item && item.ok ? "SUCCESS" : "FAILED",
-          (item && item.statusCode ? "HTTP " + item.statusCode + " · " : "") +
+          "HTTPS / TLS · " + String(item && item.provider || target),
+          item && item.ok ? "VALIDATED" : item && item.redirected ? "REDIRECTED" :
+            item && item.responseReceived && item.bodyMatches === false ? "RESPONSE MISMATCH" : "NOT VALIDATED",
+          (item && item.statusCode ? "HTTP " + item.statusCode + " · expected " + String(item.expectedStatusCode || "configured status") + " · " : "") +
+            (item && Number.isFinite(item.responseBytes) ? item.responseBytes + " body bytes · " : "") +
+            (item && item.responseIntegrity ? item.responseIntegrity + " · " : "") +
+            (item && item.locationHost ? "redirect host " + item.locationHost + " · " : "") +
             (item && Number.isFinite(item.latencyMs) ? item.latencyMs + " ms" : "latency unavailable") +
             (item && item.error ? " · " + item.error : "")
         ]);
@@ -1481,8 +1468,8 @@
         name.textContent = label;
         const status = document.createElement("strong");
         status.textContent = state;
-        status.dataset.state = ["SUCCESS", "PRESENT", "FOUND", "REPLIED"].includes(state) || state.includes("RESOLVED") || state.includes("REACHABLE")
-          ? "ok" : (state.includes("PARTIAL") ? "partial" : "warning");
+        status.dataset.state = state.includes("VALIDATED") || ["SUCCESS","PRESENT","FOUND","REPLIED"].includes(state) || state.includes("RESOLVED") || state.includes("REACHABLE")
+          ? "validated" : (state.includes("REDIRECT") ? "portal" : state.includes("MISMATCH") ? "mismatch" : state.includes("PARTIAL") ? "partial" : "warning");
         const info = document.createElement("small");
         info.textContent = detail;
         row.append(name, status, info);
@@ -1491,11 +1478,11 @@
 
       const note = document.createElement("small");
       note.className = "network-diagnostics-note";
-      note.textContent = explanation + " Gateway test uses one ICMP echo; routers may block ping while forwarding traffic. DNS and HTTPS checks are limited to the named test targets. Mixed results can indicate endpoint-specific filtering or outages. No network settings were changed.";
+      note.textContent = explanation + " HTTPS redirects are not followed. Each endpoint must match its expected HTTP status and response signature. Android also reads the operating system's captive-portal and validated-network indicators when available. A mismatch can indicate a login portal, proxy, filter, or changed endpoint; this is not a malware verdict. No network settings were changed.";
       host.appendChild(note);
 
       appendDashboardLog(
-        "Network intelligence: " + diagnosis + " / DNS " + dnsOkCount + "/" + dnsRows.length + " / HTTPS " + httpsOkCount + "/" + httpsRows.length,
+        "Network intelligence: " + diagnosis + " / DNS " + dnsOkCount + "/" + dnsRows.length + " / HTTPS " + httpsOkCount + "/" + httpsRows.length + " / PORTAL " + portalAssessment.status,
         httpsOkCount > 0 ? "term-green" : "term-amber"
       );
     } catch (error) {

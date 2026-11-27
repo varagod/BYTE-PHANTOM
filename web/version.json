@@ -1,13 +1,17 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.18.0",
-  "build": "1.18.0",
+  "version": "1.19.0",
+  "build": "1.19.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
     "Android"
   ],
   "realCapabilities": [
+    "Captive Portal and HTTPS Response Integrity checks: strict per-provider HTTP status and expected body validation for Microsoft NCSI, Google connectivity, Cloudflare connectivity, and Apple captive portal probes",
+    "HTTPS checks do not follow redirects; report redirect destination host, response byte count, expected status, body match, and response-integrity state",
+    "Android native ConnectivityManager captive-portal, validated-network, and internet-capability indicators when available",
+    "OUTAGE WATCH stores captive-portal assessment, redirect counts, and unexpected HTTPS response counts with CSV/JSON export",
     "Network Shutdown Intelligence: cross-platform route/DNS/upstream/endpoint isolation using three independent system DNS names and four HTTPS providers",
     "Per-destination reachability matrix identifies partial connectivity and endpoint-specific failures instead of treating one reachable test host as proof of full internet access",
     "OUTAGE WATCH stores successful DNS and HTTPS target counts for each sample and exports the counts to CSV/JSON",
@@ -62,7 +66,7 @@
       "https://www.msftconnecttest.com/connecttest.txt",
       "https://connectivitycheck.gstatic.com/generate_204",
       "https://cp.cloudflare.com/generate_204",
-      "https://www.apple.com/library/test/success.html"
+      "https://captive.apple.com/hotspot-detect.html"
     ],
     "checks": [
       "active interface and default route",
@@ -75,16 +79,58 @@
     "portScan": false,
     "credentialTests": false,
     "configurationChanges": false,
-    "interpretation": "A missing gateway ICMP response is inconclusive because routers or firewalls can filter echo requests. Mixed DNS/HTTPS results indicate partial reachability or target-specific failures. HTTPS success proves reachability to that endpoint only; no test proves unrestricted access to all of the internet.",
+    "interpretation": "HTTPS success requires both an expected HTTP status and the provider's expected body signature; redirects are not followed. A redirect, HTTP 511, or repeated unexpected content can indicate a captive portal or interception but is not a malware verdict. Android also reports native OS captive-portal and validated-network flags when available. A missing gateway ICMP response remains inconclusive. No probe proves unrestricted access to the entire internet.",
     "dnsHosts": [
       "example.com",
       "iana.org",
       "cloudflare.com"
     ],
     "dnsCheckCount": 3,
-    "httpsCheckCount": 4
+    "httpsCheckCount": 4,
+    "expectedHttpsResponses": [
+      {
+        "provider": "Microsoft NCSI",
+        "status": [
+          200
+        ],
+        "bodyIncludes": "Microsoft Connect Test"
+      },
+      {
+        "provider": "Google connectivity",
+        "status": [
+          200,
+          204
+        ],
+        "body": "empty"
+      },
+      {
+        "provider": "Cloudflare connectivity",
+        "status": [
+          200,
+          204
+        ],
+        "body": "empty"
+      },
+      {
+        "provider": "Apple captive portal",
+        "status": [
+          200
+        ],
+        "bodyIncludes": "Success"
+      }
+    ],
+    "redirectsFollowed": false,
+    "captivePortalDetection": {
+      "android": "ConnectivityManager NET_CAPABILITY_CAPTIVE_PORTAL, NET_CAPABILITY_VALIDATED, and NET_CAPABILITY_INTERNET when available",
+      "responseSignals": [
+        "cross-host HTTPS redirect",
+        "HTTP 511 Network Authentication Required",
+        "multiple independent 2xx responses with unexpected body signatures"
+      ],
+      "confidence": "A single unexpected response is a warning, not conclusive proof. These probes cannot identify all transparent proxies or TLS interception."
+    }
   },
-  "security": "Connectivity diagnostics run only after an explicit user action or while the operator has started OUTAGE WATCH with NETWORK RADAR open. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform three system DNS lookups (example.com, iana.org, cloudflare.com), and make four fixed HTTPS GET checks (Microsoft, Google, Cloudflare, Apple). They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends direct DNS A queries only to configured IPv4 DNS servers and fixed public resolver references. DNS answer divergence and non-public address flags are advisory indicators only, not a malware verdict. Resolver recommendations do not change system DNS. Windows DNS changes remain opt-in, limited to the active default-route adapter, require UAC Administrator approval, and preserve a local original-configuration backup. Android opens system network settings for manual changes only.",
+  "security": "Connectivity diagnostics run only after an explicit user action or while the operator has started OUTAGE WATCH with NETWORK RADAR open. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform three system DNS lookups, and make four fixed HTTPS GET checks. HTTPS requests do not follow redirects and only retain a bounded response sample for expected-signature validation; response bodies are not stored in history or exported. Android reads ConnectivityManager captive portal, validated, and internet capability flags when available. The app does not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends direct DNS A queries only to configured IPv4 DNS servers and fixed public resolver references. DNS answer divergence and non-public address flags are advisory indicators only, not a malware verdict. Windows DNS changes remain opt-in, limited to the active default-route adapter, require UAC Administrator approval, and preserve a local original-configuration backup. Android opens system network settings for manual changes only.",
   "networkPathIntelligence": {
     "dataSource": "Windows Get-NetIPConfiguration/Get-NetRoute; Android ConnectivityManager/LinkProperties",
     "fields": [
@@ -99,6 +145,7 @@
     "configurationChanges": false
   },
   "fixes": [
+    "Added captive-portal and response-integrity checks: redirects are not followed, Microsoft/Google/Cloudflare/Apple response signatures are validated, and Android OS captive-portal/validated-network flags are displayed",
     "Added Network Shutdown Intelligence with three system DNS names, four independent HTTPS providers, conservative path isolation, and per-target results on Windows and Android",
     "Hardened OUTAGE WATCH against transient failures with two-sample incident confirmation and two-success recovery confirmation; added local DNS/HTTPS/gateway latency baselines and trend chart",
     "Added cross-platform local OUTAGE WATCH with 30-second, 1-minute, and 5-minute probe intervals, incident/recovery tracking, 30-day local history, and JSON/CSV export",
