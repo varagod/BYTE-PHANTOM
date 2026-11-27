@@ -48,7 +48,12 @@
   let networkRadarSessionToken = 0;
   let networkRadarKnownDevices = new Map();
   let networkRadarEvents = [];
+  let networkRadarLastSnapshot = null;
   let networkRadarAndroidPlugin = null;
+  const NETWORK_RADAR_STORAGE_KEY = "bytePhantomNetworkRadarJournal.v1";
+  const NETWORK_RADAR_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+  const NETWORK_RADAR_MAX_DEVICES = 120;
+  const NETWORK_RADAR_MAX_EVENTS = 160;
   let operationCount = 0;
   let activity = [];
   const audioState = {
@@ -347,6 +352,8 @@
     networkRadarSessionToken = liveScanSequence;
     networkRadarKnownDevices = new Map();
     networkRadarEvents = [];
+    networkRadarLastSnapshot = null;
+    if(networkOperation) restoreNetworkRadarJournal();
     networkRadarRefreshBusy = false;
     networkRadarForceActive = false;
     operationTimer = null;
@@ -466,29 +473,130 @@
     if(status) status.textContent="MONITOR STOPPED";
   }
 
+  function networkRadarDeviceKey(item) {
+    const mac=String(item.macAddress||"").toUpperCase();
+    return mac&&mac!=="UNAVAILABLE"&&mac!=="UNKNOWN"&&mac!=="UNRESOLVED"&&mac!=="INCOMPLETE"?"MAC:"+mac:"IP:"+String(item.ipAddress||"");
+  }
+
   function addNetworkRadarEvent(title,detail,warning=false) {
-    networkRadarEvents.unshift({time:nowTime(),title,detail,warning});
-    networkRadarEvents=networkRadarEvents.slice(0,24);
+    const timestamp=new Date().toISOString();
+    networkRadarEvents.unshift({timestamp,time:new Date(timestamp).toLocaleTimeString(),title,detail,warning:warning===true});
+    networkRadarEvents=networkRadarEvents.slice(0,NETWORK_RADAR_MAX_EVENTS);
+  }
+
+  function saveNetworkRadarJournal() {
+    try {
+      const now=Date.now();
+      const devices=Array.from(networkRadarKnownDevices.values())
+        .filter(item=>Number.isFinite(Number(item.lastSeen))&&now-Number(item.lastSeen)<=NETWORK_RADAR_RETENTION_MS)
+        .sort((a,b)=>Number(a.lastSeen)-Number(b.lastSeen))
+        .slice(-NETWORK_RADAR_MAX_DEVICES)
+        .map(item=>({
+          key:String(item.key||networkRadarDeviceKey(item)),
+          ipAddress:String(item.ipAddress||""),
+          macAddress:String(item.macAddress||"UNAVAILABLE"),
+          interfaceName:String(item.interfaceName||"UNKNOWN INTERFACE"),
+          state:String(item.state||"UNKNOWN"),
+          responding:item.responding===true,
+          firstSeen:Number(item.firstSeen)||now,
+          lastSeen:Number(item.lastSeen)||now,
+          visibility:item.visibility==="NOT SEEN"?"NOT SEEN":"PRESENT"
+        }));
+      const events=networkRadarEvents
+        .filter(item=>!item.timestamp||now-Date.parse(item.timestamp)<=NETWORK_RADAR_RETENTION_MS)
+        .slice(0,NETWORK_RADAR_MAX_EVENTS);
+      localStorage.setItem(NETWORK_RADAR_STORAGE_KEY,JSON.stringify({
+        schemaVersion:1,
+        savedAt:new Date(now).toISOString(),
+        devices,
+        events
+      }));
+      return true;
+    } catch(error) {
+      console.warn("BYTE PHANTOM: could not persist the local Network Radar journal.",error);
+      return false;
+    }
+  }
+
+  function restoreNetworkRadarJournal() {
+    try {
+      const raw=localStorage.getItem(NETWORK_RADAR_STORAGE_KEY);
+      if(!raw) return;
+      const saved=JSON.parse(raw);
+      if(!saved||saved.schemaVersion!==1) return;
+      const now=Date.now();
+      const events=Array.isArray(saved.events)?saved.events:[];
+      networkRadarEvents=events
+        .filter(item=>item&&typeof item.title==="string"&&typeof item.detail==="string")
+        .filter(item=>!item.timestamp||now-Date.parse(item.timestamp)<=NETWORK_RADAR_RETENTION_MS)
+        .slice(0,NETWORK_RADAR_MAX_EVENTS)
+        .map(item=>{
+          const parsed=item.timestamp?new Date(item.timestamp):new Date();
+          return {
+            timestamp:!Number.isNaN(parsed.getTime())?parsed.toISOString():new Date().toISOString(),
+            time:!Number.isNaN(parsed.getTime())?parsed.toLocaleTimeString():String(item.time||"—"),
+            title:item.title,
+            detail:item.detail,
+            warning:item.warning===true
+          };
+        });
+      const devices=Array.isArray(saved.devices)?saved.devices:[];
+      devices.forEach(item=>{
+        if(!item||typeof item.ipAddress!=="string"||!Number.isFinite(Number(item.lastSeen))) return;
+        const lastSeen=Number(item.lastSeen);
+        const firstSeen=Number(item.firstSeen)||lastSeen;
+        if(now-lastSeen>NETWORK_RADAR_RETENTION_MS) return;
+        const key=String(item.key||networkRadarDeviceKey(item));
+        const wasPresent=item.visibility!=="NOT SEEN";
+        const isStale=now-lastSeen>=12000;
+        const restored={
+          ...item,
+          key,
+          firstSeen,
+          lastSeen,
+          responding:isStale?false:item.responding===true,
+          visibility:isStale?"NOT SEEN":(item.visibility==="NOT SEEN"?"NOT SEEN":"PRESENT")
+        };
+        networkRadarKnownDevices.set(key,restored);
+        if(isStale&&wasPresent) {
+          addNetworkRadarEvent(
+            "NODE NOT VISIBLE AFTER REOPEN",
+            item.ipAddress+" · last seen "+new Date(lastSeen).toLocaleString()+" · may be asleep, offline, or absent from the neighbor cache",
+            true
+          );
+        }
+      });
+      const ordered=Array.from(networkRadarKnownDevices.entries()).sort((a,b)=>Number(a[1].lastSeen)-Number(b[1].lastSeen));
+      while(ordered.length>NETWORK_RADAR_MAX_DEVICES) {
+        const oldest=ordered.shift();
+        networkRadarKnownDevices.delete(oldest[0]);
+      }
+      networkRadarEvents=networkRadarEvents.slice(0,NETWORK_RADAR_MAX_EVENTS);
+      saveNetworkRadarJournal();
+    } catch(error) {
+      console.warn("BYTE PHANTOM: local Network Radar journal could not be restored.",error);
+      networkRadarKnownDevices=new Map();
+      networkRadarEvents=[];
+    }
   }
 
   function updateNetworkRadarHistory(data) {
     const now=Date.now(),seen=new Set(),newEvents=[];
     data.devices.forEach(item=>{
-      const mac=String(item.macAddress||"").toUpperCase();
-      const key=mac&&mac!=="UNAVAILABLE"&&mac!=="UNKNOWN"&&mac!=="UNRESOLVED"&&mac!=="INCOMPLETE"?"MAC:"+mac:"IP:"+item.ipAddress;
+      const key=networkRadarDeviceKey(item);
       seen.add(key);
       const previous=networkRadarKnownDevices.get(key);
       if(!previous) {
         networkRadarKnownDevices.set(key,{...item,key,firstSeen:now,lastSeen:now,visibility:"PRESENT"});
-        const event={title:"DEVICE DETECTED",detail:item.ipAddress+" · "+mac+" · "+item.interfaceName,warning:false};
+        const event={title:"DEVICE DETECTED",detail:item.ipAddress+" · "+String(item.macAddress||"UNAVAILABLE")+" · "+item.interfaceName,warning:false};
         addNetworkRadarEvent(event.title,event.detail,false);newEvents.push(event);
       } else {
         if(previous.ipAddress!==item.ipAddress) {
-          const event={title:"IP ADDRESS CHANGED",detail:mac+" · "+previous.ipAddress+" → "+item.ipAddress,warning:true};
+          const event={title:"IP ADDRESS CHANGED",detail:String(item.macAddress||previous.macAddress)+" · "+previous.ipAddress+" → "+item.ipAddress,warning:true};
           addNetworkRadarEvent(event.title,event.detail,true);newEvents.push(event);
         }
         if(previous.visibility==="NOT SEEN") {
-          const event={title:"DEVICE REAPPEARED",detail:item.ipAddress+" · "+mac+" is visible again",warning:false};
+          const event={title:"DEVICE REAPPEARED",detail:item.ipAddress+" · "+String(item.macAddress||"UNAVAILABLE")+" is visible again",warning:false};
           addNetworkRadarEvent(event.title,event.detail,false);newEvents.push(event);
         }
         networkRadarKnownDevices.set(key,{...previous,...item,key,firstSeen:previous.firstSeen,lastSeen:now,visibility:"PRESENT"});
@@ -497,12 +605,75 @@
     for(const [key,entry] of networkRadarKnownDevices.entries()) {
       if(!seen.has(key)&&entry.visibility!=="NOT SEEN"&&now-entry.lastSeen>=12000) {
         entry.visibility="NOT SEEN";
+        entry.responding=false;
         const event={title:"NODE NO LONGER VISIBLE",detail:entry.ipAddress+" · "+entry.macAddress+" · absent from recent neighbor snapshots; may be asleep or cache-expired",warning:true};
         addNetworkRadarEvent(event.title,event.detail,true);newEvents.push(event);
       }
-      if(now-entry.lastSeen>5*60*1000) networkRadarKnownDevices.delete(key);
+      if(now-Number(entry.lastSeen)>NETWORK_RADAR_RETENTION_MS) networkRadarKnownDevices.delete(key);
     }
+    const ordered=Array.from(networkRadarKnownDevices.entries()).sort((a,b)=>Number(a[1].lastSeen)-Number(b[1].lastSeen));
+    while(ordered.length>NETWORK_RADAR_MAX_DEVICES) {
+      const oldest=ordered.shift();
+      networkRadarKnownDevices.delete(oldest[0]);
+    }
+    networkRadarEvents=networkRadarEvents.slice(0,NETWORK_RADAR_MAX_EVENTS);
+    saveNetworkRadarJournal();
     return newEvents;
+  }
+
+  function networkRadarReportDevices() {
+    return Array.from(networkRadarKnownDevices.values()).sort((a,b)=>String(a.ipAddress).localeCompare(String(b.ipAddress),undefined,{numeric:true}));
+  }
+
+  function buildNetworkRadarJsonReport() {
+    return {
+      application:"BYTE PHANTOM",
+      version:"1.7.0",
+      generatedAt:new Date().toISOString(),
+      privacy:"Generated locally. This report is copied only after the user requests it; BYTE PHANTOM does not upload this journal.",
+      retentionDays:30,
+      deviceCount:networkRadarKnownDevices.size,
+      eventCount:networkRadarEvents.length,
+      devices:networkRadarReportDevices(),
+      events:networkRadarEvents
+    };
+  }
+
+  function buildNetworkRadarCsvReport() {
+    const headers=["ip_address","mac_address","interface_name","neighbor_state","visibility","responding","first_seen","last_seen"];
+    const quote=value=>'"'+String(value===undefined||value===null?"":value).replace(/"/g,'""')+'"';
+    const rows=[headers.map(quote).join(",")];
+    networkRadarReportDevices().forEach(item=>{
+      rows.push([
+        item.ipAddress,item.macAddress,item.interfaceName,item.state,item.visibility,
+        item.responding===true,new Date(Number(item.firstSeen)||0).toISOString(),
+        new Date(Number(item.lastSeen)||0).toISOString()
+      ].map(quote).join(","));
+    });
+    return "\uFEFF"+rows.join("\r\n");
+  }
+
+  async function copyNetworkRadarText(value) {
+    if(navigator.clipboard&&typeof navigator.clipboard.writeText==="function") {
+      try { await navigator.clipboard.writeText(value); return true; } catch(error) { /* Use the local textarea fallback below. */ }
+    }
+    const field=document.createElement("textarea");
+    field.value=value;
+    field.setAttribute("readonly","");
+    field.style.position="fixed";
+    field.style.left="-9999px";
+    field.style.top="0";
+    document.body.appendChild(field);
+    field.select();
+    let copied=false;
+    try { copied=document.execCommand("copy"); } catch(error) { copied=false; }
+    field.remove();
+    return copied;
+  }
+
+  function updateNetworkRadarJournalStatus() {
+    const status=$("networkRadarJournalStatus");
+    if(status) status.textContent=networkRadarKnownDevices.size+" DEVICES / "+networkRadarEvents.length+" EVENTS SAVED LOCALLY";
   }
 
   function renderNetworkRadarResults(data) {
@@ -527,6 +698,7 @@
       const empty=document.createElement("div");empty.className="network-empty";empty.textContent="NO PRIVATE IPV4 INTERFACE FOUND";interfaceHost.appendChild(empty);
     }
     const nodeHost=$("networkNodeList");nodeHost.replaceChildren();
+    updateNetworkRadarJournalStatus();
     const nodes=Array.from(networkRadarKnownDevices.values()).sort((a,b)=>{
       if(a.visibility!==b.visibility) return a.visibility==="PRESENT"?-1:1;
       return a.ipAddress.localeCompare(b.ipAddress,undefined,{numeric:true});
@@ -538,7 +710,8 @@
         const copy=document.createElement("div");copy.className="network-node-copy";
         const ip=document.createElement("b");ip.textContent=item.ipAddress;
         const details=document.createElement("small");details.textContent=item.macAddress+" / "+item.interfaceName+" / "+(item.responding?"ICMP REPLY":"ARP NEIGHBOR");
-        copy.append(ip,details);
+        const seen=document.createElement("small");seen.className="network-node-seen";seen.textContent="FIRST "+new Date(Number(item.firstSeen)||Date.now()).toLocaleString()+" / LAST "+new Date(Number(item.lastSeen)||Date.now()).toLocaleString();
+        copy.append(ip,details,seen);
         const state=document.createElement("span");state.className="network-node-state";
         state.dataset.state=(item.visibility==="NOT SEEN"?"not-seen":item.responding?"reachable":item.state.toLowerCase()).replace(/[^a-z0-9_-]/g,"");
         state.textContent=item.visibility==="NOT SEEN"?"NOT SEEN":item.responding?"RESPONDS":item.state;
@@ -604,6 +777,7 @@
       if(token!==networkRadarSessionToken||selectedOperation!==operation||!$("operationModal").classList.contains("open")) return false;
       if(!data||data.supported!==true) throw new Error(data&&data.reason?data.reason:"Active LAN discovery is unavailable on this platform.");
       const changes=updateNetworkRadarHistory(data);
+      networkRadarLastSnapshot=data;
       renderNetworkRadarResults(data);
       $("progressArea").hidden=false;
       $("progressBar").style.width="100%";$("progressPercent").textContent="100%";
@@ -636,6 +810,7 @@
         $("modalResult").hidden=false;$("modalResult").textContent="NETWORK RADAR UPDATE FAILED\n\n"+message+"\n\nThe next monitoring cycle will retry.";
         $("runOperation").disabled=false;$("runOperation").textContent="RETRY ACTIVE RADAR";$("runStatus").textContent="RADAR WARNING";
         addNetworkRadarEvent("RADAR UPDATE FAILED",message,true);
+        saveNetworkRadarJournal();
         renderNetworkRadarResults({deviceCount:0,interfaces:[],devices:[],durationMs:0,activeSweep:false,collectedAt:new Date().toISOString(),targetCount:0,hostsProbed:0,limitations:message});
       }
       return false;
@@ -908,6 +1083,34 @@
     }
     tone();
   }
+  async function copyNetworkRadarReport(format) {
+    const report=format==="csv"?buildNetworkRadarCsvReport():JSON.stringify(buildNetworkRadarJsonReport(),null,2);
+    const copied=await copyNetworkRadarText(report);
+    const feedback=$("networkRadarJournalFeedback");
+    if(copied) {
+      if(feedback) feedback.textContent=(format==="csv"?"CSV":"JSON")+" REPORT COPIED TO CLIPBOARD · PASTE INTO A FILE OR SPREADSHEET";
+      playSfx("success");
+    } else {
+      if(feedback) feedback.textContent="CLIPBOARD ACCESS WAS BLOCKED · CHECK THE APP'S CLIPBOARD PERMISSION";
+    }
+  }
+
+  $("copyNetworkRadarJson").addEventListener("click",function(){copyNetworkRadarReport("json");});
+  $("copyNetworkRadarCsv").addEventListener("click",function(){copyNetworkRadarReport("csv");});
+  $("clearNetworkRadarJournal").addEventListener("click",function(){
+    networkRadarKnownDevices.clear();
+    networkRadarEvents=[];
+    try { localStorage.removeItem(NETWORK_RADAR_STORAGE_KEY); } catch(error) { /* In-memory journal is still cleared. */ }
+    renderNetworkRadarResults(networkRadarLastSnapshot||{
+      deviceCount:0,interfaces:[],devices:[],durationMs:0,activeSweep:false,
+      collectedAt:new Date().toISOString(),targetCount:0,hostsProbed:0,
+      limitations:"The local journal was cleared. The live monitor can record currently visible devices again on its next refresh."
+    });
+    const feedback=$("networkRadarJournalFeedback");
+    if(feedback) feedback.textContent="LOCAL JOURNAL CLEARED · CURRENTLY VISIBLE DEVICES MAY BE RECORDED AGAIN ON THE NEXT REFRESH";
+    playSfx("click");
+  });
+
   $("terminalForm").addEventListener("submit", function (event) {
     event.preventDefault();
     const input = $("terminalInput");

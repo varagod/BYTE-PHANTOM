@@ -1,8 +1,8 @@
-# BYTE PHANTOM v1.6.0
+# BYTE PHANTOM v1.7.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.6.0 brings the real NETWORK RADAR to both Windows desktop and Android.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.7.0 adds a persistent, on-device history journal to the cross-platform NETWORK RADAR.
 
 ## Real modules
 
@@ -14,6 +14,8 @@ The same interface and live monitoring logic now work on both platforms:
 - Android: a local Capacitor Java plugin enumerates private IPv4 interfaces, runs one ICMP echo request per target through the Android system ping utility, and reads /proc/net/arp plus ip neigh for MAC and neighbor-state data.
 - The UI refreshes neighbor data every 4 seconds and schedules an active rediscovery every 30 seconds.
 - Live events include new devices, IP address changes, reappearing devices, and nodes no longer visible in recent neighbor snapshots.
+- Device records retain first-seen / last-seen timestamps and visibility state across app restarts.
+- A local journal keeps up to 120 devices and 160 events for up to 30 days; reports can be copied as JSON or CSV, and the journal can be cleared from the radar panel.
 - Each result includes subnet scopes, addresses targeted, probe counts, responding hosts, MAC addresses where available, and skipped-scope warnings.
 
 **Scope and safety:** active discovery is restricted to RFC1918 private IPv4 subnets directly connected to the scanning device, with prefix lengths /22 through /30 and a maximum of 1,022 host addresses per scan. Each active sweep sends one ICMP echo request per target. The app does not scan ports, test credentials, exploit devices, scan the public internet, elevate privileges, or change network settings. An entry marked "NOT SEEN" is not proof that a device disconnected.
@@ -21,6 +23,8 @@ The same interface and live monitoring logic now work on both platforms:
 This cannot guarantee a complete list of every client connected to a router. Sleeping/offline devices, filtered ICMP, client isolation, separate VLANs/subnets, OEM restrictions, and unavailable ARP data can hide devices. For a definitive router client inventory, a supported router-management API is needed.
 
 **Android emulator note:** an emulator may expose only its virtual NAT subnet. A physical phone scans the Wi-Fi/Ethernet LAN to which that phone is connected.
+
+**Local journal privacy:** the app stores IP/MAC/interface metadata and observation timestamps in this installation's local storage only. It does not sync or upload them. JSON and CSV reports are placed on the clipboard only after you press the matching copy action.
 
 ### SYSTEM INTELLIGENCE — Windows desktop
 
@@ -72,7 +76,7 @@ npm run desktop:build
 
 Portable x64 executable:
 
-**BYTE-PHANTOM-v1.6.0-Windows-x64.exe**
+**BYTE-PHANTOM-v1.7.0-Windows-x64.exe**
 
 The GitHub Actions workflow uploads a version-named artifact. The EXE is portable and does not require a separate installer. It is not code-signed, so Windows SmartScreen may show an unverified publisher warning.
 
@@ -91,7 +95,7 @@ cd android
 
 CI artifact:
 
-**BYTE-PHANTOM-v1.6.0-Android-debug.apk**
+**BYTE-PHANTOM-v1.7.0-Android-debug.apk**
 
 This is a debug APK for testing, not a Play Store release.
 

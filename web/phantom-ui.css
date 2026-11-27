@@ -126,3 +126,17 @@
 .network-radar-note{line-height:1.75}
 @media(max-width:760px){.network-radar-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.network-radar-statusbar{align-items:flex-start;flex-direction:column}.network-node-list{max-height:230px}}
 @media(prefers-reduced-motion:reduce){.network-event-card{transition:none}}
+
+
+/* BYTE PHANTOM v1.7.0 — persistent on-device Network Radar journal */
+.network-journal-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid rgba(68,232,255,.18);border-radius:6px;background:linear-gradient(100deg,rgba(6,23,29,.72),rgba(17,12,30,.68))}
+.network-journal-summary{display:grid;gap:4px;min-width:190px}
+.network-journal-summary b{color:#8debc4;font:600 11px var(--mono);letter-spacing:.55px}
+.network-journal-summary small{color:#8296a4;font:10px var(--mono);letter-spacing:.6px}
+.network-journal-actions{display:flex;flex-wrap:wrap;gap:6px}
+.network-journal-actions .button{min-height:31px;padding:6px 9px;font:10px var(--mono);letter-spacing:.35px}
+.network-journal-actions #clearNetworkRadarJournal{border-color:rgba(255,106,131,.2);color:#eaa0ad}
+.network-journal-feedback{margin:0;color:#80aaa2;font:10px/1.6 var(--mono);letter-spacing:.2px}
+.network-node-seen{overflow:hidden;color:#78969b!important;font-size:9.5px!important;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:760px){.network-journal-bar{align-items:flex-start;flex-direction:column}.network-journal-actions{width:100%}.network-journal-actions .button{flex:1 1 auto}}
+@media(max-width:420px){.network-journal-actions .button{font-size:9px;padding:6px 6px}}

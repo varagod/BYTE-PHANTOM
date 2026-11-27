@@ -1,7 +1,7 @@
 {
   "name": "BYTE PHANTOM",
   "short_name": "PHANTOM",
-  "description": "BYTE PHANTOM — Digital Ghost cyberpunk simulator.",
+  "description": "BYTE PHANTOM — Digital Ghost, local-first Cybersecurity & Network Intelligence with a persistent on-device LAN radar journal.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#070810",

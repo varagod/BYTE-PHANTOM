@@ -1,5 +1,15 @@
 # BYTE PHANTOM — Changelog
 
+## v1.7.0 — NETWORK RADAR / Persistent Local Journal
+- Added a versioned on-device journal that survives closing and reopening BYTE PHANTOM on Windows and Android.
+- Stores device first-seen / last-seen timestamps, current visibility state, and network-change events for up to 30 days.
+- Caps retained history at 120 device records and 160 events to keep local storage bounded.
+- Restores prior observations when Network Radar opens and marks older observations as NOT SEEN without treating that state as proof a device disconnected.
+- Added JSON and CSV report copying for use in local files or spreadsheets, plus a clear-journal action.
+- Network identifiers and timestamps remain in local app storage; reports are copied only after an explicit user action. No cloud sync or upload was added.
+- Added responsive journal controls and first/last-seen timestamps to discovered-device cards.
+- Updated release metadata and both platform CI builds to v1.7.0.
+
 ## v1.6.0 — NETWORK RADAR / Windows + Android Native Support
 - Added a native Capacitor Java NetworkRadar plugin to the Android APK and registered it in MainActivity.
 - Android now discovers directly connected private IPv4 subnets from its own active Wi-Fi/Ethernet interfaces.

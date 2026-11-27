@@ -1,7 +1,7 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.6.0",
-  "build": "1.6.0",
+  "version": "1.7.0",
+  "build": "1.7.0",
   "release": "2026-11-26",
   "platforms": [
     "Windows x64",
@@ -13,7 +13,8 @@
     "Active discovery of directly connected private IPv4 subnets from /22 through /30, capped at 1,022 host addresses per scan",
     "One ICMP echo request per target host during active sweeps, enriched with ARP/neighbor-table MAC addresses where available",
     "Four-second neighbour refresh and scheduled active rediscovery every 30 seconds",
-    "Live event history for newly detected devices, IP changes, reappearance, and nodes no longer visible in recent snapshots"
+    "Live event history for newly detected devices, IP changes, reappearance, and nodes no longer visible in recent snapshots",
+    "Persistent Network Radar journal stored locally on this app installation: first/last-seen timestamps, device visibility, and network-change events"
   ],
   "simulatedModules": [
     "IP TRACE",
@@ -36,5 +37,16 @@
     "runtimeLocationPermission": false,
     "scanImplementation": "/system/bin/ping with one ICMP echo request per host; /proc/net/arp and ip neigh for MAC/interface enrichment"
   },
-  "security": "Network discovery is limited to directly connected private IPv4 subnets. No port scanning, credential tests, exploitation, internet-wide scans, privilege escalation, or network/system configuration changes. This is not a guaranteed complete router-client inventory; client isolation, sleeping hosts, filtered ICMP, separate VLANs/subnets, OEM restrictions, and emulator NAT can limit visibility."
+  "security": "Network discovery is limited to directly connected private IPv4 subnets. No port scanning, credential tests, exploitation, internet-wide scans, privilege escalation, or network/system configuration changes. This is not a guaranteed complete router-client inventory; client isolation, sleeping hosts, filtered ICMP, separate VLANs/subnets, OEM restrictions, and emulator NAT can limit visibility. Network Radar device identifiers and timestamps are retained only in this installation's local app storage for up to 30 days; report contents are copied only when the user explicitly requests it.",
+  "networkRadarJournal": {
+    "storage": "Versioned localStorage on this device; no remote sync or upload",
+    "retentionDays": 30,
+    "maxDevices": 120,
+    "maxEvents": 160,
+    "reportFormats": [
+      "JSON",
+      "CSV"
+    ],
+    "reportDelivery": "Copied to the local clipboard only after an explicit user action"
+  }
 }
