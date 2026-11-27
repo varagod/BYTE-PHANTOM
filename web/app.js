@@ -918,7 +918,7 @@
     const redirects=rows.filter(x=>x&&(x.redirected===true||(Number(x.statusCode)>=300&&Number(x.statusCode)<400)));
     const mismatches=rows.filter(x=>x&&x.responseReceived===true&&x.bodyMatches===false&&Number(x.statusCode)>=200&&Number(x.statusCode)<300);
     const explicit=rows.some(x=>x&&Number(x.statusCode)===511);
-    const cross=redirects.filter(x=>{try{return !!x.locationHost&&String(x.locationHost).toLowerCase()!==new URL(x.url).hostname.toLowerCase();}catch(e){return false;}});
+    const cross=redirects.filter(x=>{const sourceHost=String(x.url||"").replace(/^[a-z][a-z0-9+.-]*:\/\/([^/:?#]+).*$/i,"$1").toLowerCase();const targetHost=String(x.locationHost||"").toLowerCase();return !!sourceHost&&!!targetHost&&targetHost!==sourceHost;});
     const hosts=redirects.map(x=>String(x.locationHost||"").toLowerCase()).filter(Boolean),shared=hosts.length>=2&&hosts.every(h=>h===hosts[0]);
     let status="NOT CONFIRMED",detail="No captive-portal signature was found in the tested HTTPS responses.";
     if(path.captivePortal===true||explicit){status="DETECTED";detail=path.captivePortal===true?"Android ConnectivityManager reports the active network as a captive portal.":"An HTTPS probe returned HTTP 511 (Network Authentication Required).";}
