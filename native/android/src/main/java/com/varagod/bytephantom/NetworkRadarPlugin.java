@@ -1,5 +1,13 @@
 package com.varagod.bytephantom;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.LinkAddress;
+import android.net.LinkProperties;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.RouteInfo;
+
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -170,6 +178,7 @@ public class NetworkRadarPlugin extends Plugin {
         result.put("source", "ANDROID ICMP + ARP / NEIGHBOR TABLE");
         result.put("discoveryMode", activeSweep ? "ACTIVE / ICMP + ARP" : "LIVE WATCH / ANDROID NEIGHBOR CACHE");
         result.put("activeSweep", activeSweep);
+        result.put("networkPath", collectNetworkPathInfo());
         result.put("interfaces", interfacesJson);
         result.put("scopes", scopesJson);
         result.put("skippedScopes", skippedJson);
@@ -195,6 +204,25 @@ public class NetworkRadarPlugin extends Plugin {
             result.put("probeWarning", "The active sweep reached its 25-second safety limit; some host probes may not have completed.");
         }
         return result;
+    }
+
+    private JSObject collectNetworkPathInfo() {
+        JSObject result=new JSObject();JSArray dns=new JSArray();JSArray addresses=new JSArray();
+        String gateway="NOT REPORTED",iface="UNKNOWN",transport="UNKNOWN",source="ANDROID CONNECTIVITYMANAGER / LINKPROPERTIES";boolean defaultRoute=false;
+        try {
+            ConnectivityManager manager=(ConnectivityManager)getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+            Network active=manager==null?null:manager.getActiveNetwork();
+            LinkProperties properties=active==null?null:manager.getLinkProperties(active);
+            NetworkCapabilities caps=active==null?null:manager.getNetworkCapabilities(active);
+            if(properties!=null){
+                iface=properties.getInterfaceName()==null?"UNKNOWN":properties.getInterfaceName();
+                for(RouteInfo route:properties.getRoutes())if(route.isDefaultRoute()&&route.getGateway()!=null){gateway=route.getGateway().getHostAddress();defaultRoute=true;break;}
+                for(java.net.InetAddress server:properties.getDnsServers())dns.put(server.getHostAddress());
+                for(LinkAddress address:properties.getLinkAddresses())if(address.getAddress() instanceof Inet4Address&&isPrivate(address.getAddress().getHostAddress()))addresses.put(address.getAddress().getHostAddress()+"/"+address.getPrefixLength());
+            }
+            if(caps!=null){if(caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))transport="WI-FI";else if(caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))transport="ETHERNET";else if(caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR))transport="CELLULAR";else if(caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN))transport="VPN";else transport="OTHER";}
+        }catch(Exception ignored){source="ANDROID CONNECTIVITY SNAPSHOT PARTIALLY AVAILABLE";}
+        result.put("gateway",gateway);result.put("dnsServers",dns);result.put("transport",transport);result.put("interfaceName",iface);result.put("addresses",addresses);result.put("defaultRoute",defaultRoute);result.put("source",source);return result;
     }
 
     private List<InterfaceInfo> collectPrivateInterfaces() throws Exception {
