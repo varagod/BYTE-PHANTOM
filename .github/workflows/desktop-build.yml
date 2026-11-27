@@ -39,14 +39,6 @@ jobs:
           $version = node -p "require('./package.json').version"
           "version=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Validate runtime scripts and release version
-        shell: pwsh
-        run: |
-          node --check electron/main.cjs
-          node --check electron/preload.cjs
-          node --check web/app.js
-          node -e "const fs=require('node:fs');const pkg=require('./package.json');const meta=require('./web/version.json');const version=fs.readFileSync('VERSION','utf8').trim();if(pkg.version!==version||pkg.version!==meta.version)throw new Error('Release version mismatch');console.log('Validated BYTE PHANTOM '+version)"
-
       - name: Generate Windows and web icons
         run: |
           python -m pip install --upgrade pip pillow

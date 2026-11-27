@@ -4,7 +4,7 @@
 
   const operations = [
     { id:"system-scan", name:"SYSTEM INTELLIGENCE", icon:"▦", tone:"cyan-card", category:"recon", description:"Read live Windows host details: OS, CPU, memory, disk capacity, and active IPv4 adapters. Read-only; no network probing or system changes.", target:"THIS WINDOWS HOST", live:true },
-    { id:"network-radar", name:"NETWORK RADAR", icon:"◎", tone:"cyan-card", category:"recon", description:"Visualize a small collection of imaginary network nodes and their sample status.", target:"DEMO_GRID_192.0.2.0", stages:["Initializing sample topology","Plotting fictional nodes","Calculating mock signal paths","Rendering local radar summary"], result:["NODES DISPLAYED: 08 FICTIONAL","ACTIVE LINKS: 05 / 08","SIGNAL QUALITY: DEMO OPTIMAL","TOPOLOGY: LOCAL SAMPLE DATA"] },
+    { id:"network-radar", name:"NETWORK RADAR", icon:"◎", tone:"cyan-card", category:"recon", description:"Discover private IPv4 neighbors already known to Windows. Passive cache reading only; no ping sweep, port scan, or packets are sent.", target:"PRIVATE IPV4 NETWORKS", live:true, liveType:"network" },
     { id:"ip-trace", name:"IP TRACE", icon:"⌖", tone:"red-card", category:"recon", description:"Run a theatrical trace animation against a reserved documentation IP address. No lookup is performed.", target:"192.0.2.44 (DOCUMENTATION RANGE)", stages:["Reading sample address","Simulating route hops","Painting fictional map markers","Compiling demo trace"], result:["DESTINATION: 192.0.2.44 (RESERVED EXAMPLE)","ROUTE HOPS: 06 SIMULATED","GEOLOCATION: NOT REQUESTED","TRACE: FICTIONAL RESULT"] },
     { id:"device-infiltration", name:"DEVICE INFILTRATION", icon:"▣", tone:"", category:"access", description:"Play a fictional device-access scenario using a generated device record. No real device is contacted.", target:"MOCK_DEVICE_DELTA", stages:["Loading fictional device record","Animating access-control sequence","Reviewing imaginary permissions","Closing sandbox session"], result:["DEVICE: MOCK-DELTA / OFFLINE SAMPLE","ACCESS LAYERS: 04 SIMULATED","PERMISSIONS: FICTIONAL ONLY","SCENARIO: COMPLETED LOCALLY"] },
     { id:"firewall-breach", name:"FIREWALL BREACH", icon:"⬡", tone:"red-card", category:"access", description:"Watch a simulated firewall puzzle resolve against a built-in mock rule set.", target:"DEMO_FIREWALL_A7", stages:["Loading sample rule set","Analyzing fictional packet patterns","Resolving demo challenge","Generating firewall report"], result:["RULES REVIEWED: 24 MOCK ENTRIES","CHALLENGE: SIMULATION PASSED","EXTERNAL FIREWALL: NOT CONNECTED","REPORT: LOCAL DEMO"] },
@@ -313,7 +313,7 @@
     info.append(title, description);
     const state = document.createElement("em");
     state.className = "module-state " + (operation.live ? "module-state-live" : "module-state-sim");
-    state.textContent = operation.live ? "LIVE / READ-ONLY" : "SIMULATION";
+    state.textContent = operation.live ? (operation.liveType === "network" ? "LIVE / PASSIVE CACHE" : "LIVE / READ-ONLY") : "SIMULATION";
     info.appendChild(state);
     const arrow = document.createElement("i");
     arrow.className = "operation-arrow";
@@ -333,15 +333,22 @@
     clearInterval(operationTimer);
     selectedOperation = operation;
     const liveOperation = operation.live === true;
+    const networkOperation = operation.liveType === "network";
+    ++liveScanSequence;
+    operationTimer = null;
     $("modalIcon").textContent = operation.icon;
     $("modalTitle").textContent = operation.name;
     $("modalDescription").textContent = operation.description;
-    $("modalModeLabel").textContent = liveOperation ? "LIVE WINDOWS INTELLIGENCE" : "SIMULATION MODULE";
-    $("modalTargetLabel").textContent = liveOperation ? "HOST SCOPE" : "SIMULATED TARGET";
+    $("modalModeLabel").textContent = liveOperation ? (networkOperation ? "LIVE LAN RADAR / PASSIVE DISCOVERY" : "LIVE WINDOWS INTELLIGENCE") : "SIMULATION MODULE";
+    $("modalTargetLabel").textContent = liveOperation ? (networkOperation ? "LOCAL NETWORK SCOPE" : "HOST SCOPE") : "SIMULATED TARGET";
     $("modalTarget").textContent = operation.target;
-    $("modalTargetTag").textContent = liveOperation ? "LOCAL / READ-ONLY" : "DEMO / FICTIONAL";
-    $("modalSafety").textContent = liveOperation ? "READ-ONLY INVENTORY · NO NETWORK PROBES · NO SYSTEM CHANGES" : "SIMULATED OUTPUT · NO REAL TARGET OR DEVICE ACCESS";
+    $("modalTargetTag").textContent = liveOperation ? (networkOperation ? "PRIVATE IPV4 / PASSIVE" : "LOCAL / READ-ONLY") : "DEMO / FICTIONAL";
+    $("modalSafety").textContent = liveOperation ? (networkOperation ? "PASSIVE NEIGHBOR CACHE · NO PING · NO PORT SCAN · 0 PACKETS SENT" : "READ-ONLY INVENTORY · NO NETWORK PROBES · NO SYSTEM CHANGES") : "SIMULATED OUTPUT · NO REAL TARGET OR DEVICE ACCESS";
     $("operationModal").dataset.state = liveOperation ? "live" : "simulation";
+    $("operationModal").dataset.operation = operation.id;
+    $("networkRadarResults").hidden = true;
+    $("networkInterfaceList").replaceChildren();
+    $("networkNodeList").replaceChildren();
     $("progressArea").hidden = true;
     $("modalResult").hidden = true;
     $("modalResult").textContent = "";
@@ -350,13 +357,14 @@
     $("progressOutput").textContent = "";
     $("progressLabel").textContent = "INITIALIZING";
     $("runOperation").disabled = false;
-    $("runOperation").innerHTML = liveOperation ? "RUN LIVE SYSTEM SCAN <span>↗</span>" : "INITIALIZE SIMULATION <span>▶</span>";
+    $("runOperation").innerHTML = liveOperation ? (networkOperation ? "REFRESH NETWORK RADAR <span>↗</span>" : "RUN LIVE SYSTEM SCAN <span>↗</span>") : "INITIALIZE SIMULATION <span>▶</span>";
     $("operationModal").classList.add("open");
     $("operationModal").setAttribute("aria-hidden", "false");
     tone();
   }
   function closeOperation() {
     clearInterval(operationTimer);
+    ++liveScanSequence;
     operationTimer = null;
     $("operationModal").classList.remove("open");
     $("operationModal").setAttribute("aria-hidden", "true");
@@ -376,7 +384,11 @@
   function runOperation() {
     if (!selectedOperation || operationTimer) return;
     const operation = selectedOperation;
-    if (operation.live === true) { runLiveSystemScan(operation); return; }
+    if (operation.live === true) {
+      if (operation.liveType === "network") runLiveNetworkRadar(operation);
+      else runLiveSystemScan(operation);
+      return;
+    }
     const feed = operationStreams[operation.id];
     if (!feed) return;
     $("progressArea").hidden = false;
@@ -427,6 +439,83 @@
     const minutes = Math.floor(value / 60);
     return days + "d " + hours + "h " + minutes + "m";
   }
+
+  function renderNetworkRadarResults(data) {
+    $("networkDeviceCount").textContent=String(data.deviceCount).padStart(2,"0");
+    $("networkInterfaceCount").textContent=String(data.interfaces.length).padStart(2,"0");
+    $("networkRadarMode").textContent="PASSIVE";
+    $("networkRadarDuration").textContent=data.durationMs+" ms";
+    const interfaceHost=$("networkInterfaceList");
+    interfaceHost.replaceChildren();
+    if(data.interfaces.length){
+      data.interfaces.forEach(item=>{
+        const card=document.createElement("div");card.className="network-interface-card";
+        const name=document.createElement("b");name.textContent=item.name;
+        const address=document.createElement("span");address.textContent=item.cidr;
+        const mask=document.createElement("small");mask.textContent="IPv4 / "+item.netmask;
+        card.append(name,address,mask);interfaceHost.appendChild(card);
+      });
+    }else{
+      const empty=document.createElement("div");empty.className="network-empty";empty.textContent="NO PRIVATE IPV4 INTERFACE FOUND";interfaceHost.appendChild(empty);
+    }
+    const nodeHost=$("networkNodeList");nodeHost.replaceChildren();
+    if(data.devices.length){
+      data.devices.forEach(item=>{
+        const card=document.createElement("article");card.className="network-node-card";
+        const marker=document.createElement("span");marker.className="network-node-marker";marker.textContent="◉";
+        const copy=document.createElement("div");copy.className="network-node-copy";
+        const ip=document.createElement("b");ip.textContent=item.ipAddress;
+        const mac=document.createElement("small");mac.textContent=item.macAddress+" / "+item.interfaceName;
+        copy.append(ip,mac);
+        const state=document.createElement("span");state.className="network-node-state";state.dataset.state=item.state.toLowerCase().replace(/[^a-z0-9_-]/g,"");state.textContent=item.state;
+        card.append(marker,copy,state);nodeHost.appendChild(card);
+      });
+    }else{
+      const empty=document.createElement("div");empty.className="network-empty";empty.textContent="NO PRIVATE IPV4 NEIGHBORS IN THE WINDOWS CACHE";nodeHost.appendChild(empty);
+    }
+    $("networkRadarNote").textContent=data.limitations;
+    $("networkRadarResults").hidden=false;
+  }
+
+  async function runLiveNetworkRadar(operation) {
+    const desktop=window.bytePhantomDesktop;
+    if(!desktop||typeof desktop.getNetworkRadar!=="function"){
+      $("progressArea").hidden=false;$("progressLabel").textContent="WINDOWS DESKTOP REQUIRED";$("progressPercent").textContent="—";
+      $("progressOutput").textContent="[BLOCKED] Passive LAN neighbor discovery requires the Windows desktop build.\n[INFO] No fabricated network devices are shown on browser or Android.";
+      $("modalResult").hidden=false;$("modalResult").textContent="NETWORK RADAR UNAVAILABLE\n\nThis platform does not expose the Windows neighbor-cache bridge. No simulated nodes have been substituted.";
+      $("runOperation").disabled=false;$("runOperation").textContent="TRY AGAIN";return;
+    }
+    const runToken=-(++liveScanSequence);operationTimer=runToken;
+    $("progressArea").hidden=false;$("networkRadarResults").hidden=true;$("modalResult").hidden=true;
+    $("runOperation").disabled=true;$("runOperation").textContent="READING WINDOWS NEIGHBOR CACHE...";
+    $("progressLabel").textContent="PASSIVE IPV4 NEIGHBOR DISCOVERY";$("progressPercent").textContent="18%";$("progressBar").style.width="18%";
+    $("progressOutput").textContent=["╔══ BYTE PHANTOM / NETWORK RADAR ══════════════╗","[INIT] Reading local Windows IPv4 neighbor table","[SCOPE] RFC1918 private IPv4 interfaces only","[SAFE] No ping sweep, port scan, socket probe, or packet transmission","[READ] Waiting for cached neighbor records..."].join("\n");
+    try{
+      const data=await desktop.getNetworkRadar();
+      if(selectedOperation!==operation||!$("operationModal").classList.contains("open"))return;
+      if(!data||data.supported!==true)throw new Error(data&&data.reason?data.reason:"Passive LAN discovery is not available on this platform.");
+      renderNetworkRadarResults(data);
+      const note=data.devices.length?data.deviceCount+" private IPv4 neighbor(s) were found in the Windows cache.":"No private IPv4 neighbors are currently listed in the Windows cache.";
+      $("progressBar").style.width="100%";$("progressPercent").textContent="100%";$("progressLabel").textContent="PASSIVE RADAR COMPLETE";
+      $("progressOutput").textContent=["[OK] Windows neighbor cache read successfully.","[OK] PRIVATE IPv4 INTERFACES: "+data.interfaces.length,"[OK] CACHED NEIGHBORS: "+data.deviceCount,"[SAFE] NETWORK PROBES: 0 / PACKETS SENT: 0 / SYSTEM CHANGES: 0","[INFO] "+data.durationMs+" ms"].join("\n");
+      $("modalResult").hidden=false;
+      $("modalResult").textContent="✓ NETWORK RADAR / LIVE CACHE REPORT\n\n"+note+"\n\nSOURCE: "+data.source+"\nMODE: "+data.discoveryMode+"\nNETWORK PROBES: 0\nPACKETS SENT: 0\nSYSTEM CHANGES: 0\n\nThe radar shows cached private IPv4 neighbors only. It does not claim to be a complete inventory of every device connected to the router.";
+      $("runOperation").disabled=false;$("runOperation").textContent="REFRESH NETWORK RADAR";$("runStatus").textContent="RADAR READY";
+      operationCount+=1;$("runCount").textContent=String(operationCount).padStart(2,"0");
+      addActivity("NETWORK RADAR",note+" Passive Windows cache read; no packets sent.");
+      appendDashboardLog("NETWORK RADAR: "+data.deviceCount+" cached private IPv4 neighbor(s). No probes sent.","term-green");
+      playSfx("success");
+    }catch(error){
+      if(selectedOperation===operation&&$("operationModal").classList.contains("open")){
+        const message=error&&error.message?error.message:"Unknown network radar error";
+        $("progressLabel").textContent="RADAR READ FAILED";$("progressOutput").textContent+="\n[ERROR] "+message;
+        $("modalResult").hidden=false;$("modalResult").textContent="NETWORK RADAR FAILED\n\n"+message+"\n\nNo network scan or simulated result was substituted.";
+        $("runOperation").disabled=false;$("runOperation").textContent="RETRY NETWORK RADAR";$("runStatus").textContent="RADAR ERROR";
+        addActivity("NETWORK RADAR ERROR",message,true);
+      }
+    }finally{if(operationTimer===runToken)operationTimer=null;}
+  }
+
   async function runLiveSystemScan(operation) {
     const desktop = window.bytePhantomDesktop;
     if (!desktop || typeof desktop.getSystemSnapshot !== "function") {
@@ -603,6 +692,7 @@
         terminalLine("status     - show local simulator status");
         terminalLine("modules    - list available operation modules");
         terminalLine("scan       - open the live Windows host inventory module");
+        terminalLine("radar      - open the passive Windows LAN neighbor radar");
         terminalLine("whoami     - show the current fictional operator");
         terminalLine("date       - show this device's local date and time");
         terminalLine("profile    - open the fictional profile generator");
@@ -621,6 +711,10 @@
       case "scan":
         terminalLine("Opening live, read-only Windows host inventory...", "info");
         openOperation("system-scan");
+        break;
+      case "radar":
+        terminalLine("Opening passive Windows LAN neighbor radar...", "info");
+        openOperation("network-radar");
         break;
       case "whoami":
         terminalLine("OPERATOR: GHOST USER", "success");
