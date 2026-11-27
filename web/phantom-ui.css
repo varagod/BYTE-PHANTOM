@@ -218,7 +218,7 @@
 .network-diagnostics-summary{display:block;line-height:1.55;overflow-wrap:anywhere}
 .network-diagnostics-note{display:block;line-height:1.6;overflow-wrap:anywhere}
 
-/* v1.12.0 — direct DNS resolver intelligence */
+/* v1.13.0 — DNS answer comparison, integrity review and local history */
 .network-dns-resolver-list{display:grid;gap:8px;margin-top:12px;padding:12px;border:1px solid rgba(68,232,255,.13);border-radius:8px;background:rgba(4,12,19,.58);color:#9aabb7;font-size:11px}
 .network-dns-resolver-card{min-width:0;padding:10px;border:1px solid rgba(130,160,180,.14);border-radius:7px;background:rgba(6,16,24,.7)}
 .network-dns-resolver-card[data-state="online"]{border-color:rgba(99,255,156,.22)}
@@ -230,3 +230,37 @@
 .network-dns-resolver-top strong[data-state="ok"]{color:#63ff9c}
 .network-dns-resolver-meta{margin-top:7px;color:#8194a1;font-size:10px;line-height:1.55;overflow-wrap:anywhere}
 .network-dns-resolver-error{display:block;margin-top:5px;color:#ffb86b;font-size:10px;overflow-wrap:anywhere}
+
+/* v1.13.0 — resolver comparison and history */
+.network-diagnostics-summary[data-state="warning"]{color:#ffb86b}
+.network-dns-resolver-card[data-integrity="review"]{border-color:rgba(255,104,104,.48);box-shadow:inset 2px 0 0 rgba(255,104,104,.45)}
+.network-dns-resolver-card[data-integrity="inconclusive"]{border-color:rgba(255,184,107,.35)}
+.network-dns-resolver-meta{line-height:1.55}
+.network-dns-check-list{display:grid;gap:6px;margin-top:9px}
+.network-dns-check-row{display:grid;grid-template-columns:minmax(80px,1fr) auto;gap:4px 10px;padding:8px;border-radius:6px;background:rgba(1,8,14,.62);border:1px solid rgba(130,160,180,.1)}
+.network-dns-check-row b{color:#a9bdc9;font-size:9px;letter-spacing:.7px}
+.network-dns-check-row strong{color:#ffb86b;font-size:9px;letter-spacing:.6px;text-align:right}
+.network-dns-check-row strong[data-state="ok"]{color:#63ff9c}
+.network-dns-check-row small{grid-column:1/-1;color:#8194a1;font-size:10px;overflow-wrap:anywhere;line-height:1.5}
+.network-dns-recommendation{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px;border:1px solid rgba(68,232,255,.25);border-radius:7px;background:rgba(4,22,29,.7)}
+.network-dns-recommendation>span{color:#d9e8ef;font-size:10px;line-height:1.6;overflow-wrap:anywhere}
+.network-dns-copy-button{flex:none;padding:7px 10px;border:1px solid rgba(68,232,255,.34);border-radius:5px;background:rgba(16,54,67,.48);color:var(--bp-cyan);font:inherit;font-size:9px;letter-spacing:.6px;cursor:pointer}
+.network-dns-copy-button:hover{background:rgba(16,74,89,.72)}
+.network-dns-card-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:9px}
+.network-dns-card-footer small{color:#9e7d6a;font-size:9px;line-height:1.5;overflow-wrap:anywhere}
+.network-dns-history-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;padding:10px 0 8px;border-top:1px solid rgba(130,160,180,.15)}
+.network-dns-history-header>div{display:grid;gap:3px}
+.network-dns-history-header b{color:#c6d6df;font-size:10px;letter-spacing:.8px}
+.network-dns-history-header small{color:#8194a1;font-size:9px;letter-spacing:.5px}
+.network-dns-history-list{display:grid;gap:7px}
+.network-dns-history-row{display:grid;grid-template-columns:minmax(120px,auto) minmax(0,1fr);gap:10px;padding:9px;border:1px solid rgba(130,160,180,.1);border-radius:6px;background:rgba(3,10,16,.48)}
+.network-dns-history-row time{color:#8194a1;font-size:9px;white-space:nowrap}
+.network-dns-history-detail{display:grid;gap:4px;min-width:0}
+.network-dns-history-detail b{color:#c5d6e0;font-size:9px;letter-spacing:.55px;overflow-wrap:anywhere}
+.network-dns-history-detail small{color:#8194a1;font-size:9px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:600px){
+  .network-dns-recommendation{align-items:flex-start;flex-direction:column}
+  .network-dns-history-header{align-items:flex-start;flex-direction:column}
+  .network-dns-history-row{grid-template-columns:1fr}
+  .network-dns-history-row time{white-space:normal}
+}

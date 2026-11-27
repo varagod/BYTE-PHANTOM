@@ -1,20 +1,24 @@
-# BYTE PHANTOM v1.12.0
+# BYTE PHANTOM v1.13.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.12.0 adds explicit DNS and HTTPS connectivity diagnostics to the persistent, cross-platform NETWORK RADAR.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.13.0 adds explicit DNS and HTTPS connectivity diagnostics to the persistent, cross-platform NETWORK RADAR.
 
-## v1.12.0 hotfix
+## v1.13.0 hotfix
 
 This patch repairs the Windows Electron main-process syntax error, restores the Windows diagnostics IPC route, and packages the Capacitor JavaScript runtime so the Android Network Radar plugin is registered and callable from the static HTML interface. Rebuild/install this patch rather than reusing a v1.10.0 APK or EXE.
 
-## v1.12.0 — layered connectivity diagnosis
+## v1.13.0 — layered connectivity diagnosis
 
 The Network Radar connectivity report now adds the active route/interface snapshot, one ICMP echo to the active private IPv4 gateway (when available), system DNS resolution for `example.com`, and two independent HTTPS/TLS checks. The report offers cautious interpretation: a gateway that does not answer ping may still forward traffic, and success against either HTTPS endpoint does not guarantee every site is reachable. These checks are started only by the operator and do not scan LAN peers or ports.
 
-## v1.12.0 — DNS SERVER DISCOVERY & INTELLIGENCE
+## v1.13.0 — DNS SERVER DISCOVERY & INTELLIGENCE
 
-NETWORK RADAR includes a manual DNS intelligence action. It reads the active interface DNS list, tests every configured IPv4 resolver with one direct DNS A query for `example.com` over UDP port 53, and compares results with Cloudflare (`1.1.1.1`), Google Public DNS (`8.8.8.8`), and Quad9 (`9.9.9.9`). The report shows the source of each resolver, status / response code, latency, returned A records, and fastest responding resolver. Duplicate IPs are merged. Configured IPv6 DNS entries are explicitly listed as skipped in this release. The latest report is retained in local app storage. No DNS settings are changed and no LAN-wide port scan is performed. A DNS timeout is not proof of permanent resolver failure; UDP/53 may be filtered or rate-limited.
+NETWORK RADAR includes a manual DNS intelligence action. It reads the active interface DNS list, tests each configured IPv4 resolver and compares it with Cloudflare (`1.1.1.1`), Google Public DNS (`8.8.8.8`), and Quad9 (`9.9.9.9`) using one direct DNS A query each for `example.com` and `iana.org` over UDP port 53. The report shows source, status, average latency, returned A records, comparison group, and fastest resolver that answered both names. It flags non-public answer addresses and answers that differ from a clear peer majority. Such flags are review indicators, not proof of DNS poisoning: CDN, GeoDNS, split-horizon, regional policy and content filters can produce legitimate differences. Mixed answers without a majority are reported as inconclusive. The latest 20 report summaries are retained locally for up to 30 days. Users can copy a recommended resolver IP manually; BYTE PHANTOM does not change system DNS settings. Configured IPv6 DNS entries are listed as skipped. No LAN-wide port scan is performed.
+
+## v1.13.0 — DNS integrity review and history
+
+The new DNS SERVER INTELLIGENCE panel compares A-record answers from two public names across the configured DNS list and three fixed public references. It marks non-public addresses and deviations from a clear peer majority, with an explicit warning that differences can have benign causes such as CDNs and GeoDNS. It recommends the fastest resolver that answered both names and lets the operator copy its IP, but does not apply the DNS configuration. Test summaries are stored locally for 30 days, up to 20 entries.
 
 ## Real modules
 
@@ -94,7 +98,7 @@ npm run desktop:build
 
 Portable x64 executable:
 
-**BYTE-PHANTOM-v1.12.0-Windows-x64.exe**
+**BYTE-PHANTOM-v1.13.0-Windows-x64.exe**
 
 The GitHub Actions workflow uploads a version-named artifact. The EXE is portable and does not require a separate installer. It is not code-signed, so Windows SmartScreen may show an unverified publisher warning.
 
@@ -113,7 +117,7 @@ cd android
 
 CI artifact:
 
-**BYTE-PHANTOM-v1.12.0-Android-debug.apk**
+**BYTE-PHANTOM-v1.13.0-Android-debug.apk**
 
 This is a debug APK for testing, not a Play Store release.
 

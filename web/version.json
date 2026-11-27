@@ -1,7 +1,7 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.12.0",
-  "build": "1.12.0",
+  "version": "1.13.0",
+  "build": "1.13.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
@@ -12,7 +12,11 @@
     "Interactive observed LAN map",
     "Read-only gateway, DNS resolver, transport, interface, local IPv4, and default-route intelligence on Windows and Android",
     "Layered connectivity diagnosis: active route snapshot, one local gateway ICMP echo, system DNS resolution, and two independent HTTPS/TLS checks on Windows and Android",
-    "DNS resolver intelligence: direct UDP/53 DNS A-query tests for configured IPv4 DNS servers and Cloudflare, Google Public DNS, and Quad9 reference resolvers"
+    "DNS resolver intelligence: direct UDP/53 DNS A-query tests for configured IPv4 DNS servers and Cloudflare, Google Public DNS, and Quad9 reference resolvers",
+    "DNS answer comparison for example.com and iana.org across configured IPv4 DNS servers and Cloudflare, Google Public DNS, and Quad9",
+    "Non-public DNS answer review flags and peer-majority divergence indicators, with explicit CDN/GeoDNS caveats",
+    "Fastest resolver recommendation based on average latency across successful answers for both query names",
+    "Local DNS test history retaining the latest 20 test summaries for up to 30 days; manual copy of resolver IP without changing system settings"
   ],
   "simulatedModules": [
     "IP TRACE",
@@ -55,7 +59,7 @@
     "configurationChanges": false,
     "interpretation": "A missing gateway ICMP response is inconclusive because routers or firewalls can filter echo requests. HTTPS success proves reachability to at least one test endpoint only."
   },
-  "security": "Connectivity diagnostics run only after an explicit user action. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform one system DNS lookup and two fixed HTTPS GET checks. They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends one direct DNS A query for example.com to each IPv4 server in the active system DNS configuration and to up to three fixed public IPv4 resolver references. It does not scan LAN hosts or ports and does not change DNS configuration.",
+  "security": "Connectivity diagnostics run only after an explicit user action. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform one system DNS lookup and two fixed HTTPS GET checks. They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends one direct DNS A query for example.com to each IPv4 server in the active system DNS configuration and to up to three fixed public IPv4 resolver references. It does not scan LAN hosts or ports and does not change DNS configuration. DNS integrity review queries two fixed public names once per resolver and compares returned A-record sets. Divergence and non-public address flags are advisory indicators only, not a malware verdict. Resolver IPs may be copied manually, but no DNS setting is changed automatically.",
   "networkPathIntelligence": {
     "dataSource": "Windows Get-NetIPConfiguration/Get-NetRoute; Android ConnectivityManager/LinkProperties",
     "fields": [
@@ -75,10 +79,14 @@
     "Packaged capacitor.js into Android and Windows app assets",
     "Restored Windows DNS/HTTPS diagnostics IPC handler and network-path result",
     "Added layered gateway/DNS/HTTPS-TLS failure isolation on Windows and Android",
-    "Added direct DNS-over-UDP resolver tests for configured DNS servers and fixed public resolver references"
+    "Added direct DNS-over-UDP resolver tests for configured DNS servers and fixed public resolver references",
+    "Added two-name DNS answer comparison, peer-majority divergence review, non-public address flags, recommended resolver copy, and a 20-entry local DNS test history"
   ],
   "dnsResolverIntelligence": {
-    "queryName": "example.com",
+    "queryNames": [
+      "example.com",
+      "iana.org"
+    ],
     "queryType": "A",
     "transport": "DNS over UDP",
     "port": 53,
@@ -97,12 +105,18 @@
         "label": "Quad9"
       }
     ],
-    "perResolverQueries": 1,
+    "perNameQueriesPerResolver": 1,
     "ipv4Only": true,
+    "comparison": "Sorts A-record sets for each name and compares responding resolvers. Flags a resolver only when its answer differs from a clear peer majority; non-public answer ranges are separately flagged for review.",
+    "recommendation": "Fastest resolver that returned an A answer for both comparison names. The UI offers manual IP copying only.",
+    "history": {
+      "retentionDays": 30,
+      "maxTests": 20,
+      "storage": "Local app storage"
+    },
     "userInitiated": true,
     "lanPortScan": false,
     "settingsChanged": false,
-    "retainedLocally": true,
-    "interpretation": "A successful A query confirms that the resolver returned an IPv4 answer for example.com at test time. A timeout does not prove a resolver is permanently offline; UDP/53 may be filtered or rate-limited."
+    "interpretation": "DNS answer divergence is not proof of poisoning. CDN, GeoDNS, split-horizon DNS, content filters, regional policy, or DNS changes may produce different A records. Non-public answers are review indicators, not a definitive maliciousness verdict."
   }
 }

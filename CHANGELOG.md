@@ -1,5 +1,18 @@
 # BYTE PHANTOM — Changelog
 
+## v1.13.0 — DNS INTEGRITY REVIEW + LOCAL PERFORMANCE HISTORY
+- Extended direct resolver tests from one hostname to two public names: `example.com` and `iana.org`, queried once each over UDP/53.
+- Compares normalized A-record sets between configured DNS resolvers and the Cloudflare, Google Public DNS, and Quad9 references.
+- Marks a resolver when its answer differs from a clear peer majority; reports mixed answers without a majority as inconclusive.
+- Flags private, loopback, link-local, carrier-grade NAT, documentation, benchmark, multicast, and reserved IPv4 answers for review.
+- Uses cautious verdict language: CDN/GeoDNS, split-horizon DNS, content filtering, regional policy, and changing records can produce legitimate answer differences; divergence is not proof of poisoning.
+- Ranks the fastest resolver that successfully answered both query names and adds manual IP-copy controls; system DNS configuration is never changed.
+- Adds local DNS test history with 30-day retention and a 20-report cap, plus a clear-history action.
+- Implemented matching DNS comparison output on Windows Electron and Android native Java.
+- Restored the DNS SERVER INTELLIGENCE panel in the HTML view and added responsive comparison/history cards.
+- Updated both platform builds to v1.13.0.
+
+
 ## v1.12.0 — DNS SERVER DISCOVERY & INTELLIGENCE
 - Added a user-initiated resolver intelligence panel to NETWORK RADAR.
 - Reads configured DNS server addresses from the active Windows interface or Android LinkProperties, then tests each configured IPv4 resolver directly using one DNS A query for example.com over UDP port 53.

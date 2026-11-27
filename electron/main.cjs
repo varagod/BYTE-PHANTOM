@@ -322,7 +322,7 @@ async function runConnectivityDiagnostics() {
     };
 
     const request = https.get(url, {
-      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.12.0" }
+      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.13.0" }
     }, response => {
       const statusCode = response.statusCode || 0;
       response.resume();
@@ -500,10 +500,34 @@ function queryDnsResolver(server, host = "example.com", timeoutMs = 1800) {
   });
 }
 
+function classifyDnsAnswerAddress(address) {
+  if (net.isIP(address) !== 4) return "INVALID";
+  const [a, b, c] = address.split(".").map(Number);
+  if (a === 0) return "UNSPECIFIED";
+  if (a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)) return "PRIVATE";
+  if (a === 127) return "LOOPBACK";
+  if (a === 169 && b === 254) return "LINK_LOCAL";
+  if (a === 100 && b >= 64 && b <= 127) return "CARRIER_GRADE_NAT";
+  if (a === 192 && b === 0 && c === 2) return "DOCUMENTATION";
+  if (a === 198 && (b === 18 || b === 19)) return "BENCHMARK";
+  if (a === 198 && b === 51 && c === 100) return "DOCUMENTATION";
+  if (a === 203 && b === 0 && c === 113) return "DOCUMENTATION";
+  if (a >= 224) return "MULTICAST_OR_RESERVED";
+  return null;
+}
+
+function normalizeDnsAnswerAddresses(values) {
+  return Array.from(new Set((Array.isArray(values) ? values : [])
+    .map(item => typeof item === "string" ? item : item && item.address)
+    .filter(value => typeof value === "string" && net.isIP(value) === 4)))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
 async function discoverDnsResolvers() {
   const startedAt = Date.now();
   const networkPath = await collectNetworkPathInfo();
   const configured = Array.isArray(networkPath.dnsServers) ? networkPath.dnsServers : [];
+  const queryNames = ["example.com", "iana.org"];
   const publicResolvers = [
     { server: "1.1.1.1", label: "CLOUDFLARE", source: "PUBLIC REFERENCE" },
     { server: "8.8.8.8", label: "GOOGLE PUBLIC DNS", source: "PUBLIC REFERENCE" },
@@ -540,33 +564,152 @@ async function discoverDnsResolvers() {
     }
   }
 
-  const tests = await Promise.all(Array.from(candidates.values()).map(async candidate => ({
-    ...candidate,
-    ...(await queryDnsResolver(candidate.server))
-  })));
-  const ranked = tests.sort((a, b) => {
-    if (a.ok !== b.ok) return a.ok ? -1 : 1;
-    return a.latencyMs - b.latencyMs;
+  const tested = await Promise.all(Array.from(candidates.values()).map(async candidate => {
+    const checks = await Promise.all(queryNames.map(host => queryDnsResolver(candidate.server, host)));
+    const normalizedChecks = checks.map((check, index) => {
+      const addresses = normalizeDnsAnswerAddresses(check.addresses);
+      const nonPublicAddresses = addresses
+        .map(address => ({ address, scope: classifyDnsAnswerAddress(address) }))
+        .filter(item => item.scope)
+        .map(item => item.address + " (" + item.scope + ")");
+      return {
+        host: queryNames[index],
+        ok: check.ok === true,
+        status: check.status || "UNKNOWN",
+        latencyMs: Number(check.latencyMs) || 0,
+        responseCodeName: check.responseCodeName || "",
+        addresses,
+        nonPublicAddresses,
+        comparisonStatus: "PENDING"
+      };
+    });
+    const successfulChecks = normalizedChecks.filter(check => check.ok).length;
+    const averageLatencyMs = successfulChecks
+      ? Math.round(normalizedChecks.filter(check => check.ok).reduce((sum, check) => sum + check.latencyMs, 0) / successfulChecks)
+      : 0;
+    return {
+      ...candidate,
+      ok: successfulChecks === queryNames.length,
+      status: successfulChecks === queryNames.length ? "RESPONDED" : successfulChecks ? "PARTIAL" : "NO_RESPONSE",
+      successfulChecks,
+      totalChecks: queryNames.length,
+      latencyMs: averageLatencyMs,
+      averageLatencyMs,
+      addresses: normalizedChecks[0] ? normalizedChecks[0].addresses : [],
+      checks: normalizedChecks,
+      nonPublicAddresses: Array.from(new Set(normalizedChecks.flatMap(check => check.nonPublicAddresses))),
+      integrityStatus: "PENDING"
+    };
+  }));
+
+  const domainComparisons = queryNames.map((host, checkIndex) => {
+    const responders = tested.filter(item => item.checks[checkIndex] && item.checks[checkIndex].ok);
+    const groups = new Map();
+    for (const resolver of responders) {
+      const addresses = resolver.checks[checkIndex].addresses.slice().sort();
+      const signature = addresses.join("|");
+      if (!groups.has(signature)) groups.set(signature, { addresses, servers: [] });
+      groups.get(signature).servers.push(resolver.server);
+    }
+
+    const orderedGroups = Array.from(groups.entries()).map(([signature, group]) => ({
+      signature,
+      addresses: group.addresses,
+      servers: group.servers,
+      count: group.servers.length
+    })).sort((a, b) => b.count - a.count);
+    const majorityCount = orderedGroups.length ? orderedGroups[0].count : 0;
+    const hasMajority = orderedGroups.length > 1 && majorityCount > responders.length / 2;
+
+    for (const resolver of tested) {
+      const check = resolver.checks[checkIndex];
+      if (!check.ok) {
+        check.comparisonStatus = "NOT_COMPARED";
+        continue;
+      }
+      const matchingGroup = orderedGroups.find(group => group.servers.includes(resolver.server));
+      if (orderedGroups.length === 1 && responders.length >= 2) {
+        check.comparisonStatus = "MATCHES_ALL_RESPONDERS";
+      } else if (hasMajority) {
+        check.comparisonStatus = matchingGroup && matchingGroup.count === majorityCount
+          ? "MATCHES_PEER_MAJORITY"
+          : "DIFFERS_FROM_PEER_MAJORITY";
+      } else if (orderedGroups.length > 1) {
+        check.comparisonStatus = "INCONCLUSIVE_DIVERGENCE";
+      } else {
+        check.comparisonStatus = "NOT_ENOUGH_PEERS";
+      }
+    }
+
+    let status = "INSUFFICIENT_DATA";
+    if (responders.length >= 2 && orderedGroups.length === 1) status = "CONSISTENT";
+    else if (hasMajority) status = "DIVERGENCE_REVIEW";
+    else if (orderedGroups.length > 1) status = "INCONCLUSIVE_DIVERGENCE";
+
+    return {
+      host,
+      responderCount: responders.length,
+      distinctAnswerGroups: orderedGroups.length,
+      status,
+      groups: orderedGroups.map(({ addresses, servers, count }) => ({ addresses, servers, count })),
+      note: orderedGroups.length > 1
+        ? "Different A-record sets were observed. CDN, GeoDNS, split-horizon DNS, filtering, or a changing answer can explain differences; this is not proof of poisoning."
+        : responders.length >= 2
+          ? "All responding resolvers returned the same A-record set in this snapshot."
+          : "Fewer than two resolvers returned a comparable A-record set."
+    };
   });
-  const successful = ranked.filter(item => item.ok);
-  const best = successful.length ? successful[0] : null;
+
+  for (const resolver of tested) {
+    const flags = [];
+    if (resolver.nonPublicAddresses.length) flags.push("NON_PUBLIC_ANSWER_REVIEW");
+    if (resolver.checks.some(check => check.comparisonStatus === "DIFFERS_FROM_PEER_MAJORITY")) {
+      flags.push("ANSWER_DIVERGENCE_REVIEW");
+    }
+    if (resolver.checks.some(check => check.comparisonStatus === "INCONCLUSIVE_DIVERGENCE")) {
+      flags.push("INCONCLUSIVE_DIVERGENCE");
+    }
+    resolver.flags = flags;
+    resolver.integrityStatus = flags.includes("NON_PUBLIC_ANSWER_REVIEW") || flags.includes("ANSWER_DIVERGENCE_REVIEW")
+      ? "REVIEW"
+      : flags.includes("INCONCLUSIVE_DIVERGENCE") ? "INCONCLUSIVE" : "NO_DIVERGENCE_OBSERVED";
+  }
+
+  tested.sort((a, b) => {
+    if (a.successfulChecks !== b.successfulChecks) return b.successfulChecks - a.successfulChecks;
+    return a.averageLatencyMs - b.averageLatencyMs;
+  });
+  const eligible = tested.filter(item => item.successfulChecks === queryNames.length);
+  const best = eligible[0] || null;
+  const nonPublicCount = tested.reduce((count, item) => count + item.nonPublicAddresses.length, 0);
+  const divergenceReviewCount = domainComparisons.filter(item => item.status === "DIVERGENCE_REVIEW").length;
+  const inconclusiveCount = domainComparisons.filter(item => item.status === "INCONCLUSIVE_DIVERGENCE").length;
+  let integritySummary = "INSUFFICIENT RESPONDERS FOR COMPARISON";
+  if (nonPublicCount) integritySummary = "NON-PUBLIC DNS ANSWER — REVIEW";
+  else if (divergenceReviewCount) integritySummary = "DNS ANSWER DIVERGENCE — REVIEW";
+  else if (inconclusiveCount) integritySummary = "MIXED DNS ANSWERS — INCONCLUSIVE";
+  else if (domainComparisons.every(item => item.status === "CONSISTENT")) integritySummary = "RESPONDERS CONSISTENT";
 
   return {
     supported: true,
     platform: "WINDOWS",
     collectedAt: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
-    queryName: "example.com",
+    queryNames,
     queryType: "A",
     transport: "DNS OVER UDP / PORT 53",
     configuredDnsServers: configured,
-    testedCount: ranked.length,
-    respondingCount: successful.length,
-    bestResolver: best ? { server: best.server, label: best.label, latencyMs: best.latencyMs } : null,
-    servers: ranked,
+    testedCount: tested.length,
+    respondingCount: tested.filter(item => item.successfulChecks > 0).length,
+    completeRespondingCount: eligible.length,
+    bestResolver: best ? { server: best.server, label: best.label, latencyMs: best.averageLatencyMs } : null,
+    integritySummary,
+    integrityNote: "This is a two-name, one-query-per-name snapshot. Non-public answers and peer divergence are review indicators, not proof of malicious DNS. CDNs, GeoDNS, split-horizon policies, content filters, or DNS changes can legitimately produce different A records.",
+    domainComparisons,
+    servers: tested,
     skipped,
     systemChangesMade: false,
-    limitations: "The active system DNS list and three fixed public IPv4 resolver references are tested with one DNS A query each. IPv6 DNS entries are listed as skipped. This is not a scan of all devices or all port-53 hosts on the LAN."
+    limitations: "The active system DNS list and three fixed public IPv4 resolver references are queried directly for example.com and iana.org over UDP/53. IPv6 DNS entries are listed as skipped. This is not a scan of all devices or all port-53 hosts on the LAN."
   };
 }
 

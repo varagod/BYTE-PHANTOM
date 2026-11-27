@@ -56,6 +56,9 @@
   const NETWORK_RADAR_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
   const NETWORK_RADAR_MAX_DEVICES = 120;
   const NETWORK_RADAR_MAX_EVENTS = 160;
+  const DNS_RESOLVER_HISTORY_KEY = "bytePhantomDnsResolverHistory.v1";
+  const DNS_RESOLVER_HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+  const DNS_RESOLVER_HISTORY_MAX = 20;
   let operationCount = 0;
   let activity = [];
   const audioState = {
@@ -631,7 +634,7 @@
   function buildNetworkRadarJsonReport() {
     return {
       application:"BYTE PHANTOM",
-      version:"1.12.0",
+      version:"1.13.0",
       generatedAt:new Date().toISOString(),
       privacy:"Generated locally. This report is copied only after the user requests it; BYTE PHANTOM does not upload this journal.",
       retentionDays:30,
@@ -982,45 +985,144 @@
     }
   }
 
+  function readDnsResolverHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(DNS_RESOLVER_HISTORY_KEY) || "[]");
+      if (!Array.isArray(parsed)) return [];
+      const cutoff = Date.now() - DNS_RESOLVER_HISTORY_RETENTION_MS;
+      return parsed.filter(item => item && Date.parse(item.collectedAt) >= cutoff)
+        .slice(0, DNS_RESOLVER_HISTORY_MAX);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function saveDnsResolverHistory(result) {
+    const snapshot = {
+      collectedAt: result.collectedAt || new Date().toISOString(),
+      platform: result.platform || "UNKNOWN",
+      testedCount: Number(result.testedCount) || 0,
+      respondingCount: Number(result.respondingCount) || 0,
+      completeRespondingCount: Number(result.completeRespondingCount) || 0,
+      integritySummary: result.integritySummary || "NOT ANALYZED",
+      bestResolver: result.bestResolver || null,
+      reviewCount: (Array.isArray(result.servers) ? result.servers : [])
+        .filter(item => item.integrityStatus === "REVIEW").length,
+      nonPublicCount: (Array.isArray(result.servers) ? result.servers : [])
+        .reduce((count, item) => count + (Array.isArray(item.nonPublicAddresses) ? item.nonPublicAddresses.length : 0), 0)
+    };
+    const history = readDnsResolverHistory();
+    history.unshift(snapshot);
+    const trimmed = history
+      .filter(item => Date.parse(item.collectedAt) >= Date.now() - DNS_RESOLVER_HISTORY_RETENTION_MS)
+      .slice(0, DNS_RESOLVER_HISTORY_MAX);
+    try {
+      localStorage.setItem(DNS_RESOLVER_HISTORY_KEY, JSON.stringify(trimmed));
+    } catch (error) {
+      // The current report remains usable even when local storage is full or blocked.
+    }
+    renderDnsResolverHistory();
+  }
+
+  function renderDnsResolverHistory() {
+    const host = $("dnsResolverHistory");
+    if (!host) return;
+    host.replaceChildren();
+    const history = readDnsResolverHistory();
+    if (!history.length) {
+      const empty = document.createElement("small");
+      empty.className = "network-diagnostics-note";
+      empty.textContent = "NO DNS TEST HISTORY SAVED ON THIS DEVICE";
+      host.appendChild(empty);
+      return;
+    }
+
+    history.slice(0, 8).forEach(item => {
+      const row = document.createElement("article");
+      row.className = "network-dns-history-row";
+      const date = document.createElement("time");
+      const timeValue = Date.parse(item.collectedAt);
+      date.textContent = Number.isFinite(timeValue) ? new Date(timeValue).toLocaleString() : "UNKNOWN DATE";
+      const detail = document.createElement("div");
+      detail.className = "network-dns-history-detail";
+      const title = document.createElement("b");
+      title.textContent = String(item.integritySummary || "DNS TEST");
+      const meta = document.createElement("small");
+      const best = item.bestResolver
+        ? " · FASTEST " + item.bestResolver.server + " / " + item.bestResolver.latencyMs + " ms"
+        : " · NO COMPLETE RECOMMENDATION";
+      meta.textContent = (Number(item.respondingCount) || 0) + " / " + (Number(item.testedCount) || 0) +
+        " RESPONDED · " + (Number(item.completeRespondingCount) || 0) + " COMPLETE · " +
+        (item.platform || "UNKNOWN") + best;
+      detail.append(title, meta);
+      row.append(date, detail);
+      host.appendChild(row);
+    });
+  }
+
   async function runDnsResolverDiscovery() {
     const button = $("runDnsDiscovery");
     const host = $("dnsResolverResults");
     const bridge = getNetworkRadarBridge();
 
     if (!bridge || typeof bridge.discoverDns !== "function") {
-      host.textContent = "DNS RESOLVER DISCOVERY IS NOT AVAILABLE IN THIS NATIVE BUILD.";
+      host.textContent = "DNS RESOLVER INTELLIGENCE IS NOT AVAILABLE IN THIS NATIVE BUILD.";
       return;
     }
 
     button.disabled = true;
-    button.textContent = "TESTING DNS RESOLVERS...";
-    host.textContent = "Reading configured DNS servers and sending one DNS A query for example.com to each configured IPv4 resolver and three fixed public references.";
+    button.textContent = "COMPARING DNS ANSWERS...";
+    host.textContent = "Querying example.com and iana.org through each configured IPv4 resolver and public reference. This takes two direct UDP/53 queries per resolver.";
     try {
       const result = await bridge.discoverDns();
-      if (!result || result.supported !== true) throw new Error("DNS resolver discovery is not supported by this build.");
+      if (!result || result.supported !== true) throw new Error("DNS resolver intelligence is not supported by this build.");
 
       try {
         localStorage.setItem("byte-phantom-dns-resolver-last", JSON.stringify(result));
       } catch (storageError) {
         // The on-screen report remains available when local storage is unavailable.
       }
+      saveDnsResolverHistory(result);
 
       host.replaceChildren();
       const summary = document.createElement("b");
       summary.className = "network-diagnostics-summary";
+      summary.dataset.state = String(result.integritySummary || "").includes("REVIEW") ? "warning" : "ok";
       const responding = Number(result.respondingCount) || 0;
       const tested = Number(result.testedCount) || 0;
+      const complete = Number(result.completeRespondingCount) || 0;
       const best = result.bestResolver;
-      summary.textContent = responding
-        ? responding + " / " + tested + " DNS RESOLVERS RESPONDED" + (best ? " · FASTEST " + best.server + " / " + best.latencyMs + " ms" : "")
-        : "NO TESTED DNS RESOLVER RETURNED AN A RECORD";
+      summary.textContent = (result.integritySummary || "DNS COMPARISON COMPLETE") + " · " +
+        responding + " / " + tested + " RESPONDED · " + complete + " COMPLETE" +
+        (best ? " · FASTEST " + best.server + " / " + best.latencyMs + " ms" : "");
       host.appendChild(summary);
+
+      if (best) {
+        const recommendation = document.createElement("div");
+        recommendation.className = "network-dns-recommendation";
+        const text = document.createElement("span");
+        text.textContent = "FASTEST COMPLETE RESOLVER: " + best.label + " · " + best.server +
+          " · " + best.latencyMs + " ms average. This is a manual recommendation only; system DNS has not been changed.";
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.className = "network-dns-copy-button";
+        copy.textContent = "COPY RECOMMENDED IP";
+        copy.addEventListener("click", async () => {
+          const success = await copyNetworkRadarText(best.server);
+          copy.textContent = success ? "IP COPIED" : "COPY BLOCKED";
+          if (success) playSfx("success");
+        });
+        recommendation.append(text, copy);
+        host.appendChild(recommendation);
+      }
 
       const rows = Array.isArray(result.servers) ? result.servers : [];
       rows.forEach(item => {
         const card = document.createElement("article");
         card.className = "network-dns-resolver-card";
         card.dataset.state = item.ok === true ? "online" : "offline";
+        card.dataset.integrity = item.integrityStatus === "REVIEW" ? "review" :
+          item.integrityStatus === "INCONCLUSIVE" ? "inconclusive" : "normal";
 
         const top = document.createElement("div");
         top.className = "network-dns-resolver-top";
@@ -1033,25 +1135,66 @@
         identity.append(label, address);
 
         const status = document.createElement("strong");
-        status.textContent = item.ok === true ? "RESPONDED" : String(item.status || "NO RESPONSE").replace(/_/g, " ");
+        status.textContent = item.status === "PARTIAL" ? "PARTIAL RESPONSE" :
+          item.ok === true ? "RESPONDED" : String(item.status || "NO RESPONSE").replace(/_/g, " ");
         status.dataset.state = item.ok === true ? "ok" : "warning";
         top.append(identity, status);
 
         const meta = document.createElement("div");
         meta.className = "network-dns-resolver-meta";
         const sourceList = Array.isArray(item.sources) ? item.sources.join(" + ") : "Unknown source";
-        const latency = Number.isFinite(Number(item.latencyMs)) ? Number(item.latencyMs) + " ms" : "Latency unavailable";
-        const addresses = Array.isArray(item.addresses) ? item.addresses.join(", ") : "";
-        meta.textContent = sourceList + " · " + latency + (addresses ? " · A: " + addresses : "");
-        card.append(top, meta);
+        const latency = Number.isFinite(Number(item.averageLatencyMs || item.latencyMs))
+          ? Number(item.averageLatencyMs || item.latencyMs) + " ms average" : "Latency unavailable";
+        meta.textContent = sourceList + " · " + latency + " · " +
+          (Number(item.successfulChecks) || 0) + " / " + (Number(item.totalChecks) || 2) + " names resolved";
 
-        if (item.error) {
-          const error = document.createElement("small");
-          error.className = "network-dns-resolver-error";
-          error.textContent = item.error;
-          card.appendChild(error);
-        }
+        const checksHost = document.createElement("div");
+        checksHost.className = "network-dns-check-list";
+        (Array.isArray(item.checks) ? item.checks : []).forEach(check => {
+          const checkRow = document.createElement("div");
+          checkRow.className = "network-dns-check-row";
+          const checkName = document.createElement("b");
+          checkName.textContent = check.host || "DNS QUERY";
+          const checkStatus = document.createElement("strong");
+          checkStatus.textContent = check.comparisonStatus === "DIFFERS_FROM_PEER_MAJORITY" ? "DIVERGENT" :
+            check.comparisonStatus === "INCONCLUSIVE_DIVERGENCE" ? "MIXED" :
+            check.ok ? "ANSWERED" : String(check.status || "FAILED");
+          checkStatus.dataset.state = check.comparisonStatus === "DIFFERS_FROM_PEER_MAJORITY" ||
+            (Array.isArray(check.nonPublicAddresses) && check.nonPublicAddresses.length) ? "warning" : check.ok ? "ok" : "warning";
+          const answer = document.createElement("small");
+          answer.textContent = (Array.isArray(check.addresses) ? check.addresses.join(", ") : "") ||
+            check.error || "No A record returned";
+          checkRow.append(checkName, checkStatus, answer);
+          checksHost.appendChild(checkRow);
+        });
+
+        const cardFooter = document.createElement("div");
+        cardFooter.className = "network-dns-card-footer";
+        const flag = document.createElement("small");
+        const flagItems = Array.isArray(item.flags) ? item.flags : [];
+        flag.textContent = flagItems.length ? flagItems.join(" · ").replace(/_/g, " ") :
+          item.integrityStatus === "NO_DIVERGENCE_OBSERVED" ? "NO DIVERGENCE OBSERVED IN THIS SNAPSHOT" : String(item.integrityStatus || "NOT ANALYZED");
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.className = "network-dns-copy-button";
+        copy.textContent = "COPY IP";
+        copy.addEventListener("click", async () => {
+          const success = await copyNetworkRadarText(String(item.server || ""));
+          copy.textContent = success ? "COPIED" : "BLOCKED";
+          if (success) playSfx("success");
+        });
+        cardFooter.append(flag, copy);
+        card.append(top, meta, checksHost, cardFooter);
         host.appendChild(card);
+      });
+
+      const comparisons = Array.isArray(result.domainComparisons) ? result.domainComparisons : [];
+      comparisons.forEach(comparison => {
+        const note = document.createElement("small");
+        note.className = "network-diagnostics-note";
+        note.textContent = (comparison.host || "DOMAIN") + " · " + (comparison.status || "NOT ANALYZED") +
+          " · " + (Number(comparison.responderCount) || 0) + " responders · " + (comparison.note || "");
+        host.appendChild(note);
       });
 
       const skipped = Array.isArray(result.skipped) ? result.skipped : [];
@@ -1064,18 +1207,20 @@
 
       const note = document.createElement("small");
       note.className = "network-diagnostics-note";
-      note.textContent = (result.limitations || "One DNS A query was sent to each listed resolver.") +
-        " Resolver tests do not alter your DNS settings. A timeout can mean filtering, rate limiting, a temporary outage, or no route to that resolver.";
+      note.textContent = (result.integrityNote || "Different DNS answers may have benign causes.") +
+        " Resolver ranking is based on the fastest server that successfully answered both names. Copying an IP does not apply it to system settings.";
       host.appendChild(note);
 
-      appendDashboardLog("DNS intelligence: " + responding + " / " + tested + " resolver(s) answered.", responding ? "term-green" : "term-amber");
+      appendDashboardLog("DNS intelligence: " + responding + " / " + tested + " resolvers responded · " +
+        (result.integritySummary || "comparison complete"), responding ? "term-green" : "term-amber");
     } catch (error) {
-      host.textContent = "DNS DISCOVERY FAILED: " + (error && error.message ? error.message : String(error));
+      host.textContent = "DNS INTELLIGENCE FAILED: " + (error && error.message ? error.message : String(error));
     } finally {
       button.disabled = false;
-      button.textContent = "DISCOVER & TEST DNS SERVERS";
+      button.textContent = "RUN DNS COMPARISON";
     }
   }
+
 
   function getNetworkRadarBridge() {
     const desktop = window.bytePhantomDesktop;
@@ -1339,6 +1484,12 @@
   $("runOperation").addEventListener("click", runOperation);
   $("runNetworkDiagnostics").addEventListener("click", runNetworkConnectivityDiagnostics);
   $("runDnsDiscovery").addEventListener("click", runDnsResolverDiscovery);
+  $("clearDnsResolverHistory").addEventListener("click", function () {
+    try { localStorage.removeItem(DNS_RESOLVER_HISTORY_KEY); } catch (error) { /* Ignore blocked storage. */ }
+    renderDnsResolverHistory();
+    appendDashboardLog("DNS resolver history cleared from this device.", "term-amber");
+  });
+  renderDnsResolverHistory();
   document.querySelectorAll("[data-operation]").forEach(function (button) {
     button.addEventListener("click", function () { openOperation(button.dataset.operation); });
   });
