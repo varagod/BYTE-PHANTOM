@@ -176,6 +176,126 @@ function buildNetworkRadarPlan(localInterfaces) {
     targetCount:targets.size,maxTargets
   };
 }
+async function collectNetworkPathInfo() {
+  if(process.platform!=="win32") return {source:"WINDOWS ROUTE SNAPSHOT ONLY"};
+  try {
+    const script="$ErrorActionPreference='Stop'; $rows=@(Get-NetIPConfiguration | Where-Object {$_.NetAdapter.Status -eq 'Up'} | ForEach-Object { [pscustomobject]@{ interfaceName=$_.InterfaceAlias; gateway=@($_.IPv4DefaultGateway | ForEach-Object {$_.NextHop}); dns=@($_.DNSServer.ServerAddresses | Where-Object {$_ -match '^[0-9a-fA-F:.]+
+  if(process.platform!=="win32") return {supported:false,reason:"Active local IPv4 discovery and Windows neighbor monitoring are currently available in the Windows desktop build only."};
+  const startedAt=Date.now();
+  const activeSweep=options.activeSweep===true;
+  const localInterfaces=Object.entries(os.networkInterfaces())
+    .flatMap(([name,addresses])=>(addresses||[])
+      .filter(e=>!e.internal&&(e.family==="IPv4"||e.family===4)&&isPrivateIPv4(e.address))
+      .map(e=>({name,address:e.address,netmask:e.netmask,prefix:getNetworkPrefix(e.netmask),cidr:e.address+"/"+getNetworkPrefix(e.netmask)})));
+  const plan=buildNetworkRadarPlan(localInterfaces);
+  const payload=Buffer.from(JSON.stringify({activeSweep,candidateIps:plan.targets.map(x=>x.ipAddress)}),"utf8").toString("base64");
+  const powershellScript=[
+    "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
+    "$ErrorActionPreference = 'Stop'",
+    "$inputData = ConvertFrom-Json -InputObject ([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('"+payload+"')))",
+    "$candidateSet = @{}",
+    "foreach ($ip in @($inputData.candidateIps)) { $candidateSet[[string]$ip] = $true }",
+    "$responsiveSet = @{}",
+    "if ([bool]$inputData.activeSweep) {",
+    "  $ips = @($inputData.candidateIps)",
+    "  for ($offset = 0; $offset -lt $ips.Count; $offset += 128) {",
+    "    $end = [Math]::Min($offset + 127, $ips.Count - 1)",
+    "    $batch = @()",
+    "    for ($i = $offset; $i -le $end; $i++) {",
+    "      $ping = [System.Net.NetworkInformation.Ping]::new()",
+    "      try { $task = $ping.SendPingAsync([string]$ips[$i], 650); $batch += ,[pscustomobject]@{ IP = [string]$ips[$i]; Ping = $ping; Task = $task } }",
+    "      catch { $ping.Dispose() }",
+    "    }",
+    "    $tasks = @($batch | ForEach-Object { $_.Task })",
+    "    if ($tasks.Count -gt 0) { try { [void][System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]$tasks, 1400) } catch { } }",
+    "    foreach ($entry in $batch) {",
+    "      try { if ($entry.Task.IsCompleted -and $entry.Task.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion -and $entry.Task.Result.Status -eq [System.Net.NetworkInformation.IPStatus]::Success) { $responsiveSet[$entry.IP] = $true } } catch { }",
+    "      finally { $entry.Ping.Dispose() }",
+    "    }",
+    "  }",
+    "}",
+    "$rows = @(Get-NetNeighbor -AddressFamily IPv4 -ErrorAction Stop | Where-Object {",
+    "  $candidateSet.ContainsKey([string]$_.IPAddress) -and",
+    "  $_.State -in @('Reachable','Stale','Delay','Probe','Permanent','Unreachable') -and",
+    "  $_.LinkLayerAddress -and $_.LinkLayerAddress -notmatch '^(00(-00){5}|00(:00){5})$'",
+    "} | Select-Object @{Name='ipAddress';Expression={$_.IPAddress}},@{Name='macAddress';Expression={$_.LinkLayerAddress}},@{Name='interfaceName';Expression={$_.InterfaceAlias}},@{Name='state';Expression={$_.State}},@{Name='responding';Expression={$responsiveSet.ContainsKey([string]$_.IPAddress)}})",
+    "$output = [ordered]@{ neighbors = @($rows); responsiveIps = @($responsiveSet.Keys) }",
+    "ConvertTo-Json -InputObject $output -Depth 4 -Compress"
+  ].join("\n");
+  const {stdout}=await execFileAsync("powershell.exe",
+    ["-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-Command",powershellScript],
+    {windowsHide:true,timeout:25000,maxBuffer:1024*1024,encoding:"utf8"});
+  const raw=String(stdout||"").trim();
+  const parsed=raw?JSON.parse(raw):{};
+  const neighbors=Array.isArray(parsed.neighbors)?parsed.neighbors:(parsed.neighbors?[parsed.neighbors]:[]);
+  const responsiveSet=new Set(Array.isArray(parsed.responsiveIps)?parsed.responsiveIps:(parsed.responsiveIps?[parsed.responsiveIps]:[]));
+  const own=new Set(localInterfaces.map(x=>x.address)),seen=new Set();
+  const devices=neighbors.filter(x=>x&&isPrivateIPv4(x.ipAddress)&&!own.has(x.ipAddress))
+    .map(x=>({
+      ipAddress:String(x.ipAddress),macAddress:String(x.macAddress||"UNAVAILABLE").toUpperCase(),
+      interfaceName:String(x.interfaceName||"UNKNOWN INTERFACE"),state:String(x.state||"UNKNOWN").toUpperCase(),
+      responding:responsiveSet.has(String(x.ipAddress))||x.responding===true
+    }))
+    .filter(x=>{const key=x.interfaceName+"|"+x.ipAddress;if(seen.has(key))return false;seen.add(key);return true;})
+    .sort((a,b)=>a.ipAddress.localeCompare(b.ipAddress,undefined,{numeric:true})).slice(0,1022);
+  return {
+    const networkPath=await collectNetworkPathInfo();
+    supported:true,collectedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,
+    source:"ACTIVE IPV4 DISCOVERY + WINDOWS NEIGHBOR TABLE",
+    discoveryMode:activeSweep?"ACTIVE / ICMP + ARP":"LIVE WATCH / WINDOWS NEIGHBOR TABLE",
+    activeSweep,interfaces:localInterfaces,scopes:plan.scopes,skippedScopes:plan.skipped,networkPath,
+    targetCount:plan.targetCount,hostsProbed:activeSweep?plan.targetCount:0,
+    devices,deviceCount:devices.length,respondingCount:devices.filter(x=>x.responding).length,
+    networkProbesPerformed:activeSweep,
+    probeType:activeSweep?"ONE ICMP ECHO REQUEST PER PRIVATE IPV4 HOST":"PASSIVE NEIGHBOR-TABLE READ",
+    systemChangesMade:false,
+    limitations:"Discovery is limited to private IPv4 subnets directly attached to this Windows PC (/22 to /30, up to 1,022 target addresses per scan). ICMP-blocked devices may still appear when ARP resolves. Sleeping/offline devices, client isolation, separate VLANs/subnets, and non-responsive peers can remain invisible. This is not a guaranteed router client list; that requires a supported router-management API."
+  };
+}
+
+ipcMain.handle("byte-phantom:network-radar", async (event, options={}) => {
+  const win=BrowserWindow.fromWebContents(event.sender);
+  const senderUrl=event.senderFrame&&event.senderFrame.url;
+  if(!win||typeof senderUrl!=="string"||!senderUrl.startsWith("file://")) throw new Error("Network radar is only available to the local BYTE PHANTOM desktop window.");
+  return collectNetworkRadar({activeSweep:!!(options&&options.activeSweep===true)});
+});
+
+
+ipcMain.handle("byte-phantom:system-snapshot", async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const senderUrl = event.senderFrame && event.senderFrame.url;
+  if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) {
+    throw new Error("System inventory is only available to the local BYTE PHANTOM desktop window.");
+  }
+  return collectSystemSnapshot();
+});
+
+ipcMain.handle("byte-phantom:window-state", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  return {
+    fullscreen: !!win && win.isFullScreen(),
+    maximized: !!win && win.isMaximized(),
+    resizable: !!win && win.isResizable()
+  };
+});
+
+app.whenReady().then(() => {
+  createWindow();
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});
+}); addresses=@($_.IPv4Address | ForEach-Object {$_.IPAddress}) } }); $default=Get-NetRoute -AddressFamily IPv4 -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1; [pscustomobject]@{ rows=$rows; gateway=if($default){$default.NextHop}else{$null}; interfaceName=if($default){$default.InterfaceAlias}else{$null}; defaultRoute=!!$default } | ConvertTo-Json -Depth 5 -Compress";
+    const {stdout}=await execFileAsync("powershell.exe",["-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-Command",script],{windowsHide:true,timeout:8000,maxBuffer:256*1024,encoding:"utf8"});
+    const data=JSON.parse(String(stdout||"{}").trim());const rows=Array.isArray(data.rows)?data.rows:(data.rows?[data.rows]:[]);const active=rows.find(row=>row.interfaceName===data.interfaceName)||rows[0]||{};const arr=v=>Array.isArray(v)?v:(v?[v]:[]);
+    return {source:"WINDOWS GET-NETIPCONFIGURATION + DEFAULT ROUTE",gateway:String(data.gateway||arr(active.gateway)[0]||"NOT FOUND"),dnsServers:arr(active.dns),transport:"WINDOWS NETWORK ADAPTER",interfaceName:String(data.interfaceName||active.interfaceName||"UNKNOWN"),addresses:arr(active.addresses),defaultRoute:data.defaultRoute===true};
+  }catch(error){return {source:"WINDOWS ROUTE SNAPSHOT UNAVAILABLE",gateway:"UNAVAILABLE",dnsServers:[],transport:"UNKNOWN",interfaceName:"UNKNOWN",addresses:[],defaultRoute:null,error:String(error.message||error)};}
+}
+
 async function collectNetworkRadar(options={}) {
   if(process.platform!=="win32") return {supported:false,reason:"Active local IPv4 discovery and Windows neighbor monitoring are currently available in the Windows desktop build only."};
   const startedAt=Date.now();
