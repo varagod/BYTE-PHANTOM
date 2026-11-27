@@ -217,3 +217,16 @@
 /* v1.11.0 diagnostics: allow longer route, gateway and certificate details to wrap safely. */
 .network-diagnostics-summary{display:block;line-height:1.55;overflow-wrap:anywhere}
 .network-diagnostics-note{display:block;line-height:1.6;overflow-wrap:anywhere}
+
+/* v1.12.0 — direct DNS resolver intelligence */
+.network-dns-resolver-list{display:grid;gap:8px;margin-top:12px;padding:12px;border:1px solid rgba(68,232,255,.13);border-radius:8px;background:rgba(4,12,19,.58);color:#9aabb7;font-size:11px}
+.network-dns-resolver-card{min-width:0;padding:10px;border:1px solid rgba(130,160,180,.14);border-radius:7px;background:rgba(6,16,24,.7)}
+.network-dns-resolver-card[data-state="online"]{border-color:rgba(99,255,156,.22)}
+.network-dns-resolver-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.network-dns-resolver-identity{display:grid;gap:3px;min-width:0}
+.network-dns-resolver-identity b{color:#d9e8ef;font-size:10px;letter-spacing:.7px}
+.network-dns-resolver-identity span{color:var(--bp-cyan);font-size:12px;overflow-wrap:anywhere}
+.network-dns-resolver-top strong{flex:none;color:#ffb86b;font-size:9px;letter-spacing:.7px}
+.network-dns-resolver-top strong[data-state="ok"]{color:#63ff9c}
+.network-dns-resolver-meta{margin-top:7px;color:#8194a1;font-size:10px;line-height:1.55;overflow-wrap:anywhere}
+.network-dns-resolver-error{display:block;margin-top:5px;color:#ffb86b;font-size:10px;overflow-wrap:anywhere}

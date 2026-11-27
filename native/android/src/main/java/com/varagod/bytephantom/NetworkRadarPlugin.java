@@ -16,6 +16,9 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.InputStreamReader;
@@ -23,6 +26,9 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.URL;
 import java.net.HttpURLConnection;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.SocketTimeoutException;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
@@ -36,12 +42,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.json.JSONArray;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -62,6 +70,18 @@ public class NetworkRadarPlugin extends Plugin {
                 String message = exception.getMessage();
                 call.reject("Android Network Radar failed: " +
                     (message == null ? exception.getClass().getSimpleName() : message));
+            }
+        });
+    }
+
+    @PluginMethod
+    public void discoverDnsResolvers(PluginCall call) {
+        scanExecutor.execute(() -> {
+            try {
+                call.resolve(runDnsResolverDiscovery());
+            } catch (Exception exception) {
+                call.reject("DNS resolver discovery failed: " +
+                    (exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage()));
             }
         });
     }
@@ -167,6 +187,276 @@ public class NetworkRadarPlugin extends Plugin {
         catch(Exception error){result.put("url",endpoint);result.put("statusCode",0);result.put("ok",false);result.put("error",error.getClass().getSimpleName()+": "+String.valueOf(error.getMessage()));}
         finally{if(connection!=null)connection.disconnect();}
         result.put("latencyMs",Math.max(0L,System.currentTimeMillis()-started));return result;
+    }
+
+    private JSObject runDnsResolverDiscovery() {
+        long startedAt = System.currentTimeMillis();
+        JSObject networkPath = collectNetworkPathInfo();
+        JSONArray configuredJson = networkPath.optJSONArray("dnsServers");
+        List<String> configured = new ArrayList<>();
+        if (configuredJson != null) {
+            for (int i = 0; i < configuredJson.length(); i++) {
+                String value = configuredJson.optString(i, "").trim();
+                if (!value.isEmpty()) configured.add(value);
+            }
+        }
+
+        LinkedHashMap<String, DnsCandidate> candidates = new LinkedHashMap<>();
+        JSArray skipped = new JSArray();
+        for (String server : configured) {
+            if (!isIPv4Literal(server)) {
+                JSObject skip = new JSObject();
+                skip.put("server", server);
+                skip.put("reason", "Only IPv4 DNS servers are queried by this release; IPv6 entries are listed as skipped.");
+                skipped.put(skip);
+                continue;
+            }
+            DnsCandidate existing = candidates.get(server);
+            if (existing == null) {
+                String known = knownResolverLabel(server);
+                existing = new DnsCandidate(server, known == null ? "CONFIGURED DNS" : known);
+                existing.sources.add("SYSTEM CONFIGURATION");
+                candidates.put(server, existing);
+            } else if (!existing.sources.contains("SYSTEM CONFIGURATION")) {
+                existing.sources.add("SYSTEM CONFIGURATION");
+            }
+        }
+
+        String[][] references = new String[][] {
+            {"1.1.1.1", "CLOUDFLARE"},
+            {"8.8.8.8", "GOOGLE PUBLIC DNS"},
+            {"9.9.9.9", "QUAD9"}
+        };
+        for (String[] item : references) {
+            DnsCandidate existing = candidates.get(item[0]);
+            if (existing == null) {
+                existing = new DnsCandidate(item[0], item[1]);
+                existing.sources.add("PUBLIC REFERENCE");
+                candidates.put(item[0], existing);
+            } else if (!existing.sources.contains("PUBLIC REFERENCE")) {
+                existing.sources.add("PUBLIC REFERENCE");
+            }
+        }
+
+        JSArray results = new JSArray();
+        int respondingCount = 0;
+        DnsCandidate best = null;
+        long bestLatency = Long.MAX_VALUE;
+        List<DnsCandidate> ordered = new ArrayList<>(candidates.values());
+        for (DnsCandidate candidate : ordered) {
+            JSObject test = queryDnsResolver(candidate.server, "example.com");
+            boolean ok = test.optBoolean("ok", false);
+            long latency = test.optLong("latencyMs", Long.MAX_VALUE);
+            if (ok) {
+                respondingCount++;
+                if (latency < bestLatency) {
+                    bestLatency = latency;
+                    best = candidate;
+                }
+            }
+
+            JSObject row = new JSObject();
+            row.put("server", candidate.server);
+            row.put("label", candidate.label);
+            row.put("sources", new JSONArray(candidate.sources));
+            row.put("ok", ok);
+            row.put("status", test.optString("status", "UNKNOWN"));
+            row.put("latencyMs", test.optLong("latencyMs", 0L));
+            row.put("responseCode", test.optInt("responseCode", -1));
+            row.put("responseCodeName", test.optString("responseCodeName", ""));
+            row.put("answerCount", test.optInt("answerCount", 0));
+            row.put("addresses", test.optJSONArray("addresses") == null ? new JSArray() : test.optJSONArray("addresses"));
+            if (test.has("error")) row.put("error", test.optString("error"));
+            results.put(row);
+        }
+
+        List<JSObject> sorted = new ArrayList<>();
+        for (int i = 0; i < results.length(); i++) {
+            JSObject item = results.optJSONObject(i) instanceof JSObject
+                ? (JSObject) results.optJSONObject(i) : new JSObject();
+            sorted.add(item);
+        }
+        Collections.sort(sorted, (a, b) -> {
+            boolean aOk = a.optBoolean("ok", false);
+            boolean bOk = b.optBoolean("ok", false);
+            if (aOk != bOk) return aOk ? -1 : 1;
+            return Long.compare(a.optLong("latencyMs", Long.MAX_VALUE), b.optLong("latencyMs", Long.MAX_VALUE));
+        });
+        JSArray ranked = new JSArray();
+        for (JSObject item : sorted) ranked.put(item);
+
+        JSObject result = new JSObject();
+        result.put("supported", true);
+        result.put("platform", "ANDROID");
+        result.put("collectedAt", java.time.Instant.now().toString());
+        result.put("durationMs", Math.max(0L, System.currentTimeMillis() - startedAt));
+        result.put("queryName", "example.com");
+        result.put("queryType", "A");
+        result.put("transport", "DNS OVER UDP / PORT 53");
+        result.put("configuredDnsServers", new JSONArray(configured));
+        result.put("testedCount", ranked.length());
+        result.put("respondingCount", respondingCount);
+        if (best != null) {
+            JSObject bestJson = new JSObject();
+            bestJson.put("server", best.server);
+            bestJson.put("label", best.label);
+            bestJson.put("latencyMs", bestLatency);
+            result.put("bestResolver", bestJson);
+        }
+        result.put("servers", ranked);
+        result.put("skipped", skipped);
+        result.put("systemChangesMade", false);
+        result.put("limitations",
+            "The active system DNS list and three fixed public IPv4 resolver references are tested with one DNS A query each. " +
+            "IPv6 DNS entries are listed as skipped. This is not a scan of all devices or all port-53 hosts on the LAN.");
+        return result;
+    }
+
+    private JSObject queryDnsResolver(String server, String host) {
+        long started = System.currentTimeMillis();
+        JSObject result = new JSObject();
+        DatagramSocket socket = null;
+        try {
+            int id = new Random().nextInt(65536);
+            byte[] query = buildDnsAQuery(host, id);
+            socket = new DatagramSocket();
+            socket.setSoTimeout(1800);
+            InetAddress destination = InetAddress.getByName(server);
+            socket.send(new DatagramPacket(query, query.length, destination, 53));
+
+            byte[] buffer = new byte[1500];
+            DatagramPacket response = new DatagramPacket(buffer, buffer.length);
+            socket.receive(response);
+            JSObject parsed = parseDnsAResponse(response.getData(), response.getLength(), id);
+            result.put("ok", parsed.optBoolean("ok", false));
+            result.put("status", parsed.optString("status", "UNKNOWN"));
+            result.put("responseCode", parsed.optInt("responseCode", -1));
+            result.put("responseCodeName", parsed.optString("responseCodeName", ""));
+            result.put("answerCount", parsed.optInt("answerCount", 0));
+            result.put("addresses", parsed.optJSONArray("addresses") == null ? new JSArray() : parsed.optJSONArray("addresses"));
+        } catch (SocketTimeoutException timeout) {
+            result.put("ok", false);
+            result.put("status", "TIMEOUT");
+            result.put("addresses", new JSArray());
+            result.put("error", "No DNS response within 1800 ms.");
+        } catch (Exception error) {
+            result.put("ok", false);
+            result.put("status", "QUERY_ERROR");
+            result.put("addresses", new JSArray());
+            result.put("error", error.getClass().getSimpleName() + ": " + String.valueOf(error.getMessage()));
+        } finally {
+            if (socket != null) socket.close();
+        }
+        result.put("latencyMs", Math.max(0L, System.currentTimeMillis() - started));
+        return result;
+    }
+
+    private byte[] buildDnsAQuery(String host, int id) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.writeShort(id);
+        out.writeShort(0x0100);
+        out.writeShort(1);
+        out.writeShort(0);
+        out.writeShort(0);
+        out.writeShort(0);
+        for (String label : host.split("\\.")) {
+            byte[] encoded = label.getBytes(StandardCharsets.US_ASCII);
+            if (encoded.length == 0 || encoded.length > 63) throw new IOException("Invalid DNS label.");
+            out.writeByte(encoded.length);
+            out.write(encoded);
+        }
+        out.writeByte(0);
+        out.writeShort(1);
+        out.writeShort(1);
+        out.flush();
+        return bytes.toByteArray();
+    }
+
+    private JSObject parseDnsAResponse(byte[] packet, int length, int expectedId) throws IOException {
+        if (length < 12 || readDnsU16(packet, 0) != expectedId) throw new IOException("Invalid or mismatched DNS response.");
+        int flags = readDnsU16(packet, 2);
+        if ((flags & 0x8000) == 0) throw new IOException("DNS packet is not a response.");
+        int responseCode = flags & 0x000f;
+        int questionCount = readDnsU16(packet, 4);
+        int answerCount = readDnsU16(packet, 6);
+        int offset = 12;
+
+        for (int i = 0; i < questionCount; i++) {
+            offset = skipDnsName(packet, length, offset);
+            if (offset < 0 || offset + 4 > length) throw new IOException("Malformed DNS question section.");
+            offset += 4;
+        }
+
+        JSArray addresses = new JSArray();
+        int found = 0;
+        for (int i = 0; i < answerCount; i++) {
+            offset = skipDnsName(packet, length, offset);
+            if (offset < 0 || offset + 10 > length) throw new IOException("Malformed DNS answer section.");
+            int type = readDnsU16(packet, offset);
+            int klass = readDnsU16(packet, offset + 2);
+            int dataLength = readDnsU16(packet, offset + 8);
+            offset += 10;
+            if (offset + dataLength > length) throw new IOException("Truncated DNS answer data.");
+            if (type == 1 && klass == 1 && dataLength == 4) {
+                String address = (packet[offset] & 255) + "." + (packet[offset + 1] & 255) + "." +
+                    (packet[offset + 2] & 255) + "." + (packet[offset + 3] & 255);
+                addresses.put(address);
+                found++;
+            }
+            offset += dataLength;
+        }
+
+        String[] codes = new String[] {"NOERROR", "FORMERR", "SERVFAIL", "NXDOMAIN", "NOTIMP", "REFUSED"};
+        String codeName = responseCode >= 0 && responseCode < codes.length ? codes[responseCode] : "RCODE_" + responseCode;
+        JSObject result = new JSObject();
+        result.put("responseCode", responseCode);
+        result.put("responseCodeName", codeName);
+        result.put("answerCount", answerCount);
+        result.put("addresses", addresses);
+        result.put("ok", responseCode == 0 && found > 0);
+        result.put("status", responseCode == 0 ? (found > 0 ? "RESPONDED" : "NO_A_RECORD") : codeName);
+        return result;
+    }
+
+    private static int readDnsU16(byte[] packet, int offset) throws IOException {
+        if (offset < 0 || offset + 2 > packet.length) throw new IOException("Truncated DNS packet.");
+        return ((packet[offset] & 255) << 8) | (packet[offset + 1] & 255);
+    }
+
+    private static int skipDnsName(byte[] packet, int length, int start) {
+        int offset = start;
+        while (offset < length) {
+            int labelLength = packet[offset] & 255;
+            if ((labelLength & 0xc0) == 0xc0) return offset + 2 <= length ? offset + 2 : -1;
+            if ((labelLength & 0xc0) != 0) return -1;
+            offset++;
+            if (labelLength == 0) return offset;
+            if (offset + labelLength > length) return -1;
+            offset += labelLength;
+        }
+        return -1;
+    }
+
+    private static boolean isIPv4Literal(String value) {
+        if (value == null || !value.matches("\\d{1,3}(\\.\\d{1,3}){3}")) return false;
+        String[] parts = value.split("\\.");
+        for (String part : parts) {
+            try {
+                int octet = Integer.parseInt(part);
+                if (octet < 0 || octet > 255) return false;
+            } catch (NumberFormatException ignored) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String knownResolverLabel(String server) {
+        if ("1.1.1.1".equals(server)) return "CLOUDFLARE";
+        if ("8.8.8.8".equals(server)) return "GOOGLE PUBLIC DNS";
+        if ("9.9.9.9".equals(server)) return "QUAD9";
+        return null;
     }
 
     private JSObject scanLocalNetwork(boolean activeSweep) throws Exception {
@@ -486,6 +776,16 @@ public class NetworkRadarPlugin extends Plugin {
         return value.startsWith("lo") || value.startsWith("tun") || value.startsWith("wg") ||
             value.startsWith("ppp") || value.startsWith("rmnet") || value.startsWith("clat") ||
             value.startsWith("dummy") || value.startsWith("sit") || value.startsWith("ip6tnl");
+    }
+
+    private static final class DnsCandidate {
+        final String server;
+        final String label;
+        final List<String> sources = new ArrayList<>();
+        DnsCandidate(String server, String label) {
+            this.server = server;
+            this.label = label;
+        }
     }
 
     private static final class InterfaceInfo {

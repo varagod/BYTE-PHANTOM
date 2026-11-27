@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("bytePhantomDesktop", Object.freeze({
   getSystemSnapshot: () => ipcRenderer.invoke("byte-phantom:system-snapshot"),
   getNetworkRadar: (options) => ipcRenderer.invoke("byte-phantom:network-radar", options || {}),
   runConnectivityDiagnostics: () => ipcRenderer.invoke("byte-phantom:connectivity-diagnostics"),
+  discoverDnsResolvers: () => ipcRenderer.invoke("byte-phantom:dns-discovery"),
   onFullscreenChanged: (callback) => {
     if (typeof callback !== "function") return () => {};
     const listener = () => callback();

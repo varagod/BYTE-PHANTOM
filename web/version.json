@@ -1,7 +1,7 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.11.0",
-  "build": "1.11.0",
+  "version": "1.12.0",
+  "build": "1.12.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
@@ -11,7 +11,8 @@
     "Cross-platform private IPv4 Network Radar and persistent local journal",
     "Interactive observed LAN map",
     "Read-only gateway, DNS resolver, transport, interface, local IPv4, and default-route intelligence on Windows and Android",
-    "Layered connectivity diagnosis: active route snapshot, one local gateway ICMP echo, system DNS resolution, and two independent HTTPS/TLS checks on Windows and Android"
+    "Layered connectivity diagnosis: active route snapshot, one local gateway ICMP echo, system DNS resolution, and two independent HTTPS/TLS checks on Windows and Android",
+    "DNS resolver intelligence: direct UDP/53 DNS A-query tests for configured IPv4 DNS servers and Cloudflare, Google Public DNS, and Quad9 reference resolvers"
   ],
   "simulatedModules": [
     "IP TRACE",
@@ -54,7 +55,7 @@
     "configurationChanges": false,
     "interpretation": "A missing gateway ICMP response is inconclusive because routers or firewalls can filter echo requests. HTTPS success proves reachability to at least one test endpoint only."
   },
-  "security": "Connectivity diagnostics run only after an explicit user action. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform one system DNS lookup and two fixed HTTPS GET checks. They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings.",
+  "security": "Connectivity diagnostics run only after an explicit user action. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform one system DNS lookup and two fixed HTTPS GET checks. They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends one direct DNS A query for example.com to each IPv4 server in the active system DNS configuration and to up to three fixed public IPv4 resolver references. It does not scan LAN hosts or ports and does not change DNS configuration.",
   "networkPathIntelligence": {
     "dataSource": "Windows Get-NetIPConfiguration/Get-NetRoute; Android ConnectivityManager/LinkProperties",
     "fields": [
@@ -73,6 +74,35 @@
     "Registered Android NetworkRadar through the Capacitor 6 JavaScript plugin runtime",
     "Packaged capacitor.js into Android and Windows app assets",
     "Restored Windows DNS/HTTPS diagnostics IPC handler and network-path result",
-    "Added layered gateway/DNS/HTTPS-TLS failure isolation on Windows and Android"
-  ]
+    "Added layered gateway/DNS/HTTPS-TLS failure isolation on Windows and Android",
+    "Added direct DNS-over-UDP resolver tests for configured DNS servers and fixed public resolver references"
+  ],
+  "dnsResolverIntelligence": {
+    "queryName": "example.com",
+    "queryType": "A",
+    "transport": "DNS over UDP",
+    "port": 53,
+    "configuredResolvers": "Active interface DNS server list from Windows Get-NetIPConfiguration or Android ConnectivityManager/LinkProperties",
+    "publicReferences": [
+      {
+        "server": "1.1.1.1",
+        "label": "Cloudflare"
+      },
+      {
+        "server": "8.8.8.8",
+        "label": "Google Public DNS"
+      },
+      {
+        "server": "9.9.9.9",
+        "label": "Quad9"
+      }
+    ],
+    "perResolverQueries": 1,
+    "ipv4Only": true,
+    "userInitiated": true,
+    "lanPortScan": false,
+    "settingsChanged": false,
+    "retainedLocally": true,
+    "interpretation": "A successful A query confirms that the resolver returned an IPv4 answer for example.com at test time. A timeout does not prove a resolver is permanently offline; UDP/53 may be filtered or rate-limited."
+  }
 }

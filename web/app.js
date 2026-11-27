@@ -631,7 +631,7 @@
   function buildNetworkRadarJsonReport() {
     return {
       application:"BYTE PHANTOM",
-      version:"1.11.0",
+      version:"1.12.0",
       generatedAt:new Date().toISOString(),
       privacy:"Generated locally. This report is copied only after the user requests it; BYTE PHANTOM does not upload this journal.",
       retentionDays:30,
@@ -982,13 +982,109 @@
     }
   }
 
+  async function runDnsResolverDiscovery() {
+    const button = $("runDnsDiscovery");
+    const host = $("dnsResolverResults");
+    const bridge = getNetworkRadarBridge();
+
+    if (!bridge || typeof bridge.discoverDns !== "function") {
+      host.textContent = "DNS RESOLVER DISCOVERY IS NOT AVAILABLE IN THIS NATIVE BUILD.";
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "TESTING DNS RESOLVERS...";
+    host.textContent = "Reading configured DNS servers and sending one DNS A query for example.com to each configured IPv4 resolver and three fixed public references.";
+    try {
+      const result = await bridge.discoverDns();
+      if (!result || result.supported !== true) throw new Error("DNS resolver discovery is not supported by this build.");
+
+      try {
+        localStorage.setItem("byte-phantom-dns-resolver-last", JSON.stringify(result));
+      } catch (storageError) {
+        // The on-screen report remains available when local storage is unavailable.
+      }
+
+      host.replaceChildren();
+      const summary = document.createElement("b");
+      summary.className = "network-diagnostics-summary";
+      const responding = Number(result.respondingCount) || 0;
+      const tested = Number(result.testedCount) || 0;
+      const best = result.bestResolver;
+      summary.textContent = responding
+        ? responding + " / " + tested + " DNS RESOLVERS RESPONDED" + (best ? " · FASTEST " + best.server + " / " + best.latencyMs + " ms" : "")
+        : "NO TESTED DNS RESOLVER RETURNED AN A RECORD";
+      host.appendChild(summary);
+
+      const rows = Array.isArray(result.servers) ? result.servers : [];
+      rows.forEach(item => {
+        const card = document.createElement("article");
+        card.className = "network-dns-resolver-card";
+        card.dataset.state = item.ok === true ? "online" : "offline";
+
+        const top = document.createElement("div");
+        top.className = "network-dns-resolver-top";
+        const identity = document.createElement("div");
+        identity.className = "network-dns-resolver-identity";
+        const label = document.createElement("b");
+        label.textContent = item.label || "DNS RESOLVER";
+        const address = document.createElement("span");
+        address.textContent = item.server || "Unknown address";
+        identity.append(label, address);
+
+        const status = document.createElement("strong");
+        status.textContent = item.ok === true ? "RESPONDED" : String(item.status || "NO RESPONSE").replace(/_/g, " ");
+        status.dataset.state = item.ok === true ? "ok" : "warning";
+        top.append(identity, status);
+
+        const meta = document.createElement("div");
+        meta.className = "network-dns-resolver-meta";
+        const sourceList = Array.isArray(item.sources) ? item.sources.join(" + ") : "Unknown source";
+        const latency = Number.isFinite(Number(item.latencyMs)) ? Number(item.latencyMs) + " ms" : "Latency unavailable";
+        const addresses = Array.isArray(item.addresses) ? item.addresses.join(", ") : "";
+        meta.textContent = sourceList + " · " + latency + (addresses ? " · A: " + addresses : "");
+        card.append(top, meta);
+
+        if (item.error) {
+          const error = document.createElement("small");
+          error.className = "network-dns-resolver-error";
+          error.textContent = item.error;
+          card.appendChild(error);
+        }
+        host.appendChild(card);
+      });
+
+      const skipped = Array.isArray(result.skipped) ? result.skipped : [];
+      skipped.forEach(item => {
+        const note = document.createElement("small");
+        note.className = "network-diagnostics-note";
+        note.textContent = "SKIPPED " + String(item.server || "DNS entry") + " · " + String(item.reason || "Not supported");
+        host.appendChild(note);
+      });
+
+      const note = document.createElement("small");
+      note.className = "network-diagnostics-note";
+      note.textContent = (result.limitations || "One DNS A query was sent to each listed resolver.") +
+        " Resolver tests do not alter your DNS settings. A timeout can mean filtering, rate limiting, a temporary outage, or no route to that resolver.";
+      host.appendChild(note);
+
+      appendDashboardLog("DNS intelligence: " + responding + " / " + tested + " resolver(s) answered.", responding ? "term-green" : "term-amber");
+    } catch (error) {
+      host.textContent = "DNS DISCOVERY FAILED: " + (error && error.message ? error.message : String(error));
+    } finally {
+      button.disabled = false;
+      button.textContent = "DISCOVER & TEST DNS SERVERS";
+    }
+  }
+
   function getNetworkRadarBridge() {
     const desktop = window.bytePhantomDesktop;
     if (desktop && typeof desktop.getNetworkRadar === "function") {
       return {
         platform: "WINDOWS",
         scan: options => desktop.getNetworkRadar(options),
-        diagnose: () => desktop.runConnectivityDiagnostics()
+        diagnose: () => desktop.runConnectivityDiagnostics(),
+        discoverDns: () => desktop.discoverDnsResolvers()
       };
     }
 
@@ -1019,7 +1115,8 @@
       return {
         platform: "ANDROID",
         scan: options => networkRadarAndroidPlugin.scan(options || {}),
-        diagnose: () => networkRadarAndroidPlugin.diagnoseConnectivity()
+        diagnose: () => networkRadarAndroidPlugin.diagnoseConnectivity(),
+        discoverDns: () => networkRadarAndroidPlugin.discoverDnsResolvers()
       };
     }
     return null;
@@ -1241,6 +1338,7 @@
   }
   $("runOperation").addEventListener("click", runOperation);
   $("runNetworkDiagnostics").addEventListener("click", runNetworkConnectivityDiagnostics);
+  $("runDnsDiscovery").addEventListener("click", runDnsResolverDiscovery);
   document.querySelectorAll("[data-operation]").forEach(function (button) {
     button.addEventListener("click", function () { openOperation(button.dataset.operation); });
   });

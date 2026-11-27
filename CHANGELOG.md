@@ -1,5 +1,16 @@
 # BYTE PHANTOM — Changelog
 
+## v1.12.0 — DNS SERVER DISCOVERY & INTELLIGENCE
+- Added a user-initiated resolver intelligence panel to NETWORK RADAR.
+- Reads configured DNS server addresses from the active Windows interface or Android LinkProperties, then tests each configured IPv4 resolver directly using one DNS A query for example.com over UDP port 53.
+- Adds fixed Cloudflare (1.1.1.1), Google Public DNS (8.8.8.8), and Quad9 (9.9.9.9) IPv4 reference resolvers for comparison, deduplicating configured matches.
+- Displays resolver identity/source, direct response status, DNS response code, elapsed time, and returned A records; ranks responding resolvers by latency.
+- Lists configured IPv6 DNS entries as skipped in this release rather than silently ignoring them.
+- Results are retained as the latest local report in this app installation. No DNS settings are changed and no LAN-wide port scan is performed.
+- Implemented direct UDP DNS query handling in Electron and the native Android Capacitor plugin.
+- Updated both platform builds to v1.12.0.
+
+
 ## v1.11.0 — NETWORK FAILURE ISOLATION
 - Expanded the manual connectivity report with the active interface, default IPv4 route, gateway, and configured DNS servers.
 - Added exactly one ICMP echo test to the active private IPv4 gateway when available; a missing reply is reported as inconclusive because gateways may filter ping.

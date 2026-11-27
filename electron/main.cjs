@@ -6,6 +6,8 @@ const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const dnsPromises = require("node:dns").promises;
 const https = require("node:https");
+const dgram = require("node:dgram");
+const net = require("node:net");
 const execFileAsync = promisify(execFile);
 
 let mainWindow;
@@ -320,7 +322,7 @@ async function runConnectivityDiagnostics() {
     };
 
     const request = https.get(url, {
-      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.11.0" }
+      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.12.0" }
     }, response => {
       const statusCode = response.statusCode || 0;
       response.resume();
@@ -354,6 +356,217 @@ async function runConnectivityDiagnostics() {
     https: httpsResults,
     systemChangesMade: false,
     scope: "ACTIVE ROUTE SNAPSHOT + ONE LOCAL GATEWAY ICMP ECHO + ONE SYSTEM DNS LOOKUP + TWO FIXED HTTPS/TLS CHECKS"
+  };
+}
+
+function buildDnsAQuery(host) {
+  const id = Math.floor(Math.random() * 65536);
+  const labels = String(host).split(".");
+  const labelBytes = [];
+  for (const label of labels) {
+    const bytes = Buffer.from(label, "ascii");
+    if (!bytes.length || bytes.length > 63) throw new Error("Invalid DNS query label.");
+    labelBytes.push(Buffer.from([bytes.length]), bytes);
+  }
+  labelBytes.push(Buffer.from([0]));
+  const question = Buffer.concat([...labelBytes, Buffer.from([0, 1, 0, 1])]);
+  const header = Buffer.alloc(12);
+  header.writeUInt16BE(id, 0);
+  header.writeUInt16BE(0x0100, 2);
+  header.writeUInt16BE(1, 4);
+  return { id, packet: Buffer.concat([header, question]) };
+}
+
+function skipDnsName(packet, start) {
+  let offset = start;
+  while (offset < packet.length) {
+    const length = packet[offset];
+    if ((length & 0xc0) === 0xc0) return offset + 2 <= packet.length ? offset + 2 : -1;
+    if ((length & 0xc0) !== 0) return -1;
+    offset += 1;
+    if (length === 0) return offset;
+    if (offset + length > packet.length) return -1;
+    offset += length;
+  }
+  return -1;
+}
+
+function parseDnsAResponse(packet, expectedId) {
+  if (!Buffer.isBuffer(packet) || packet.length < 12 || packet.readUInt16BE(0) !== expectedId) {
+    throw new Error("Invalid or mismatched DNS response.");
+  }
+  const flags = packet.readUInt16BE(2);
+  if ((flags & 0x8000) === 0) throw new Error("The DNS packet is not a response.");
+  const responseCode = flags & 0x000f;
+  const questionCount = packet.readUInt16BE(4);
+  const answerCount = packet.readUInt16BE(6);
+  let offset = 12;
+
+  for (let i = 0; i < questionCount; i++) {
+    offset = skipDnsName(packet, offset);
+    if (offset < 0 || offset + 4 > packet.length) throw new Error("Malformed DNS question section.");
+    offset += 4;
+  }
+
+  const addresses = [];
+  for (let i = 0; i < answerCount; i++) {
+    offset = skipDnsName(packet, offset);
+    if (offset < 0 || offset + 10 > packet.length) throw new Error("Malformed DNS answer section.");
+    const type = packet.readUInt16BE(offset);
+    const klass = packet.readUInt16BE(offset + 2);
+    const ttl = packet.readUInt32BE(offset + 4);
+    const dataLength = packet.readUInt16BE(offset + 8);
+    offset += 10;
+    if (offset + dataLength > packet.length) throw new Error("Truncated DNS answer data.");
+    if (type === 1 && klass === 1 && dataLength === 4) {
+      addresses.push({
+        address: Array.from(packet.subarray(offset, offset + 4)).join("."),
+        ttl
+      });
+    }
+    offset += dataLength;
+  }
+
+  const responseNames = ["NOERROR", "FORMERR", "SERVFAIL", "NXDOMAIN", "NOTIMP", "REFUSED"];
+  return {
+    responseCode,
+    responseCodeName: responseNames[responseCode] || ("RCODE_" + responseCode),
+    answerCount,
+    addresses,
+    ok: responseCode === 0 && addresses.length > 0
+  };
+}
+
+function queryDnsResolver(server, host = "example.com", timeoutMs = 1800) {
+  return new Promise(resolve => {
+    const started = Date.now();
+    const query = buildDnsAQuery(host);
+    const socket = dgram.createSocket("udp4");
+    let settled = false;
+    let timer = null;
+
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      try { socket.close(); } catch { /* Socket may already be closed. */ }
+      resolve({
+        server,
+        queryName: host,
+        port: 53,
+        latencyMs: Date.now() - started,
+        ...result
+      });
+    };
+
+    socket.once("error", error => finish({
+      ok: false,
+      status: "SOCKET_ERROR",
+      addresses: [],
+      error: String(error && (error.code || error.message) ? (error.code || error.message) : error)
+    }));
+    socket.once("message", message => {
+      try {
+        const parsed = parseDnsAResponse(message, query.id);
+        finish({
+          ...parsed,
+          status: parsed.ok ? "RESPONDED" : parsed.responseCodeName === "NOERROR" ? "NO_A_RECORD" : parsed.responseCodeName
+        });
+      } catch (error) {
+        finish({
+          ok: false,
+          status: "INVALID_RESPONSE",
+          addresses: [],
+          error: String(error && error.message ? error.message : error)
+        });
+      }
+    });
+
+    timer = setTimeout(() => finish({
+      ok: false,
+      status: "TIMEOUT",
+      addresses: [],
+      error: "No DNS response within " + timeoutMs + " ms."
+    }), timeoutMs);
+
+    socket.send(query.packet, 53, server, error => {
+      if (error) finish({
+        ok: false,
+        status: "SEND_ERROR",
+        addresses: [],
+        error: String(error.code || error.message || error)
+      });
+    });
+  });
+}
+
+async function discoverDnsResolvers() {
+  const startedAt = Date.now();
+  const networkPath = await collectNetworkPathInfo();
+  const configured = Array.isArray(networkPath.dnsServers) ? networkPath.dnsServers : [];
+  const publicResolvers = [
+    { server: "1.1.1.1", label: "CLOUDFLARE", source: "PUBLIC REFERENCE" },
+    { server: "8.8.8.8", label: "GOOGLE PUBLIC DNS", source: "PUBLIC REFERENCE" },
+    { server: "9.9.9.9", label: "QUAD9", source: "PUBLIC REFERENCE" }
+  ];
+  const candidates = new Map();
+  const skipped = [];
+
+  for (const entry of configured) {
+    const server = String(entry || "").trim();
+    if (net.isIP(server) !== 4) {
+      if (server) skipped.push({ server, reason: "Only IPv4 DNS servers are queried by this release; IPv6 entries are listed as skipped." });
+      continue;
+    }
+    const known = publicResolvers.find(item => item.server === server);
+    const existing = candidates.get(server);
+    if (existing) {
+      if (!existing.sources.includes("SYSTEM CONFIGURATION")) existing.sources.push("SYSTEM CONFIGURATION");
+    } else {
+      candidates.set(server, {
+        server,
+        label: known ? known.label : "CONFIGURED DNS",
+        sources: ["SYSTEM CONFIGURATION"]
+      });
+    }
+  }
+
+  for (const item of publicResolvers) {
+    if (!candidates.has(item.server)) {
+      candidates.set(item.server, { server: item.server, label: item.label, sources: [item.source] });
+    } else {
+      const current = candidates.get(item.server);
+      if (!current.sources.includes(item.source)) current.sources.push(item.source);
+    }
+  }
+
+  const tests = await Promise.all(Array.from(candidates.values()).map(async candidate => ({
+    ...candidate,
+    ...(await queryDnsResolver(candidate.server))
+  })));
+  const ranked = tests.sort((a, b) => {
+    if (a.ok !== b.ok) return a.ok ? -1 : 1;
+    return a.latencyMs - b.latencyMs;
+  });
+  const successful = ranked.filter(item => item.ok);
+  const best = successful.length ? successful[0] : null;
+
+  return {
+    supported: true,
+    platform: "WINDOWS",
+    collectedAt: new Date().toISOString(),
+    durationMs: Date.now() - startedAt,
+    queryName: "example.com",
+    queryType: "A",
+    transport: "DNS OVER UDP / PORT 53",
+    configuredDnsServers: configured,
+    testedCount: ranked.length,
+    respondingCount: successful.length,
+    bestResolver: best ? { server: best.server, label: best.label, latencyMs: best.latencyMs } : null,
+    servers: ranked,
+    skipped,
+    systemChangesMade: false,
+    limitations: "The active system DNS list and three fixed public IPv4 resolver references are tested with one DNS A query each. IPv6 DNS entries are listed as skipped. This is not a scan of all devices or all port-53 hosts on the LAN."
   };
 }
 
@@ -446,6 +659,15 @@ ipcMain.handle("byte-phantom:connectivity-diagnostics", async (event) => {
   return runConnectivityDiagnostics();
 });
 
+
+ipcMain.handle("byte-phantom:dns-discovery", async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const senderUrl = event.senderFrame && event.senderFrame.url;
+  if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) {
+    throw new Error("DNS resolver discovery is only available to the local BYTE PHANTOM desktop window.");
+  }
+  return discoverDnsResolvers();
+});
 
 ipcMain.handle("byte-phantom:system-snapshot", async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
