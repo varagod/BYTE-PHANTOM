@@ -1,5 +1,10 @@
 # BYTE PHANTOM — Changelog
 
+## v1.4.1 — NETWORK RADAR / PowerShell command fix
+- Fixed PowerShell command construction so the multiline Get-NetNeighbor filter is passed as valid script text.
+- Set UTF-8 console output for interface names and neighbor metadata.
+- Rebuilt both Windows and Android packages under the v1.4.1 version label.
+
 ## v1.4.0 — NETWORK RADAR / Passive LAN discovery
 - Replaced the fictional NETWORK RADAR module with a real Windows-only passive IPv4 neighbor-cache reader.
 - Lists private RFC1918 neighbor IP addresses, MAC addresses, interface aliases, and neighbor states.

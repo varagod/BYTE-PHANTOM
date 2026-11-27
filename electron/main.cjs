@@ -139,6 +139,7 @@ async function collectNetworkRadar() {
       .filter(e=>!e.internal&&(e.family==="IPv4"||e.family===4)&&isPrivateIPv4(e.address))
       .map(e=>({name,address:e.address,netmask:e.netmask,cidr:e.address+"/"+getNetworkPrefix(e.netmask)})));
   const powershellScript=[
+    "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
     "$ErrorActionPreference = 'Stop'",
     "$rows = @(Get-NetNeighbor -AddressFamily IPv4 -ErrorAction Stop | Where-Object {",
     "  $_.State -in @('Reachable','Stale','Delay','Probe','Permanent') -and",
@@ -146,7 +147,7 @@ async function collectNetworkRadar() {
     "  $_.LinkLayerAddress -and $_.LinkLayerAddress -notmatch '^00(-00){5}$'",
     "} | Select-Object @{Name='ipAddress';Expression={$_.IPAddress}},@{Name='macAddress';Expression={$_.LinkLayerAddress}},@{Name='interfaceName';Expression={$_.InterfaceAlias}},@{Name='state';Expression={$_.State}})",
     "ConvertTo-Json -InputObject @($rows) -Depth 3 -Compress"
-  ].join("; ");
+  ].join("\n");
   const {stdout}=await execFileAsync("powershell.exe",
     ["-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-Command",powershellScript],
     {windowsHide:true,timeout:10000,maxBuffer:512*1024,encoding:"utf8"});
