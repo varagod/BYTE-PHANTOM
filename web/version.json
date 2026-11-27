@@ -1,12 +1,14 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.4.1",
-  "build": "1.4.1",
+  "version": "1.5.0",
+  "build": "1.5.0",
   "release": "2026-11-26",
   "platform": "Windows x64",
   "realCapabilities": [
-    "Read-only Windows host inventory: OS, CPU, memory, disk capacity, IPv4 interface metadata",
-    "Passive LAN neighbor radar: private IPv4 neighbors from Windows neighbor cache, interface names, MAC addresses, and neighbor state"
+    "Read-only Windows host inventory: OS, CPU, memory, disk capacity, and IPv4 interface metadata",
+    "Active local IPv4 host discovery on directly connected private subnets from /22 through /30, up to 1,022 host targets per scan",
+    "ICMP echo reachability plus Windows ARP/neighbor-table MAC enrichment",
+    "Continuous network-change monitoring with device arrival, IP-address change, reappearance, and no-longer-visible events"
   ],
   "simulatedModules": [
     "IP TRACE",
@@ -20,5 +22,5 @@
     "DIGITAL FORENSICS",
     "ENCRYPTION BREAKER"
   ],
-  "security": "No ping sweeps, port scans, packets sent, privilege escalation, or system configuration changes. Discovery reads the existing Windows IPv4 neighbor cache only."
+  "security": "Active discovery sends one ICMP echo request per host only within private IPv4 subnets directly attached to this Windows PC; neighbor-table refresh runs every 4 seconds and active rediscovery every 30 seconds. No port scans, credential tests, exploits, internet-wide scans, privilege escalation, or system configuration changes. Not a guaranteed complete router-client inventory; client isolation, sleeping hosts, filtered ICMP, separate VLANs/subnets, and router-specific behavior can limit visibility."
 }

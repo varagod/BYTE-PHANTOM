@@ -80,3 +80,8 @@ This is a debug APK for testing, not a Play Store release.
 - Runtime metadata: web/version.json
 - Package version: package.json
 - Change history: CHANGELOG.md
+
+
+## v1.5.0 Network Radar
+
+The Windows desktop Network Radar actively discovers hosts only within directly connected private IPv4 subnets (/22–/30; up to 1,022 host targets per sweep), enriches results using the Windows neighbor table, and monitors changes every 4 seconds with an active rediscovery every 30 seconds. This is not a guaranteed complete router client list. No port scanning, credential testing, exploitation, or internet-wide scanning is performed. The live radar is Windows desktop only; Android remains a UI build without the host-network bridge.

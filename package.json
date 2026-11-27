@@ -1,8 +1,8 @@
 {
   "name": "byte-phantom",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "private": true,
-  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with passive LAN discovery.",
+  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with active private-LAN IPv4 discovery and live network-change monitoring.",
   "scripts": {
     "start": "npx serve web",
     "android:add": "npx cap add android",
