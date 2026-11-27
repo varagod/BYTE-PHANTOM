@@ -1,13 +1,16 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.17.0",
-  "build": "1.17.0",
+  "version": "1.18.0",
+  "build": "1.18.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
     "Android"
   ],
   "realCapabilities": [
+    "Network Shutdown Intelligence: cross-platform route/DNS/upstream/endpoint isolation using three independent system DNS names and four HTTPS providers",
+    "Per-destination reachability matrix identifies partial connectivity and endpoint-specific failures instead of treating one reachable test host as proof of full internet access",
+    "OUTAGE WATCH stores successful DNS and HTTPS target counts for each sample and exports the counts to CSV/JSON",
     "OUTAGE WATCH issue confirmation: two consecutive qualifying failures before opening an incident and two consecutive successful HTTPS checks before recovery",
     "OUTAGE WATCH DNS, HTTPS, and gateway response latency history with a recent trend view and rolling median baselines",
     "Cross-platform OUTAGE WATCH: interval-based gateway/DNS/HTTPS connectivity checks, local incident start/recovery timeline, and JSON/CSV export",
@@ -53,26 +56,35 @@
     "diagnostics": "InetAddress system DNS lookup and HttpURLConnection HTTPS checks"
   },
   "connectivityDiagnostics": {
-    "dnsHost": "example.com",
+    "dnsHost": "example.com (primary compatibility field)",
     "gatewayProbe": "One ICMP echo request to the active private IPv4 default gateway, when reported and supported",
     "httpsEndpoints": [
       "https://www.msftconnecttest.com/connecttest.txt",
-      "https://connectivitycheck.gstatic.com/generate_204"
+      "https://connectivitycheck.gstatic.com/generate_204",
+      "https://cp.cloudflare.com/generate_204",
+      "https://www.apple.com/library/test/success.html"
     ],
     "checks": [
       "active interface and default route",
-      "default gateway ICMP response",
-      "system DNS resolution",
-      "HTTPS/TLS response and status from two fixed endpoints"
+      "one ICMP echo to the active private IPv4 gateway when reported and supported",
+      "system DNS resolution for example.com, iana.org, and cloudflare.com",
+      "HTTPS/TLS GET checks against Microsoft, Google, Cloudflare, and Apple test services"
     ],
     "userInitiated": true,
     "lanScan": false,
     "portScan": false,
     "credentialTests": false,
     "configurationChanges": false,
-    "interpretation": "A missing gateway ICMP response is inconclusive because routers or firewalls can filter echo requests. HTTPS success proves reachability to at least one test endpoint only."
+    "interpretation": "A missing gateway ICMP response is inconclusive because routers or firewalls can filter echo requests. Mixed DNS/HTTPS results indicate partial reachability or target-specific failures. HTTPS success proves reachability to that endpoint only; no test proves unrestricted access to all of the internet.",
+    "dnsHosts": [
+      "example.com",
+      "iana.org",
+      "cloudflare.com"
+    ],
+    "dnsCheckCount": 3,
+    "httpsCheckCount": 4
   },
-  "security": "Connectivity diagnostics run only after an explicit user action. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform one system DNS lookup and two fixed HTTPS GET checks. They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends one direct DNS A query for example.com to each IPv4 server in the active system DNS configuration and to up to three fixed public IPv4 resolver references. It does not scan LAN hosts or ports and does not change DNS configuration. DNS integrity review queries two fixed public names once per resolver and compares returned A-record sets. Divergence and non-public address flags are advisory indicators only, not a malware verdict. Resolver IPs may be copied manually, but no DNS setting is changed automatically. DNS resolver performance tests perform three A queries for each of two public names per IPv4 resolver. Stable answers require at least two matching successful answer sets out of three. Latency jitter uses median absolute deviation. Repeat variation is advisory and may be caused by DNS load balancing/CDNs; recommendations do not change system DNS. DNS failover never changes settings during discovery. Windows changes are opt-in, limited to the active default-route adapter and require UAC Administrator approval; original DNS mode/server values are backed up and can be restored. Android opens system network settings for manual changes only.",
+  "security": "Connectivity diagnostics run only after an explicit user action or while the operator has started OUTAGE WATCH with NETWORK RADAR open. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform three system DNS lookups (example.com, iana.org, cloudflare.com), and make four fixed HTTPS GET checks (Microsoft, Google, Cloudflare, Apple). They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends direct DNS A queries only to configured IPv4 DNS servers and fixed public resolver references. DNS answer divergence and non-public address flags are advisory indicators only, not a malware verdict. Resolver recommendations do not change system DNS. Windows DNS changes remain opt-in, limited to the active default-route adapter, require UAC Administrator approval, and preserve a local original-configuration backup. Android opens system network settings for manual changes only.",
   "networkPathIntelligence": {
     "dataSource": "Windows Get-NetIPConfiguration/Get-NetRoute; Android ConnectivityManager/LinkProperties",
     "fields": [
@@ -87,6 +99,7 @@
     "configurationChanges": false
   },
   "fixes": [
+    "Added Network Shutdown Intelligence with three system DNS names, four independent HTTPS providers, conservative path isolation, and per-target results on Windows and Android",
     "Hardened OUTAGE WATCH against transient failures with two-sample incident confirmation and two-success recovery confirmation; added local DNS/HTTPS/gateway latency baselines and trend chart",
     "Added cross-platform local OUTAGE WATCH with 30-second, 1-minute, and 5-minute probe intervals, incident/recovery tracking, 30-day local history, and JSON/CSV export",
     "Rebuilt malformed Windows PowerShell route-diagnostics function",
@@ -192,8 +205,8 @@
     "probes": [
       "active route snapshot",
       "one ICMP echo to the active private IPv4 gateway when available",
-      "one system DNS lookup for example.com",
-      "two fixed HTTPS/TLS endpoint checks"
+      "three system DNS lookups: example.com, iana.org, cloudflare.com",
+      "four fixed HTTPS/TLS checks: Microsoft, Google, Cloudflare, Apple"
     ],
     "history": {
       "storage": "Local app storage only",
@@ -234,6 +247,20 @@
     "qualityTrend": {
       "windowSamples": 12,
       "rollingBaseline": "Median of up to the latest 12 successful measurements per metric"
+    },
+    "diagnosisProfile": {
+      "dnsNames": 3,
+      "httpsProviders": 4,
+      "classifications": [
+        "NO DEFAULT ROUTE",
+        "DNS FAILURE (only when all system DNS checks fail and the gateway answered ICMP)",
+        "HTTPS UNREACHABLE (DNS succeeds but all HTTPS providers fail)",
+        "PARTIAL CONNECTIVITY (at least one HTTPS provider works but one or more tested names or endpoints fail)",
+        "ONLINE (all tested names and HTTPS providers respond)",
+        "INDETERMINATE (evidence is insufficient)"
+      ],
+      "endpointSpecificFailuresCreateOutageIncident": false,
+      "gatewayIcmpSilenceAloneConfirmsLocalFailure": false
     }
   }
 }

@@ -1,8 +1,8 @@
 {
   "name": "byte-phantom",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "private": true,
-  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with cross-platform Network Radar, assisted DNS failover, and confirmed connectivity incident tracking with DNS/HTTPS latency history.",
+  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with multi-target DNS/HTTPS path diagnosis, Network Radar, assisted DNS failover, and confirmed connectivity incident tracking.",
   "scripts": {
     "start": "npx serve web",
     "android:add": "npx cap add android",

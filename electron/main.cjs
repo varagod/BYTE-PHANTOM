@@ -282,6 +282,13 @@ async function probeDefaultGateway(gateway) {
 async function runConnectivityDiagnostics() {
   const startedAt = Date.now();
   const networkPath = await collectNetworkPathInfo();
+  const dnsHosts = ["example.com", "iana.org", "cloudflare.com"];
+  const httpsEndpoints = [
+    "https://www.msftconnecttest.com/connecttest.txt",
+    "https://connectivitycheck.gstatic.com/generate_204",
+    "https://cp.cloudflare.com/generate_204",
+    "https://www.apple.com/library/test/success.html"
+  ];
 
   const lookup = async host => {
     const started = Date.now();
@@ -322,7 +329,7 @@ async function runConnectivityDiagnostics() {
     };
 
     const request = https.get(url, {
-      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.16.0" }
+      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.18.0" }
     }, response => {
       const statusCode = response.statusCode || 0;
       response.resume();
@@ -336,13 +343,10 @@ async function runConnectivityDiagnostics() {
     }));
   });
 
-  const [gatewayProbe, dnsResult, httpsResults] = await Promise.all([
+  const [gatewayProbe, dnsChecks, httpsResults] = await Promise.all([
     probeDefaultGateway(networkPath.gateway),
-    lookup("example.com"),
-    Promise.all([
-      checkHttps("https://www.msftconnecttest.com/connecttest.txt"),
-      checkHttps("https://connectivitycheck.gstatic.com/generate_204")
-    ])
+    Promise.all(dnsHosts.map(lookup)),
+    Promise.all(httpsEndpoints.map(checkHttps))
   ]);
 
   return {
@@ -352,10 +356,11 @@ async function runConnectivityDiagnostics() {
     durationMs: Date.now() - startedAt,
     networkPath,
     gatewayProbe,
-    dns: dnsResult,
+    dns: dnsChecks[0] || { host: dnsHosts[0], ok: false, addresses: [] },
+    dnsChecks,
     https: httpsResults,
     systemChangesMade: false,
-    scope: "ACTIVE ROUTE SNAPSHOT + ONE LOCAL GATEWAY ICMP ECHO + ONE SYSTEM DNS LOOKUP + TWO FIXED HTTPS/TLS CHECKS"
+    scope: "ACTIVE ROUTE + ONE LOCAL GATEWAY ICMP ECHO + THREE SYSTEM DNS LOOKUPS + FOUR INDEPENDENT HTTPS/TLS CHECKS"
   };
 }
 

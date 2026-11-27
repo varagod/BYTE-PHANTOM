@@ -158,26 +158,35 @@ public class NetworkRadarPlugin extends Plugin {
         JSObject networkPath = collectNetworkPathInfo();
         JSObject gatewayProbe = checkDefaultGateway(networkPath.optString("gateway", "NOT REPORTED"));
 
-        JSObject dnsResult = new JSObject();
-        JSArray addresses = new JSArray();
-        long dnsStarted = System.currentTimeMillis();
-        try {
-            InetAddress[] resolved = InetAddress.getAllByName("example.com");
-            for (InetAddress address : resolved) addresses.put(address.getHostAddress());
-            dnsResult.put("host", "example.com");
-            dnsResult.put("ok", resolved.length > 0);
-            dnsResult.put("addresses", addresses);
-        } catch (Exception error) {
-            dnsResult.put("host", "example.com");
-            dnsResult.put("ok", false);
-            dnsResult.put("addresses", addresses);
-            dnsResult.put("error", error.getClass().getSimpleName() + ": " + String.valueOf(error.getMessage()));
-        }
-        dnsResult.put("latencyMs", Math.max(0L, System.currentTimeMillis() - dnsStarted));
-
+        String[] dnsHosts = new String[] {"example.com", "iana.org", "cloudflare.com"};
+        String[] endpoints = new String[] {
+            "https://www.msftconnecttest.com/connecttest.txt",
+            "https://connectivitycheck.gstatic.com/generate_204",
+            "https://cp.cloudflare.com/generate_204",
+            "https://www.apple.com/library/test/success.html"
+        };
+        ExecutorService probeExecutor = Executors.newFixedThreadPool(dnsHosts.length + endpoints.length);
+        List<Future<JSObject>> dnsFutures = new ArrayList<>();
+        List<Future<JSObject>> httpsFutures = new ArrayList<>();
+        JSArray dnsChecks = new JSArray();
         JSArray httpsResults = new JSArray();
-        httpsResults.put(checkHttpsEndpoint("https://www.msftconnecttest.com/connecttest.txt"));
-        httpsResults.put(checkHttpsEndpoint("https://connectivitycheck.gstatic.com/generate_204"));
+        JSObject dnsPrimary = new JSObject();
+
+        try {
+            for (String host : dnsHosts) dnsFutures.add(probeExecutor.submit(() -> checkSystemDns(host)));
+            for (String endpoint : endpoints) httpsFutures.add(probeExecutor.submit(() -> checkHttpsEndpoint(endpoint)));
+
+            for (int i = 0; i < dnsFutures.size(); i++) {
+                JSObject item = awaitConnectivityProbe(dnsFutures.get(i), "DNS", dnsHosts[i]);
+                dnsChecks.put(item);
+                if (i == 0) dnsPrimary = item;
+            }
+            for (int i = 0; i < httpsFutures.size(); i++) {
+                httpsResults.put(awaitConnectivityProbe(httpsFutures.get(i), "HTTPS", endpoints[i]));
+            }
+        } finally {
+            probeExecutor.shutdownNow();
+        }
 
         JSObject result = new JSObject();
         result.put("supported", true);
@@ -186,11 +195,53 @@ public class NetworkRadarPlugin extends Plugin {
         result.put("durationMs", Math.max(0L, System.currentTimeMillis() - startedAt));
         result.put("networkPath", networkPath);
         result.put("gatewayProbe", gatewayProbe);
-        result.put("dns", dnsResult);
+        result.put("dns", dnsPrimary);
+        result.put("dnsChecks", dnsChecks);
         result.put("https", httpsResults);
         result.put("systemChangesMade", false);
-        result.put("scope", "ACTIVE ROUTE SNAPSHOT + ONE LOCAL GATEWAY ICMP ECHO + ONE SYSTEM DNS LOOKUP + TWO FIXED HTTPS/TLS CHECKS");
+        result.put("scope", "ACTIVE ROUTE + ONE LOCAL GATEWAY ICMP ECHO + THREE SYSTEM DNS LOOKUPS + FOUR INDEPENDENT HTTPS/TLS CHECKS");
         return result;
+    }
+
+    private JSObject checkSystemDns(String host) {
+        long started = System.currentTimeMillis();
+        JSObject result = new JSObject();
+        JSArray addresses = new JSArray();
+        try {
+            InetAddress[] resolved = InetAddress.getAllByName(host);
+            for (InetAddress address : resolved) addresses.put(address.getHostAddress());
+            result.put("host", host);
+            result.put("ok", resolved.length > 0);
+            result.put("addresses", addresses);
+        } catch (Exception error) {
+            result.put("host", host);
+            result.put("ok", false);
+            result.put("addresses", addresses);
+            result.put("error", error.getClass().getSimpleName() + ": " + String.valueOf(error.getMessage()));
+        }
+        result.put("latencyMs", Math.max(0L, System.currentTimeMillis() - started));
+        return result;
+    }
+
+    private JSObject awaitConnectivityProbe(Future<JSObject> future, String kind, String target) {
+        try {
+            return future.get(6500L, TimeUnit.MILLISECONDS);
+        } catch (Exception error) {
+            future.cancel(true);
+            if (error instanceof InterruptedException) Thread.currentThread().interrupt();
+            JSObject failed = new JSObject();
+            failed.put("ok", false);
+            failed.put("latencyMs", 6500);
+            failed.put("error", error.getClass().getSimpleName() + ": " + String.valueOf(error.getMessage()));
+            if ("DNS".equals(kind)) {
+                failed.put("host", target);
+                failed.put("addresses", new JSArray());
+            } else {
+                failed.put("url", target);
+                failed.put("statusCode", 0);
+            }
+            return failed;
+        }
     }
 
     private JSObject checkDefaultGateway(String gateway) {

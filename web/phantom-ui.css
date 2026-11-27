@@ -367,3 +367,17 @@
 .outage-watch-quality-bar[data-empty="true"]{opacity:.12}
 .outage-watch-quality-bar-group small{position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);color:#718793;font-size:7px;white-space:nowrap}
 @media(max-width:600px){.outage-watch-quality-metrics{grid-template-columns:1fr}.outage-watch-quality-metrics>div{padding:8px}.outage-watch-quality-trend{justify-content:flex-start}}
+
+
+/* v1.18.0 — multi-target network shutdown intelligence */
+.network-diagnostics-summary[data-state="ok"]{color:#63ff9c}
+.network-diagnostics-summary[data-state="partial"]{color:#ffc477;border-color:rgba(255,196,119,.28);background:rgba(34,24,10,.5)}
+.network-diagnostics-summary[data-state="critical"]{color:#ff8296;border-color:rgba(255,100,130,.28);background:rgba(36,9,16,.48)}
+.network-diagnostics-summary[data-state="warning"]{color:#ffc477}
+.network-diagnostic-row strong[data-state="partial"]{color:#ffc477}
+.network-diagnostic-row strong[data-state="warning"]{color:#ff9b9b}
+.network-diagnostics-note{display:block;margin-top:9px}
+@media(max-width:600px){
+  .network-diagnostics-actions{align-items:stretch}
+  .network-diagnostics-actions .button{width:100%}
+}
