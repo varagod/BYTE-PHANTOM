@@ -1,5 +1,16 @@
 # BYTE PHANTOM — Changelog
 
+## v1.18.0 — NETWORK SHUTDOWN INTELLIGENCE
+- Expanded cross-platform connectivity diagnosis from one system DNS lookup to three independent names: `example.com`, `iana.org`, and `cloudflare.com`.
+- Expanded HTTPS/TLS reachability checks from two to four independent test providers: Microsoft, Google, Cloudflare, and Apple. Android runs the DNS and HTTPS probes concurrently with bounded waits.
+- Added per-target results and aggregate success counts so a reachable service is not mistaken for unrestricted internet access.
+- Classifies a missing default route, likely DNS-path failure (only when all DNS checks fail and the gateway answered ICMP), DNS-success/HTTPS-failure, partial connectivity, full test-target reachability, and indeterminate evidence.
+- A mixed result is labelled PARTIAL CONNECTIVITY. A single failed provider does not open an OUTAGE WATCH incident when another HTTPS provider remains reachable.
+- OUTAGE WATCH samples and CSV/JSON exports now preserve successful DNS and HTTPS target counts.
+- Gateway ICMP silence remains inconclusive because routers and firewalls may filter ping. No DNS setting changes, VPN, port scanning, credential tests, or background service were added.
+- Both platforms keep the checks user-initiated or tied to an explicitly started OUTAGE WATCH session.
+
+
 ## v1.17.0 — OUTAGE WATCH CONFIRMATION + NETWORK QUALITY TREND
 - Added two-consecutive-sample confirmation before opening an outage incident; a single failed check is labelled pending and does not create an incident.
 - Added two-consecutive-success confirmation before resolving an open incident. A renewed failure or inconclusive probe resets the pending recovery streak.

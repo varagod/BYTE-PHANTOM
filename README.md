@@ -1,8 +1,8 @@
-# BYTE PHANTOM v1.17.0
+# BYTE PHANTOM v1.18.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.17.0 hardens the cross-platform OUTAGE WATCH with two-sample incident confirmation and DNS/HTTPS latency history.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.18.0 adds cross-platform Network Shutdown Intelligence with three system DNS names and four independent HTTPS providers. It distinguishes missing routes, likely DNS failures, upstream HTTPS failures, partial connectivity, and indeterminate results.
 
 ## v1.17.0 — OUTAGE WATCH CONFIRMATION + NETWORK QUALITY TREND
 
