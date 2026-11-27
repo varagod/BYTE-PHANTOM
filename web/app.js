@@ -40,6 +40,7 @@
   const pageIds = Object.keys(pageTitles);
   let selectedOperation = null;
   let operationTimer = null;
+  let liveScanSequence = 0;
   let operationCount = 0;
   let activity = [];
   const audioState = {
@@ -440,7 +441,8 @@
       return;
     }
 
-    operationTimer = -1;
+    const runToken = -(++liveScanSequence);
+    operationTimer = runToken;
     $("progressArea").hidden = false;
     $("modalResult").hidden = true;
     $("runOperation").disabled = true;
@@ -526,7 +528,7 @@
         addActivity("LIVE SYSTEM SCAN ERROR", message, true);
       }
     } finally {
-      operationTimer = null;
+      if (operationTimer === runToken) operationTimer = null;
     }
   }
 
