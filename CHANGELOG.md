@@ -1,5 +1,18 @@
 # BYTE PHANTOM — Changelog
 
+## v1.16.0 — OUTAGE WATCH / CONNECTIVITY INCIDENT HISTORY
+- Added OUTAGE WATCH to NETWORK RADAR on Windows and Android using each platform's existing native connectivity-diagnostics bridge.
+- Added selectable 30-second, 1-minute (default), and 5-minute intervals. A check runs immediately on start; later checks are scheduled after each probe completes to prevent overlapping requests.
+- Records active route, gateway ICMP status, system DNS result, HTTPS reachability, sample time, and diagnostic duration without storing LAN device inventory in this feature's history.
+- Classifies successful reachability to either fixed HTTPS endpoint, a missing default route, likely DNS failure when the gateway responds, HTTPS endpoint unreachability after DNS success, and indeterminate results.
+- Gateway ICMP silence alone is explicitly inconclusive and cannot create a confirmed offline diagnosis.
+- Adds local issue-start / recovery events, 30-day retention, a 240-sample cap, an 80-event cap, and JSON/CSV clipboard export.
+- Monitoring stops when NETWORK RADAR closes; it is not advertised as a background Android or Windows service.
+- No additional permissions, DNS changes, VPN, LAN port scanning, credential checks, or external host discovery were added.
+- Updated both Windows and Android package metadata to v1.16.0.
+
+
+
 ## v1.15.0 — ASSISTED DNS FAILOVER + SAFE RESTORE
 - Added a DNS FAILOVER CONTROL panel populated only by resolvers that passed the v1.14 repeat-stability rule for both `example.com` and `iana.org`.
 - Windows can apply a selected IPv4 resolver to the active default-route adapter only after in-app confirmation and a native UAC Administrator prompt.

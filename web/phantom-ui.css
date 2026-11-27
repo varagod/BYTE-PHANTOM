@@ -316,3 +316,34 @@
   .network-dns-failover-select-row .network-dns-copy-button{align-self:flex-start}
   .network-dns-failover-platform-help .button{width:100%}
 }
+
+
+/* v1.16.0 — local OUTAGE WATCH */
+.outage-watch-controls{display:flex;align-items:end;flex-wrap:wrap;gap:10px;margin-top:12px}
+.outage-watch-controls label{display:grid;gap:5px;color:#8fa8b4;font-size:9px;letter-spacing:.7px}
+.outage-watch-controls select{min-width:132px;min-height:36px;padding:7px 9px;border:1px solid rgba(68,232,255,.23);border-radius:5px;background:#07131c;color:#cce0e9;font:inherit;font-size:10px}
+.outage-watch-controls>span{flex:1 1 190px;color:#8fa8b4;font-size:9px;line-height:1.55}
+.outage-watch-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.outage-watch-overview>div{display:grid;gap:5px;min-width:0;padding:10px;border:1px solid rgba(130,160,180,.14);border-radius:7px;background:rgba(6,16,24,.7)}
+.outage-watch-overview small{color:#7e94a0;font-size:8px;letter-spacing:.6px}
+.outage-watch-overview b{color:#cde2eb;font:600 13px var(--mono);overflow-wrap:anywhere}
+#outageWatchCurrentState[data-state="online"]{color:#63ff9c}
+#outageWatchCurrentState[data-state="no-default-route"],#outageWatchCurrentState[data-state="dns-failure"],#outageWatchCurrentState[data-state="https-unreachable"]{color:#ff8296}
+#outageWatchCurrentState[data-state="indeterminate"],#outageWatchCurrentState[data-state="probe-error"]{color:#ffbd73}
+.outage-watch-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.outage-watch-columns>section{min-width:0}
+.outage-watch-subheading{margin-bottom:7px;color:#8ba5b2;font-size:9px;letter-spacing:.7px}
+.outage-watch-history,.outage-watch-events{display:grid;gap:6px;max-height:270px;overflow:auto}
+.outage-watch-record,.outage-watch-event{display:grid;gap:4px;padding:9px;border:1px solid rgba(130,160,180,.12);border-radius:6px;background:rgba(3,10,16,.48)}
+.outage-watch-record b,.outage-watch-event b{font-size:9px;letter-spacing:.5px;color:#cde2eb}
+.outage-watch-record b[data-state="online"],.outage-watch-event b[data-state="online"]{color:#63ff9c}
+.outage-watch-record b[data-state="no-default-route"],.outage-watch-record b[data-state="dns-failure"],.outage-watch-record b[data-state="https-unreachable"],.outage-watch-event b[data-state="issue"]{color:#ff8296}
+.outage-watch-record small,.outage-watch-event small{color:#78909d;font-size:8px;line-height:1.5}
+.outage-watch-record span{color:#9aabb7;font-size:8px;line-height:1.5;overflow-wrap:anywhere}
+.outage-watch-empty{padding:12px;border:1px dashed rgba(130,160,180,.16);border-radius:6px;color:#718793;font-size:9px;text-align:center}
+.outage-watch-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.outage-watch-actions .button{font-size:9px}
+.outage-watch-feedback,.outage-watch-disclaimer{margin:8px 0 0;padding:8px 9px;border-radius:5px;background:rgba(1,8,14,.5);color:#8fa8b4;font-size:9px;line-height:1.6;overflow-wrap:anywhere}
+.outage-watch-disclaimer{border-left:2px solid rgba(255,184,107,.48);color:#b3a28b}
+@media(max-width:700px){.outage-watch-columns{grid-template-columns:1fr}.outage-watch-controls .button{width:100%}}
+@media(max-width:420px){.outage-watch-overview{grid-template-columns:1fr}.outage-watch-controls label{width:100%}.outage-watch-controls select{width:100%}}

@@ -1,13 +1,14 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.15.0",
-  "build": "1.15.0",
+  "version": "1.16.0",
+  "build": "1.16.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
     "Android"
   ],
   "realCapabilities": [
+    "Cross-platform OUTAGE WATCH: interval-based gateway/DNS/HTTPS connectivity checks, local incident start/recovery timeline, and JSON/CSV export",
     "Cross-platform private IPv4 Network Radar and persistent local journal",
     "Interactive observed LAN map",
     "Read-only gateway, DNS resolver, transport, interface, local IPv4, and default-route intelligence on Windows and Android",
@@ -84,6 +85,7 @@
     "configurationChanges": false
   },
   "fixes": [
+    "Added cross-platform local OUTAGE WATCH with 30-second, 1-minute, and 5-minute probe intervals, incident/recovery tracking, 30-day local history, and JSON/CSV export",
     "Rebuilt malformed Windows PowerShell route-diagnostics function",
     "Registered Android NetworkRadar through the Capacitor 6 JavaScript plugin runtime",
     "Packaged capacitor.js into Android and Windows app assets",
@@ -170,6 +172,47 @@
       "Windows applies IPv4 DNS only to the active default-route adapter; other adapters are not modified.",
       "Android ordinary apps cannot directly change device-wide DNS; the user must apply the selected resolver in system settings.",
       "The original Windows backup is local to the app user-data directory. Keep it until the original configuration is restored or manually recorded."
+    ]
+  },
+  "connectivityWatch": {
+    "platforms": [
+      "Windows x64",
+      "Android"
+    ],
+    "usesExistingDiagnostics": true,
+    "intervalsSeconds": [
+      30,
+      60,
+      300
+    ],
+    "defaultIntervalSeconds": 60,
+    "probes": [
+      "active route snapshot",
+      "one ICMP echo to the active private IPv4 gateway when available",
+      "one system DNS lookup for example.com",
+      "two fixed HTTPS/TLS endpoint checks"
+    ],
+    "history": {
+      "storage": "Local app storage only",
+      "retentionDays": 30,
+      "maxSamples": 240,
+      "maxIncidentEvents": 80
+    },
+    "incidentRules": {
+      "online": "At least one fixed HTTPS endpoint returns a successful status",
+      "noDefaultRoute": "The active operating system route snapshot reports no IPv4 default route",
+      "dnsFailure": "System DNS lookup fails while the active gateway answered ICMP",
+      "httpsUnreachable": "System DNS succeeds but both fixed HTTPS test endpoints fail",
+      "indeterminate": "Remaining mixed or inconclusive probe results; gateway ICMP silence alone is not considered proof of outage"
+    },
+    "lifecycle": "Runs only while NETWORK RADAR is open and the app remains active; closing the panel stops the watch. It is not a background system service.",
+    "configurationChanges": false,
+    "lanScan": false,
+    "portScan": false,
+    "vpnCreated": false,
+    "export": [
+      "JSON",
+      "CSV"
     ]
   }
 }

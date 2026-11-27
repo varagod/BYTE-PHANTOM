@@ -59,6 +59,15 @@
   const DNS_RESOLVER_HISTORY_KEY = "bytePhantomDnsResolverHistory.v1";
   const DNS_RESOLVER_HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
   const DNS_RESOLVER_HISTORY_MAX = 20;
+  const OUTAGE_WATCH_STORAGE_KEY = "bytePhantomOutageWatch.v1";
+  const OUTAGE_WATCH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+  const OUTAGE_WATCH_MAX_SAMPLES = 240;
+  const OUTAGE_WATCH_MAX_EVENTS = 80;
+  let outageWatchTimer = null;
+  let outageWatchActive = false;
+  let outageWatchSamples = [];
+  let outageWatchEvents = [];
+  let networkConnectivityProbeBusy = false;
   let dnsFailoverCandidates = [];
   let dnsFailoverState = null;
   let dnsFailoverActionBusy = false;
@@ -352,6 +361,7 @@
     const operation = operations.find(function (item) { return item.id === id; });
     if (!operation) return;
     clearInterval(operationTimer);
+    stopOutageWatch();
     stopNetworkRadarMonitor();
     selectedOperation = operation;
     const liveOperation = operation.live === true;
@@ -395,6 +405,7 @@
   }
   function closeOperation() {
     clearInterval(operationTimer);
+    stopOutageWatch();
     stopNetworkRadarMonitor();
     ++liveScanSequence;
     networkRadarSessionToken = liveScanSequence;
@@ -863,6 +874,337 @@
     $("networkRadarResults").hidden=false;
   }
 
+  function restoreOutageWatchHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(OUTAGE_WATCH_STORAGE_KEY) || "{}");
+      const cutoff = Date.now() - OUTAGE_WATCH_RETENTION_MS;
+      outageWatchSamples = (Array.isArray(parsed.samples) ? parsed.samples : [])
+        .filter(item => item && Number.isFinite(Date.parse(item.at)) && Date.parse(item.at) >= cutoff)
+        .slice(0, OUTAGE_WATCH_MAX_SAMPLES);
+      outageWatchEvents = (Array.isArray(parsed.events) ? parsed.events : [])
+        .filter(item => item && Number.isFinite(Date.parse(item.startedAt)) && Date.parse(item.startedAt) >= cutoff)
+        .slice(0, OUTAGE_WATCH_MAX_EVENTS);
+    } catch (error) {
+      outageWatchSamples = [];
+      outageWatchEvents = [];
+    }
+  }
+
+  function saveOutageWatchHistory() {
+    const cutoff = Date.now() - OUTAGE_WATCH_RETENTION_MS;
+    outageWatchSamples = outageWatchSamples
+      .filter(item => Number.isFinite(Date.parse(item.at)) && Date.parse(item.at) >= cutoff)
+      .slice(0, OUTAGE_WATCH_MAX_SAMPLES);
+    outageWatchEvents = outageWatchEvents
+      .filter(item => Number.isFinite(Date.parse(item.startedAt)) && Date.parse(item.startedAt) >= cutoff)
+      .slice(0, OUTAGE_WATCH_MAX_EVENTS);
+    try {
+      localStorage.setItem(OUTAGE_WATCH_STORAGE_KEY, JSON.stringify({
+        version: 1,
+        savedAt: new Date().toISOString(),
+        samples: outageWatchSamples,
+        events: outageWatchEvents
+      }));
+    } catch (error) {
+      const feedback = $("outageWatchFeedback");
+      if (feedback) feedback.textContent = "LOCAL HISTORY COULD NOT BE SAVED: " + String(error && error.message ? error.message : error);
+    }
+  }
+
+  function outageWatchIsIssue(state) {
+    return state === "NO DEFAULT ROUTE" || state === "DNS FAILURE" || state === "HTTPS UNREACHABLE";
+  }
+
+  function classifyOutageWatchResult(result) {
+    const path = result && result.networkPath ? result.networkPath : {};
+    const gateway = result && result.gatewayProbe ? result.gatewayProbe : {};
+    const dns = result && result.dns ? result.dns : {};
+    const httpsRows = Array.isArray(result && result.https) ? result.https : [];
+    const dnsOk = dns.ok === true;
+    const httpsOk = httpsRows.some(item => item && item.ok === true);
+    let state = "INDETERMINATE";
+    let diagnosis = "The available probes did not establish a clear connectivity state.";
+
+    if (httpsOk) {
+      state = "ONLINE";
+      diagnosis = "At least one fixed HTTPS endpoint responded. This confirms reachability to that service only.";
+    } else if (path.defaultRoute === false) {
+      state = "NO DEFAULT ROUTE";
+      diagnosis = "The operating system did not report an active IPv4 default route.";
+    } else if (!dnsOk && gateway.replied === true) {
+      state = "DNS FAILURE";
+      diagnosis = "The gateway answered ICMP, but the system resolver could not resolve the test hostname.";
+    } else if (dnsOk && httpsRows.length > 0) {
+      state = "HTTPS UNREACHABLE";
+      diagnosis = "System DNS succeeded, but neither fixed HTTPS test endpoint responded.";
+    } else {
+      diagnosis = "The path is unconfirmed. A gateway that ignores ICMP may still forward traffic.";
+    }
+
+    return {
+      state,
+      diagnosis,
+      dnsOk,
+      httpsOk,
+      gatewayStatus: String(gateway.status || "UNKNOWN"),
+      defaultRoute: path.defaultRoute === true ? true : path.defaultRoute === false ? false : null,
+      durationMs: Number.isFinite(Number(result && result.durationMs)) ? Number(result.durationMs) : null
+    };
+  }
+
+  function recordOutageWatchResult(result) {
+    const classification = classifyOutageWatchResult(result);
+    const at = new Date().toISOString();
+    const sample = {
+      at,
+      state: classification.state,
+      diagnosis: classification.diagnosis,
+      gatewayStatus: classification.gatewayStatus,
+      defaultRoute: classification.defaultRoute,
+      dnsOk: classification.dnsOk,
+      httpsOk: classification.httpsOk,
+      durationMs: classification.durationMs
+    };
+    outageWatchSamples.unshift(sample);
+
+    const openIncident = outageWatchEvents.find(item => !item.resolvedAt);
+    let transition = null;
+    if (outageWatchIsIssue(classification.state) && !openIncident) {
+      outageWatchEvents.unshift({
+        startedAt: at,
+        state: classification.state,
+        lastState: classification.state,
+        resolvedAt: null,
+        durationMs: null
+      });
+      transition = "CONNECTIVITY ISSUE DETECTED: " + classification.state;
+    } else if (outageWatchIsIssue(classification.state) && openIncident) {
+      openIncident.lastState = classification.state;
+    } else if (classification.state === "ONLINE" && openIncident) {
+      openIncident.resolvedAt = at;
+      openIncident.durationMs = Math.max(0, Date.parse(at) - Date.parse(openIncident.startedAt));
+      transition = "CONNECTIVITY RESTORED AFTER " + formatOutageWatchDuration(openIncident.durationMs);
+    }
+
+    saveOutageWatchHistory();
+    renderOutageWatchHistory();
+    return { sample, transition };
+  }
+
+  function formatOutageWatchDuration(value) {
+    const ms = Math.max(0, Number(value) || 0);
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return seconds + " SEC";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return minutes + " MIN " + (seconds % 60) + " SEC";
+    const hours = Math.floor(minutes / 60);
+    return hours + " HR " + (minutes % 60) + " MIN";
+  }
+
+  function formatOutageWatchTime(value) {
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date.toLocaleString() : "UNKNOWN TIME";
+  }
+
+  function getOutageWatchIntervalMs() {
+    const selector = $("outageWatchInterval");
+    const value = selector ? Number(selector.value) : 60000;
+    return [30000, 60000, 300000].includes(value) ? value : 60000;
+  }
+
+  function updateOutageWatchControls() {
+    const button = $("toggleOutageWatch");
+    const status = $("outageWatchStatus");
+    if (button) button.textContent = outageWatchActive ? "STOP OUTAGE WATCH" : "START OUTAGE WATCH";
+    if (status) {
+      status.textContent = outageWatchActive
+        ? "WATCH ACTIVE · CHECK EVERY " + (getOutageWatchIntervalMs() / 1000) + " SEC"
+        : "WATCH STOPPED · HISTORY REMAINS ON THIS DEVICE";
+    }
+  }
+
+  function renderOutageWatchHistory() {
+    const latest = outageWatchSamples[0] || null;
+    const state = $("outageWatchCurrentState");
+    const sampleCount = $("outageWatchSampleCount");
+    const incidentCount = $("outageWatchIncidentCount");
+    const history = $("outageWatchHistory");
+    const events = $("outageWatchEvents");
+    const feedback = $("outageWatchFeedback");
+
+    if (state) {
+      state.textContent = latest ? latest.state : "NOT MONITORED";
+      state.dataset.state = latest ? latest.state.toLowerCase().replace(/[^a-z]+/g, "-") : "idle";
+    }
+    if (sampleCount) sampleCount.textContent = String(outageWatchSamples.length);
+    if (incidentCount) incidentCount.textContent = String(outageWatchEvents.length);
+    if (history) {
+      history.replaceChildren();
+      if (!outageWatchSamples.length) {
+        const empty = document.createElement("div");
+        empty.className = "outage-watch-empty";
+        empty.textContent = "NO CONNECTIVITY SAMPLES RECORDED";
+        history.appendChild(empty);
+      } else {
+        outageWatchSamples.slice(0, 8).forEach(item => {
+          const row = document.createElement("div");
+          row.className = "outage-watch-record";
+          const heading = document.createElement("b");
+          heading.textContent = item.state;
+          heading.dataset.state = String(item.state || "").toLowerCase().replace(/[^a-z]+/g, "-");
+          const time = document.createElement("small");
+          time.textContent = formatOutageWatchTime(item.at);
+          const detail = document.createElement("span");
+          detail.textContent = "DNS " + (item.dnsOk === true ? "OK" : item.dnsOk === false ? "FAILED" : "N/A") +
+            " · HTTPS " + (item.httpsOk === true ? "REACHABLE" : item.httpsOk === false ? "NOT CONFIRMED" : "N/A") +
+            " · GATEWAY " + String(item.gatewayStatus || "UNKNOWN") +
+            (item.durationMs != null && Number.isFinite(Number(item.durationMs)) ? " · " + Number(item.durationMs) + " MS" : "");
+          row.append(heading, time, detail);
+          history.appendChild(row);
+        });
+      }
+    }
+    if (events) {
+      events.replaceChildren();
+      if (!outageWatchEvents.length) {
+        const empty = document.createElement("div");
+        empty.className = "outage-watch-empty";
+        empty.textContent = "NO ISSUE / RECOVERY EVENTS RECORDED";
+        events.appendChild(empty);
+      } else {
+        outageWatchEvents.slice(0, 5).forEach(item => {
+          const row = document.createElement("div");
+          row.className = "outage-watch-event";
+          const title = document.createElement("b");
+          title.textContent = item.resolvedAt ? "RESTORED · " + item.state : "OPEN · " + item.lastState;
+          title.dataset.state = item.resolvedAt ? "online" : "issue";
+          const time = document.createElement("small");
+          time.textContent = formatOutageWatchTime(item.startedAt) +
+            (item.resolvedAt ? " · DURATION " + formatOutageWatchDuration(item.durationMs) : " · STILL OPEN");
+          row.append(title, time);
+          events.appendChild(row);
+        });
+      }
+    }
+    if (feedback && latest && !outageWatchActive) {
+      feedback.textContent = "LAST CHECK: " + formatOutageWatchTime(latest.at) + " · WATCH IS STOPPED.";
+    }
+    updateOutageWatchControls();
+  }
+
+  async function copyOutageWatchReport(format) {
+    const payload = {
+      app: "BYTE PHANTOM",
+      report: "LOCAL OUTAGE WATCH HISTORY",
+      exportedAt: new Date().toISOString(),
+      samples: outageWatchSamples,
+      incidents: outageWatchEvents
+    };
+    let value;
+    if (format === "csv") {
+      const cell = item => '"' + String(item == null ? "" : item).replace(/"/g, '""') + '"';
+      const lines = [["timestamp", "state", "gateway", "default_route", "dns_ok", "https_ok", "duration_ms", "diagnosis"]];
+      outageWatchSamples.forEach(item => lines.push([
+        item.at, item.state, item.gatewayStatus, item.defaultRoute, item.dnsOk, item.httpsOk, item.durationMs, item.diagnosis
+      ]));
+      value = lines.map(line => line.map(cell).join(",")).join("\r\n");
+    } else {
+      value = JSON.stringify(payload, null, 2);
+    }
+    const copied = await copyNetworkRadarText(value);
+    const feedback = $("outageWatchFeedback");
+    if (feedback) feedback.textContent = copied
+      ? "OUTAGE WATCH " + format.toUpperCase() + " REPORT COPIED TO CLIPBOARD. DATA REMAINS LOCAL UNTIL YOU EXPORT IT."
+      : "COULD NOT COPY THE REPORT. SELECT AND COPY THE REPORT FROM THE LOCAL HISTORY VIEW.";
+  }
+
+  function clearOutageWatchHistory() {
+    if (!window.confirm("Clear all locally stored OUTAGE WATCH samples and incident events?")) return;
+    outageWatchSamples = [];
+    outageWatchEvents = [];
+    saveOutageWatchHistory();
+    renderOutageWatchHistory();
+    const feedback = $("outageWatchFeedback");
+    if (feedback) feedback.textContent = "LOCAL OUTAGE WATCH HISTORY CLEARED.";
+  }
+
+  function stopOutageWatch() {
+    outageWatchActive = false;
+    if (outageWatchTimer) window.clearTimeout(outageWatchTimer);
+    outageWatchTimer = null;
+    updateOutageWatchControls();
+  }
+
+  async function runOutageWatchProbe() {
+    if (!outageWatchActive) return;
+    const bridge = getNetworkRadarBridge();
+    if (!bridge || typeof bridge.diagnose !== "function") {
+      const feedback = $("outageWatchFeedback");
+      if (feedback) feedback.textContent = "NATIVE CONNECTIVITY DIAGNOSTICS UNAVAILABLE: " +
+        (networkRadarAndroidPluginError || "Native platform bridge not detected.");
+      stopOutageWatch();
+      return;
+    }
+    if (networkConnectivityProbeBusy) {
+      outageWatchTimer = window.setTimeout(runOutageWatchProbe, 5000);
+      return;
+    }
+
+    networkConnectivityProbeBusy = true;
+    const feedback = $("outageWatchFeedback");
+    if (feedback) feedback.textContent = "PROBING ACTIVE ROUTE, GATEWAY, SYSTEM DNS AND TWO HTTPS ENDPOINTS…";
+    try {
+      const result = await bridge.diagnose();
+      const recorded = recordOutageWatchResult(result);
+      if (recorded.transition) {
+        appendDashboardLog(recorded.transition, recorded.sample.state === "ONLINE" ? "term-green" : "term-amber");
+      }
+      if (feedback) feedback.textContent = "LAST CHECK: " + formatOutageWatchTime(recorded.sample.at) +
+        " · " + recorded.sample.state + " · " + recorded.sample.diagnosis;
+    } catch (error) {
+      const sample = {
+        at: new Date().toISOString(),
+        state: "PROBE ERROR",
+        diagnosis: String(error && error.message ? error.message : error).slice(0, 240),
+        gatewayStatus: "NOT AVAILABLE",
+        defaultRoute: null,
+        dnsOk: null,
+        httpsOk: null,
+        durationMs: null
+      };
+      outageWatchSamples.unshift(sample);
+      saveOutageWatchHistory();
+      renderOutageWatchHistory();
+      if (feedback) feedback.textContent = "PROBE ERROR: " + sample.diagnosis;
+    } finally {
+      networkConnectivityProbeBusy = false;
+      if (outageWatchActive) {
+        outageWatchTimer = window.setTimeout(runOutageWatchProbe, getOutageWatchIntervalMs());
+      }
+    }
+  }
+
+  function startOutageWatch() {
+    if (outageWatchActive) {
+      stopOutageWatch();
+      return;
+    }
+    if (selectedOperation && selectedOperation.id !== "network-radar") {
+      const feedback = $("outageWatchFeedback");
+      if (feedback) feedback.textContent = "OPEN NETWORK RADAR BEFORE STARTING THE WATCH.";
+      return;
+    }
+    const bridge = getNetworkRadarBridge();
+    if (!bridge || typeof bridge.diagnose !== "function") {
+      const feedback = $("outageWatchFeedback");
+      if (feedback) feedback.textContent = "OUTAGE WATCH REQUIRES THE WINDOWS EXE OR ANDROID APK NATIVE BRIDGE.";
+      return;
+    }
+    outageWatchActive = true;
+    updateOutageWatchControls();
+    runOutageWatchProbe();
+  }
+
   async function runNetworkConnectivityDiagnostics() {
     const button = $("runNetworkDiagnostics");
     const host = $("networkDiagnosticsResults");
@@ -874,6 +1216,11 @@
       return;
     }
 
+    if (networkConnectivityProbeBusy) {
+      host.textContent = "A CONNECTIVITY PROBE IS ALREADY RUNNING. WAIT FOR IT TO FINISH.";
+      return;
+    }
+    networkConnectivityProbeBusy = true;
     button.disabled = true;
     button.textContent = "CHECKING PATH / DNS / HTTPS...";
     host.textContent = "Reading the active route, probing its local gateway once, resolving DNS, and checking two HTTPS/TLS endpoints. No LAN host scan is performed.";
@@ -983,6 +1330,7 @@
     } catch (error) {
       host.textContent = "DIAGNOSTICS FAILED: " + (error && error.message ? error.message : String(error));
     } finally {
+      networkConnectivityProbeBusy = false;
       button.disabled = false;
       button.textContent = "RUN FULL CONNECTIVITY DIAGNOSTICS";
     }
@@ -1821,6 +2169,13 @@
   }
   $("runOperation").addEventListener("click", runOperation);
   $("runNetworkDiagnostics").addEventListener("click", runNetworkConnectivityDiagnostics);
+  $("toggleOutageWatch").addEventListener("click", startOutageWatch);
+  $("outageWatchInterval").addEventListener("change", updateOutageWatchControls);
+  $("copyOutageWatchJson").addEventListener("click", function () { copyOutageWatchReport("json"); });
+  $("copyOutageWatchCsv").addEventListener("click", function () { copyOutageWatchReport("csv"); });
+  $("clearOutageWatchHistory").addEventListener("click", clearOutageWatchHistory);
+  restoreOutageWatchHistory();
+  renderOutageWatchHistory();
   $("runDnsDiscovery").addEventListener("click", runDnsResolverDiscovery);
   $("dnsFailoverResolver").addEventListener("change", updateDnsFailoverControls);
   $("dnsFailoverApplyConfirm").addEventListener("change", updateDnsFailoverControls);

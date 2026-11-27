@@ -322,7 +322,7 @@ async function runConnectivityDiagnostics() {
     };
 
     const request = https.get(url, {
-      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.15.0" }
+      headers: { "User-Agent": "BYTE-PHANTOM-Network-Diagnostics/1.16.0" }
     }, response => {
       const statusCode = response.statusCode || 0;
       response.resume();
