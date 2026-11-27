@@ -3,7 +3,7 @@
   "use strict";
 
   const operations = [
-    { id:"system-scan", name:"SYSTEM SCAN", icon:"▦", tone:"cyan-card", category:"recon", description:"Inspect a fictional workstation profile, mock services, and sample system telemetry.", target:"LOCAL_SANDBOX_01", stages:["Loading fictional system profile","Checking mock service table","Reviewing sample resource metrics","Preparing local scan report"], result:["CPU PROFILE: PHANTOM-8 CORE","MEMORY PROFILE: 32 GB (SIMULATED)","MOCK SERVICES: 07 / 07 AVAILABLE","SCAN REPORT: GENERATED LOCALLY"] },
+    { id:"system-scan", name:"SYSTEM INTELLIGENCE", icon:"▦", tone:"cyan-card", category:"recon", description:"Read live Windows host details: OS, CPU, memory, disk capacity, and active IPv4 adapters. Read-only; no network probing or system changes.", target:"THIS WINDOWS HOST", live:true },
     { id:"network-radar", name:"NETWORK RADAR", icon:"◎", tone:"cyan-card", category:"recon", description:"Visualize a small collection of imaginary network nodes and their sample status.", target:"DEMO_GRID_192.0.2.0", stages:["Initializing sample topology","Plotting fictional nodes","Calculating mock signal paths","Rendering local radar summary"], result:["NODES DISPLAYED: 08 FICTIONAL","ACTIVE LINKS: 05 / 08","SIGNAL QUALITY: DEMO OPTIMAL","TOPOLOGY: LOCAL SAMPLE DATA"] },
     { id:"ip-trace", name:"IP TRACE", icon:"⌖", tone:"red-card", category:"recon", description:"Run a theatrical trace animation against a reserved documentation IP address. No lookup is performed.", target:"192.0.2.44 (DOCUMENTATION RANGE)", stages:["Reading sample address","Simulating route hops","Painting fictional map markers","Compiling demo trace"], result:["DESTINATION: 192.0.2.44 (RESERVED EXAMPLE)","ROUTE HOPS: 06 SIMULATED","GEOLOCATION: NOT REQUESTED","TRACE: FICTIONAL RESULT"] },
     { id:"device-infiltration", name:"DEVICE INFILTRATION", icon:"▣", tone:"", category:"access", description:"Play a fictional device-access scenario using a generated device record. No real device is contacted.", target:"MOCK_DEVICE_DELTA", stages:["Loading fictional device record","Animating access-control sequence","Reviewing imaginary permissions","Closing sandbox session"], result:["DEVICE: MOCK-DELTA / OFFLINE SAMPLE","ACCESS LAYERS: 04 SIMULATED","PERMISSIONS: FICTIONAL ONLY","SCENARIO: COMPLETED LOCALLY"] },
@@ -299,6 +299,7 @@
     button.className = "operation-card " + operation.tone;
     button.type = "button";
     button.dataset.operation = operation.id;
+    button.dataset.state = operation.live ? "live" : "simulation";
     const icon = document.createElement("span");
     icon.className = "operation-icon";
     icon.textContent = operation.icon;
@@ -309,6 +310,10 @@
     const description = document.createElement("small");
     description.textContent = operation.description;
     info.append(title, description);
+    const state = document.createElement("em");
+    state.className = "module-state " + (operation.live ? "module-state-live" : "module-state-sim");
+    state.textContent = operation.live ? "LIVE / READ-ONLY" : "SIMULATION";
+    info.appendChild(state);
     const arrow = document.createElement("i");
     arrow.className = "operation-arrow";
     arrow.textContent = "↗";
@@ -326,10 +331,16 @@
     if (!operation) return;
     clearInterval(operationTimer);
     selectedOperation = operation;
+    const liveOperation = operation.live === true;
     $("modalIcon").textContent = operation.icon;
     $("modalTitle").textContent = operation.name;
     $("modalDescription").textContent = operation.description;
+    $("modalModeLabel").textContent = liveOperation ? "LIVE WINDOWS INTELLIGENCE" : "SIMULATION MODULE";
+    $("modalTargetLabel").textContent = liveOperation ? "HOST SCOPE" : "SIMULATED TARGET";
     $("modalTarget").textContent = operation.target;
+    $("modalTargetTag").textContent = liveOperation ? "LOCAL / READ-ONLY" : "DEMO / FICTIONAL";
+    $("modalSafety").textContent = liveOperation ? "READ-ONLY INVENTORY · NO NETWORK PROBES · NO SYSTEM CHANGES" : "SIMULATED OUTPUT · NO REAL TARGET OR DEVICE ACCESS";
+    $("operationModal").dataset.state = liveOperation ? "live" : "simulation";
     $("progressArea").hidden = true;
     $("modalResult").hidden = true;
     $("modalResult").textContent = "";
@@ -338,7 +349,7 @@
     $("progressOutput").textContent = "";
     $("progressLabel").textContent = "INITIALIZING";
     $("runOperation").disabled = false;
-    $("runOperation").innerHTML = "INITIALIZE SIMULATION <span>▶</span>";
+    $("runOperation").innerHTML = liveOperation ? "RUN LIVE SYSTEM SCAN <span>↗</span>" : "INITIALIZE SIMULATION <span>▶</span>";
     $("operationModal").classList.add("open");
     $("operationModal").setAttribute("aria-hidden", "false");
     tone();
@@ -364,6 +375,7 @@
   function runOperation() {
     if (!selectedOperation || operationTimer) return;
     const operation = selectedOperation;
+    if (operation.live === true) { runLiveSystemScan(operation); return; }
     const feed = operationStreams[operation.id];
     if (!feed) return;
     $("progressArea").hidden = false;
@@ -396,6 +408,128 @@
       }
     }, operation.id === "network-radar" || operation.id === "satellite-link" ? 245 : 215);
   }
+
+  function formatBytes(value) {
+    const bytes = Number(value);
+    if (!Number.isFinite(bytes) || bytes < 0) return "N/A";
+    if (bytes < 1024) return bytes + " B";
+    const units = ["KB", "MB", "GB", "TB", "PB"];
+    let amount = bytes / 1024;
+    let unit = 0;
+    while (amount >= 1024 && unit < units.length - 1) { amount /= 1024; unit += 1; }
+    return amount.toFixed(2) + " " + units[unit];
+  }
+  function formatUptime(seconds) {
+    let value = Math.max(0, Math.floor(Number(seconds) || 0));
+    const days = Math.floor(value / 86400); value %= 86400;
+    const hours = Math.floor(value / 3600); value %= 3600;
+    const minutes = Math.floor(value / 60);
+    return days + "d " + hours + "h " + minutes + "m";
+  }
+  async function runLiveSystemScan(operation) {
+    const desktop = window.bytePhantomDesktop;
+    if (!desktop || typeof desktop.getSystemSnapshot !== "function") {
+      $("progressArea").hidden = false;
+      $("progressLabel").textContent = "WINDOWS DESKTOP REQUIRED";
+      $("progressPercent").textContent = "—";
+      $("progressOutput").textContent = "[BLOCKED] Live host inventory is available in the Windows desktop build only.\n[INFO] Browser and Android builds do not fall back to fabricated system data.";
+      $("modalResult").hidden = false;
+      $("modalResult").textContent = "LIVE INVENTORY UNAVAILABLE\n\nThis platform does not expose the Windows desktop inventory bridge. No simulated values have been substituted.";
+      $("runOperation").disabled = false;
+      $("runOperation").textContent = "TRY AGAIN";
+      return;
+    }
+
+    operationTimer = -1;
+    $("progressArea").hidden = false;
+    $("modalResult").hidden = true;
+    $("runOperation").disabled = true;
+    $("runOperation").textContent = "READING LOCAL HOST...";
+    $("progressLabel").textContent = "READ-ONLY HOST INVENTORY";
+    $("progressPercent").textContent = "12%";
+    $("progressBar").style.width = "12%";
+    $("progressOutput").textContent = [
+      "╔══ BYTE PHANTOM / SYSTEM INTELLIGENCE ══╗",
+      "[INIT] Opening the local Windows inventory bridge",
+      "[SAFE] Read-only system APIs only",
+      "[SAFE] No sockets, probes, elevation, or configuration writes",
+      "[READ] Waiting for host telemetry..."
+    ].join("\n");
+
+    try {
+      const snapshot = await desktop.getSystemSnapshot();
+      if (selectedOperation !== operation || !$("operationModal").classList.contains("open")) return;
+      if (!snapshot || snapshot.supported !== true) {
+        throw new Error(snapshot && snapshot.reason ? snapshot.reason : "Live inventory is not supported on this platform.");
+      }
+
+      const memoryUsed = snapshot.memory ? formatBytes(snapshot.memory.usedBytes) : "N/A";
+      const memoryTotal = snapshot.memory ? formatBytes(snapshot.memory.totalBytes) : "N/A";
+      const diskLine = snapshot.disk
+        ? snapshot.disk.volume + " " + formatBytes(snapshot.disk.freeBytes) + " FREE / " + formatBytes(snapshot.disk.totalBytes)
+        : "Disk capacity unavailable";
+      const adapters = Array.isArray(snapshot.networkAdapters) && snapshot.networkAdapters.length
+        ? snapshot.networkAdapters.map((item) => item.name + "  " + item.address + " / " + item.netmask)
+        : ["No active non-loopback IPv4 adapters reported"];
+      const lines = [
+        "┏━━ BYTE PHANTOM / LIVE HOST PROFILE ━━━━━━━━━━━━━━━",
+        "┃ HOST      " + snapshot.host.hostname,
+        "┃ PLATFORM  " + snapshot.host.platform + " / " + snapshot.host.architecture,
+        "┃ WINDOWS   " + snapshot.host.version + " / " + snapshot.host.release,
+        "┣━━ PROCESSOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "┃ MODEL     " + snapshot.cpu.model,
+        "┃ CORES     " + snapshot.cpu.logicalCores + " LOGICAL / " + snapshot.cpu.nominalSpeedMHz + " MHz",
+        "┣━━ MEMORY & STORAGE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "┃ RAM       " + memoryUsed + " USED / " + memoryTotal + " TOTAL",
+        "┃ DISK      " + diskLine,
+        "┣━━ NETWORK INTERFACES (NO PROBES) ━━━━━━━━━━━━━━",
+        ...adapters.map((line) => "┃ " + line),
+        "┣━━ RUNTIME ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "┃ UPTIME    " + formatUptime(snapshot.host.uptimeSeconds),
+        "┃ ENGINE    Electron " + snapshot.runtime.electron + " / Node " + snapshot.runtime.node,
+        "┃ VERSION   " + snapshot.appVersion,
+        "┗━━ READ-ONLY SNAPSHOT / " + new Date(snapshot.collectedAt).toLocaleString() + " ━━"
+      ];
+      const report = [
+        "HOST " + snapshot.host.hostname + " / WINDOWS " + snapshot.host.release,
+        "CPU " + snapshot.cpu.model + " / " + snapshot.cpu.logicalCores + " LOGICAL CORES",
+        "RAM " + memoryUsed + " USED / " + memoryTotal + " TOTAL",
+        "DISK " + diskLine,
+        "IPv4 ADAPTERS " + (snapshot.networkAdapters ? snapshot.networkAdapters.length : 0),
+        "SCOPE READ-ONLY / NETWORK PROBES 0 / SYSTEM CHANGES 0"
+      ];
+      const activityText = "Read real Windows host inventory locally (OS, CPU, RAM, disk capacity, and IPv4 adapter metadata). No network probes or system changes were performed.";
+      $("progressBar").style.width = "100%";
+      $("progressPercent").textContent = "100%";
+      $("progressLabel").textContent = "HOST INVENTORY COMPLETE";
+      $("progressOutput").textContent = "[OK] Local host snapshot received.\n[OK] " + report[0] + "\n[OK] " + report[2] + "\n[SAFE] " + report[5];
+      $("modalResult").hidden = false;
+      $("modalResult").textContent = "✓ LIVE SYSTEM INTELLIGENCE / REPORT READY\n\n" + lines.join("\n") + "\n\n" + report.join("\n");
+      $("runOperation").disabled = false;
+      $("runOperation").textContent = "RUN AGAIN";
+      operationCount += 1;
+      $("runCount").textContent = String(operationCount).padStart(2, "0");
+      $("runStatus").textContent = "LIVE OK";
+      addActivity("LIVE SYSTEM INTELLIGENCE", activityText);
+      appendDashboardLog("Live Windows host inventory completed. Read-only; no probes or changes.", "term-green");
+      playSfx("success");
+    } catch (error) {
+      if (selectedOperation === operation && $("operationModal").classList.contains("open")) {
+        const message = error && error.message ? error.message : "Unknown inventory error";
+        $("progressLabel").textContent = "INVENTORY FAILED";
+        $("progressOutput").textContent += "\n[ERROR] " + message;
+        $("modalResult").hidden = false;
+        $("modalResult").textContent = "LIVE INVENTORY FAILED\n\n" + message + "\n\nNo substitute or simulated host values were displayed.";
+        $("runOperation").disabled = false;
+        $("runOperation").textContent = "RETRY LIVE SCAN";
+        $("runStatus").textContent = "LIVE ERROR";
+        addActivity("LIVE SYSTEM SCAN ERROR", message, true);
+      }
+    } finally {
+      operationTimer = null;
+    }
+  }
+
   function finishOperation(operation, feed) {
     operationCount += 1;
     $("runCount").textContent = String(operationCount).padStart(2, "0");
@@ -466,7 +600,7 @@
         terminalLine("help       - list simulator commands");
         terminalLine("status     - show local simulator status");
         terminalLine("modules    - list available operation modules");
-        terminalLine("scan       - run a short fictional system scan");
+        terminalLine("scan       - open the live Windows host inventory module");
         terminalLine("whoami     - show the current fictional operator");
         terminalLine("date       - show this device's local date and time");
         terminalLine("profile    - open the fictional profile generator");
@@ -474,21 +608,17 @@
         terminalLine("No shell, network, file-system, or external target commands are supported.", "warning");
         break;
       case "status":
-        terminalLine("CORE: ONLINE | MODE: LOCAL SIMULATION | NETWORK: DISABLED", "success");
-        terminalLine("MODULES: 14 LOADED | OPERATIONS THIS SESSION: " + operationCount, "info");
+        terminalLine("CORE: ONLINE | MODE: LOCAL / READ-ONLY + SIM MODULES", "success");
+        terminalLine("LIVE MODULES: 01 / 12 | ALL OTHER MODULES: SIMULATED", "info");
+        terminalLine("OPERATIONS THIS SESSION: " + operationCount, "info");
         break;
       case "modules":
         terminalLine("12 OPERATION MODULES + DARK TERMINAL + PROFILE GENERATOR", "success");
         operations.forEach(function (op) { terminalLine("  - " + op.name); });
         break;
       case "scan":
-        terminalLine("Starting safe demo scan...", "info");
-        terminalLine("CPU: PHANTOM-8 (MOCK) | MEMORY: 32 GB (MOCK)", "success");
-        terminalLine("MOCK SERVICES: 07 | ALERTS: 00 | EXTERNAL REQUESTS: 00", "success");
-        terminalLine("Report generated in memory. No real system scan was performed.", "warning");
-        addActivity("TERMINAL / DEMO SCAN", "Local mock system report generated.");
-        operationCount += 1;
-        $("runCount").textContent = String(operationCount).padStart(2, "0");
+        terminalLine("Opening live, read-only Windows host inventory...", "info");
+        openOperation("system-scan");
         break;
       case "whoami":
         terminalLine("OPERATOR: GHOST USER", "success");

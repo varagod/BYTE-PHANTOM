@@ -1,117 +1,84 @@
-# BYTE PHANTOM
+# BYTE PHANTOM v1.3.0
 
-**DIGITAL GHOST · CYBER OPERATIONS SIMULATOR**
+**DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a cinematic, cyberpunk-inspired **fictional hacking simulator**. It provides an interactive dashboard, animated ASCII-style terminal, original procedural ambient music, synthesized sound effects, a resizable desktop app with maximize/fullscreen controls, a cinematic Matrix/ASCII startup sequence, and operation-specific visual reports, activity log, and fictional profile generator.
+BYTE PHANTOM is evolving from a visual cyber simulator into a local-first Cybersecurity & Network Intelligence workstation. The v1.3.0 Windows desktop build introduces the first real capability: a read-only inventory of the Windows host running the app.
 
-> **Safety:** Every operation is local and simulated. The app does not scan networks, trace real IP addresses, access cameras/devices/satellites, crack passwords, extract real data, or contact external targets.
+## v1.3.0 — Real capability
 
-## Features
+**SYSTEM INTELLIGENCE (Windows desktop only)** reads:
+- Windows hostname, platform, OS release/version, and architecture
+- CPU model, logical core count, and reported clock speed
+- Total and available RAM
+- System-volume capacity and available space (when Windows exposes it)
+- Non-loopback IPv4 adapter names, IP addresses, and netmasks
 
-- Watch Dogs-inspired dark interface with violet, cyan, red, and green accents
-- Responsive dashboard for desktop and Android
-- 12 simulated operation modules:
-  - SYSTEM SCAN
-  - NETWORK RADAR
-  - IP TRACE
-  - DEVICE INFILTRATION
-  - FIREWALL BREACH
-  - PASSWORD CRACKER
-  - DATA EXTRACTION
-  - CAMERA ACCESS
-  - SATELLITE LINK
-  - MAINFRAME OVERRIDE
-  - DIGITAL FORENSICS
-  - ENCRYPTION BREAKER
-- DARK TERMINAL with simulator-only commands
-- PROFILE GENERATOR for fictional identities
-- Local activity history and progress animations
-- Original procedural ambient music and UI / operation sound effects (Web Audio API)
-- Independent music and effects toggles with volume sliders
-- Native resizable Windows desktop window (Electron), starts windowed and supports maximize / fullscreen
-- Fullscreen toggle in browser mode and keyboard shortcut F11
-- Android packaging through Capacitor and GitHub Actions
-- Windows portable EXE through Electron Builder and GitHub Actions
+This is a read-only snapshot. It does not send packets, probe networks, change system settings, request administrator privileges, read credentials, or collect MAC addresses. Data is displayed in the current app session and is not uploaded.
 
-## Run the web version locally
+## Module status
 
-Requirements: Node.js 20 or newer.
+Only SYSTEM INTELLIGENCE is live in v1.3.0. The remaining 11 operation cards are explicitly marked SIMULATION until each one is implemented and tested in a later version:
 
-~~~bash
-npm install
-npm start
-~~~
+- NETWORK RADAR
+- IP TRACE
+- DEVICE INFILTRATION
+- FIREWALL BREACH
+- PASSWORD CRACKER
+- CAMERA ACCESS
+- SATELLITE LINK
+- MAINFRAME OVERRIDE
+- DATA EXTRACTION
+- DIGITAL FORENSICS
+- ENCRYPTION BREAKER
 
-Open the local address printed by the server.
+Future real modules will be limited to the local machine or systems the operator owns or is explicitly authorized to assess. No stealth access, unauthorized exploitation, or covert data collection is planned.
 
-## Build the Android APK locally
+## Visual system
+- Dark cyberpunk interface with Matrix glyph rain and persistent ASCII overlays
+- Local host radar, targeting reticle, telemetry plates, scanline and neon-edge effects
+- Responsive dashboard, operation detail windows, activity history, and terminal
+- Original procedural audio with independent music/effects controls
+- Animated effects can be disabled in Settings and respect reduced-motion preferences
 
-Requirements: Node.js 20+, JDK 17, Android SDK, and Android platform tools.
+## Windows desktop build
 
-~~~bash
-npm install
-npx cap add android
-npx cap sync android
-~~~
-
-On Windows PowerShell:
-
-~~~powershell
-cd android
-.\gradlew.bat assembleDebug
-~~~
-
-The debug APK is created at:
-
-**android/app/build/outputs/apk/debug/app-debug.apk**
-
-## Build the APK with GitHub Actions
-
-1. Open the repository's **Actions** tab.
-2. Select **Build Android APK** and choose **Run workflow**, or push a commit to main.
-3. Open the completed workflow run.
-4. Download the **BYTE-PHANTOM-debug-apk** artifact.
-
-The workflow builds a debug APK. It is suitable for testing and direct installation; a production release should later use a securely managed signing key.
-
-## Project structure
-
-~~~text
-BYTE-PHANTOM/
-├── .github/workflows/android-apk.yml
-├── web/
-│   ├── index.html
-│   ├── styles.css
-│   └── app.js
-├── capacitor.config.json
-├── package.json
-└── README.md
-~~~
-
-
-## Desktop app (Windows)
-
-Requirements: Node.js 24+.
+Requirements for a local build: Node.js 24+.
 
 ~~~powershell
 npm install
 npm run desktop:dev
-~~~
-
-The desktop shell opens in a normal, resizable window with the standard Windows minimize and maximize controls. Use the in-app FULLSCREEN control or press F11 to toggle fullscreen.
-
-Build a portable Windows x64 executable:
-
-~~~powershell
 npm run desktop:build
 ~~~
 
-The EXE is written to dist-desktop/. The GitHub Actions workflow also publishes it as a downloadable artifact.
+The portable x64 executable is written to dist-desktop/ and named:
 
-## Brand assets (v1.2.0)
+**BYTE-PHANTOM-v1.3.0-Windows-x64.exe**
 
-The approved logo is the shared source for favicon, web/PWA icons, Android launcher/adaptive icons, and the Windows ICO. Build workflows derive platform-sized assets automatically with Pillow. For local generation run `python -m pip install Pillow` then `python scripts/generate-brand-assets.py`; for Android, add `--android` after `npx cap sync android`.
+The GitHub Actions workflow uploads a version-named artifact. The EXE is portable and does not require a separate app installer. It is not code-signed, so Windows SmartScreen may show an unverified publisher warning.
 
-## Audio
+## Android debug build
 
-Music is an original, procedural ambient soundtrack synthesized locally using the Web Audio API. Interface, navigation, operation-start, and completion sounds are generated in the same way. Browsers require a user gesture before audio can start, so playback begins after the first click or key press. Music and effects can be controlled separately in Settings.
+The Android app retains the responsive interface, but the live SYSTEM INTELLIGENCE bridge is not available on Android yet. The operation explains that rather than showing fabricated Windows values.
+
+Build prerequisites: Node.js 24+, JDK 17, Android SDK.
+
+~~~powershell
+npm install
+npx cap add android
+npx cap sync android
+cd android
+.gradlew.bat assembleDebug
+~~~
+
+The CI artifact is named:
+
+**BYTE-PHANTOM-v1.3.0-Android-debug.apk**
+
+This is a debug APK for testing, not a Play Store release.
+
+## Version records
+- Root file: VERSION
+- Runtime metadata: web/version.json
+- Package version: package.json
+- Change history: CHANGELOG.md
+

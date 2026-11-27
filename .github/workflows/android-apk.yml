@@ -37,6 +37,10 @@ jobs:
         with:
           packages: platform-tools platforms;android-34 build-tools;34.0.0
 
+      - name: Read app version
+        id: version
+        run: echo "version=$(node -p 'require("./package.json").version')" >> "$GITHUB_OUTPUT"
+
       - name: Install dependencies
         run: npm install
 
@@ -64,10 +68,15 @@ jobs:
           done
           exit 1
 
+      - name: Rename versioned APK
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "android/app/build/outputs/apk/debug/BYTE-PHANTOM-v${VERSION}-Android-debug.apk"
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BYTE-PHANTOM-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: BYTE-PHANTOM-v${{ steps.version.outputs.version }}-Android-debug
+          path: android/app/build/outputs/apk/debug/BYTE-PHANTOM-v${{ steps.version.outputs.version }}-Android-debug.apk
           if-no-files-found: error
           retention-days: 30

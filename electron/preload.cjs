@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("bytePhantomDesktop", Object.freeze({
   toggleFullscreen: () => ipcRenderer.invoke("byte-phantom:toggle-fullscreen"),
   getWindowState: () => ipcRenderer.invoke("byte-phantom:window-state"),
+  getSystemSnapshot: () => ipcRenderer.invoke("byte-phantom:system-snapshot"),
   onFullscreenChanged: (callback) => {
     if (typeof callback !== "function") return () => {};
     const listener = () => callback();

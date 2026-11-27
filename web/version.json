@@ -1,0 +1,24 @@
+{
+  "name": "BYTE PHANTOM",
+  "version": "1.3.0",
+  "build": "1.3.0",
+  "release": "2026-11-27",
+  "platform": "Windows x64",
+  "realCapabilities": [
+    "Read-only Windows host inventory: OS, CPU, memory, disk capacity, IPv4 interface metadata"
+  ],
+  "simulatedModules": [
+    "NETWORK RADAR",
+    "IP TRACE",
+    "DEVICE INFILTRATION",
+    "FIREWALL BREACH",
+    "PASSWORD CRACKER",
+    "CAMERA ACCESS",
+    "SATELLITE LINK",
+    "MAINFRAME OVERRIDE",
+    "DATA EXTRACTION",
+    "DIGITAL FORENSICS",
+    "ENCRYPTION BREAKER"
+  ],
+  "security": "No network probes, no privilege escalation, no system configuration changes."
+}

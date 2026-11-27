@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090910">
-  <meta name="description" content="BYTE PHANTOM — Digital Ghost cyber operations simulator.">
-  <title>BYTE PHANTOM — Digital Ghost</title>
+  <meta name="description" content="BYTE PHANTOM 1.3.0 — local Cybersecurity & Network Intelligence workstation with read-only Windows host inventory.">
+  <title>BYTE PHANTOM v1.3.0 — Digital Ghost</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="brand-motion.css">
+  <link rel="stylesheet" href="phantom-ui.css">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -70,7 +71,7 @@
         <div><strong>LOCAL SANDBOX</strong><small>Local environment only</small></div>
         <span class="live-dot"></span>
       </div>
-      <div class="sidebar-footer"><span class="footer-dot"></span> BUILD 1.2.0 <span class="footer-sep">/</span> PHANTOM CORE</div>
+      <div class="sidebar-footer"><span class="footer-dot"></span> BUILD 1.3.0 <span class="footer-sep">/</span> PHANTOM CORE</div>
     </aside>
 
     <div class="mobile-backdrop" id="mobileBackdrop"></div>
@@ -79,7 +80,7 @@
       <header class="topbar">
         <div class="topbar-left">
           <button class="icon-button menu-button" id="openSidebar" aria-label="Open menu">☰</button>
-          <div class="breadcrumb"><span>BYTE PHANTOM</span><b>/</b><strong id="currentSection">DASHBOARD</strong></div>
+          <div class="breadcrumb"><span>BYTE PHANTOM</span><b>/</b><strong id="currentSection">DASHBOARD</strong><span class="build-stamp">v1.3.0 <i>01 LIVE MODULE</i></span></div>
         </div>
         <div class="topbar-right">
           <button class="top-action audio-action is-active" id="audioToggle" type="button" aria-pressed="true" title="Toggle music and sound">
@@ -88,7 +89,7 @@
           <button class="top-action fullscreen-action" id="fullscreenToggle" type="button" aria-pressed="false" title="Enter fullscreen">
             <span class="fullscreen-glyph" aria-hidden="true">⛶</span><span id="fullscreenLabel">FULLSCREEN</span>
           </button>
-          <div class="top-status"><span class="live-dot"></span> ALL SYSTEMS NOMINAL</div>
+          <div class="top-status"><span class="live-dot"></span> LOCAL CONTROL PLANE ONLINE</div>
           <div class="top-divider"></div>
           <div class="user-chip"><div class="user-avatar">G</div><span>GHOST USER</span></div>
         </div>
@@ -99,16 +100,21 @@
           <div class="hero-panel">
             <div class="hero-grid"></div>
             <div class="hero-copy">
-              <div class="eyebrow"><span class="eyebrow-line"></span> PRIVATE CYBER SPACE <span class="eyebrow-tag">LOCAL SIMULATION</span></div>
+              <div class="eyebrow"><span class="eyebrow-line"></span> CYBER INTELLIGENCE WORKSTATION <span class="eyebrow-tag">v1.3.0 / BUILD 001</span></div>
               <h1>THE PHANTOM<br><span>IS AWAKE.</span></h1>
-              <p class="hero-description">Enter your digital underground. Explore simulated cyber operations, inspect fictional systems, and command your own terminal.</p>
+              <p class="hero-description">A local intelligence console for your own machine. Read live Windows host telemetry, inspect your environment, and work through controlled security modules.</p>
               <div class="hero-actions">
                 <button class="button button-primary" data-page="operations"><span>▶</span> START SYSTEM</button>
                 <button class="button button-ghost" data-page="terminal"><span class="button-ghost-icon">›_</span> OPEN TERMINAL</button>
               </div>
-              <div class="hero-footnote"><span class="tiny-shield">⬡</span> NO REAL TARGETS · NO EXTERNAL ACCESS</div>
+              <div class="hero-footnote"><span class="tiny-shield">⬡</span> LOCAL-FIRST · READ-ONLY HOST INVENTORY · NO UNAUTHORIZED ACCESS</div>
             </div>
-
+            <div class="hero-telemetry" aria-label="BYTE PHANTOM local host telemetry display">
+              <div class="telemetry-top"><span>PHANTOM SCOPE / 001</span><b><i></i> LOCAL LINK</b></div>
+              <div class="hero-radar"><div class="radar-sweep"></div><div class="radar-cross"></div><span class="radar-target"></span><div class="radar-core">BP<span>01</span></div><span class="radar-label radar-label-a">HOST</span><span class="radar-label radar-label-b">LOCAL</span></div>
+              <div class="telemetry-readouts"><div><small>ENGINE</small><b>WINDOWS AGENT</b></div><div><small>LIVE MODULES</small><b>01 / 12</b></div><div><small>NETWORK PROBES</small><b>0 / NONE</b></div></div>
+              <div class="telemetry-bottom"><span>READ-ONLY MODE</span><span>BP.SYS // 1.3.0</span></div>
+            </div>
           </div>
 
           <div class="section-heading">
@@ -117,7 +123,7 @@
           </div>
           <div class="stats-grid">
             <article class="stat-card"><div class="stat-top"><span class="stat-icon violet">⌘</span><span class="stat-trend">READY</span></div><div class="stat-value">14</div><div class="stat-name">LOADED MODULES</div><div class="stat-bottom"><span class="stat-bar violet-bar"></span><small>12 operations · 2 tools</small></div></article>
-            <article class="stat-card"><div class="stat-top"><span class="stat-icon cyan">◉</span><span class="stat-trend">LOCAL</span></div><div class="stat-value">100<span class="stat-unit">%</span></div><div class="stat-name">SIMULATION CORE</div><div class="stat-bottom"><span class="stat-bar cyan-bar"></span><small>Isolated demo environment</small></div></article>
+            <article class="stat-card stat-card-live"><div class="stat-top"><span class="stat-icon cyan">◉</span><span class="stat-trend">LIVE</span></div><div class="stat-value">01</div><div class="stat-name">REAL CAPABILITIES</div><div class="stat-bottom"><span class="stat-bar cyan-bar"></span><small>Windows read-only inventory</small></div></article>
             <article class="stat-card"><div class="stat-top"><span class="stat-icon red">ϟ</span><span class="stat-trend" id="runStatus">IDLE</span></div><div class="stat-value" id="runCount">00</div><div class="stat-name">SESSION OPERATIONS</div><div class="stat-bottom"><span class="stat-bar red-bar"></span><small>Runs this session</small></div></article>
             <article class="stat-card"><div class="stat-top"><span class="stat-icon green">⌁</span><span class="stat-trend">SECURE</span></div><div class="stat-value">OFF</div><div class="stat-name">NETWORK ACCESS</div><div class="stat-bottom"><span class="stat-bar green-bar"></span><small>No network actions available</small></div></article>
           </div>
@@ -126,7 +132,7 @@
             <section class="panel quick-panel">
               <div class="panel-heading"><div><div class="eyebrow">FAST LANE</div><h3>Quick Operations</h3></div><button class="text-button" data-page="operations">ALL MODULES <span>↗</span></button></div>
               <div class="quick-grid">
-                <button class="quick-item" data-operation="system-scan"><span class="quick-icon violet">▦</span><span><b>SYSTEM SCAN</b><small>Inspect mock environment</small></span><i>↗</i></button>
+                <button class="quick-item" data-operation="system-scan"><span class="quick-icon violet">▦</span><span><b>SYSTEM INTELLIGENCE</b><small>Read live Windows host data</small></span><i>↗</i></button>
                 <button class="quick-item" data-operation="network-radar"><span class="quick-icon cyan">◎</span><span><b>NETWORK RADAR</b><small>Visualize sample nodes</small></span><i>↗</i></button>
                 <button class="quick-item" data-operation="ip-trace"><span class="quick-icon red">⌖</span><span><b>IP TRACE</b><small>Trace a demo address</small></span><i>↗</i></button>
                 <button class="quick-item" data-page="terminal"><span class="quick-icon green">›_</span><span><b>DARK TERMINAL</b><small>Run simulator commands</small></span><i>↗</i></button>
@@ -134,7 +140,7 @@
             </section>
 
             <section class="panel terminal-preview">
-              <div class="panel-heading"><div><div class="eyebrow">LIVE OUTPUT</div><h3>Phantom Terminal</h3></div><span class="mini-live"><span class="live-dot"></span> DEMO</span></div>
+              <div class="panel-heading"><div><div class="eyebrow">LIVE OUTPUT</div><h3>Phantom Terminal</h3></div><span class="mini-live"><span class="live-dot"></span> LOCAL FEED</span></div>
               <div class="terminal-mini" id="dashboardTerminal">
                 <div class="terminal-line"><span class="term-time">14:04:01</span><span class="term-green">[CORE]</span> Phantom kernel initialized.</div>
                 <div class="terminal-line"><span class="term-time">14:04:02</span><span class="term-violet">[LOAD]</span> 14 modules standing by.</div>
@@ -212,7 +218,7 @@
               <div class="volume-row"><label for="sfxVolume">SOUND EFFECTS VOLUME <output id="sfxVolumeValue">48%</output></label><input type="range" id="sfxVolume" min="0" max="100" value="48"></div>
               <div class="setting-row"><div><b>Compact interface</b><small>Reduce spacing across panels</small></div><label class="toggle"><input type="checkbox" id="compactToggle"><span></span></label></div>
             </section>
-            <section class="panel settings-panel"><div class="panel-heading"><div><div class="eyebrow">ABOUT THIS BUILD</div><h3>BYTE PHANTOM v1.2.0</h3></div><span class="panel-symbol">BP</span></div><div class="about-copy"><p><b>DIGITAL GHOST</b> is a local-only cyber operations simulator created for visual entertainment and interface experimentation.</p><div class="about-line"><span>PLATFORM</span><b>WEB / ANDROID / WINDOWS</b></div><div class="about-line"><span>ENGINE</span><b>CAPACITOR</b></div><div class="about-line"><span>NETWORK ACCESS</span><b class="text-green">DISABLED</b></div><div class="about-line"><span>BUILD</span><b>1.0.0</b></div></div></section>
+            <section class="panel settings-panel"><div class="panel-heading"><div><div class="eyebrow">ABOUT THIS BUILD</div><h3>BYTE PHANTOM v1.3.0</h3></div><span class="panel-symbol">BP</span></div><div class="about-copy"><p><b>DIGITAL GHOST</b> is evolving into a local-first Cybersecurity & Network Intelligence workstation. Version 1.3.0 introduces a real, read-only Windows host inventory. Other operation cards remain explicitly marked as simulations until implemented.</p><div class="about-line"><span>PLATFORM</span><b>WINDOWS DESKTOP / WEB UI</b></div><div class="about-line"><span>ENGINE</span><b>ELECTRON + NODE.JS</b></div><div class="about-line"><span>REAL MODULES</span><b class="text-green">01 / 12</b></div><div class="about-line"><span>NETWORK PROBES</span><b class="text-green">NONE</b></div><div class="about-line"><span>VERSION</span><b>1.3.0</b></div></div></section>
           </div>
           <div class="bottom-note"><span>⬡</span> Your settings and activity are kept in the current app session. No account or remote service is required.</div>
         </section>
@@ -225,15 +231,15 @@
   <div class="modal-backdrop" id="operationModal" aria-hidden="true">
     <section class="operation-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <button class="modal-close" id="closeModal" aria-label="Close operation">×</button>
-      <div class="modal-eyebrow"><span class="live-dot"></span> SIMULATION MODULE</div>
+      <div class="modal-eyebrow"><span class="live-dot"></span> <span id="modalModeLabel">SIMULATION MODULE</span></div>
       <div class="modal-icon" id="modalIcon">▦</div>
       <h2 id="modalTitle">SYSTEM SCAN</h2>
       <p class="modal-description" id="modalDescription">Inspect the fictional system profile.</p>
-      <div class="modal-target"><span>SIMULATED TARGET</span><strong id="modalTarget">LOCAL_SANDBOX_01</strong><span class="target-tag">LOCAL / FICTIONAL</span></div>
+      <div class="modal-target"><span id="modalTargetLabel">SIMULATED TARGET</span><strong id="modalTarget">LOCAL_SANDBOX_01</strong><span class="target-tag" id="modalTargetTag">DEMO / FICTIONAL</span></div>
       <div class="progress-area" id="progressArea" hidden><div class="progress-top"><span id="progressLabel">INITIALIZING</span><b id="progressPercent">0%</b></div><div class="progress-track"><span id="progressBar"></span></div><div class="progress-output" id="progressOutput"></div></div>
       <div class="modal-result" id="modalResult" hidden></div>
       <div class="modal-actions"><button class="button button-ghost" id="cancelOperation">CLOSE</button><button class="button button-primary" id="runOperation">INITIALIZE SIMULATION <span>▶</span></button></div>
-      <div class="modal-safety">⬡ FICTIONAL DATA ONLY · NO EXTERNAL CONNECTIONS</div>
+      <div class="modal-safety" id="modalSafety">⬡ SIMULATED OUTPUT · NO REAL TARGET OR DEVICE ACCESS</div>
     </section>
   </div>
 
