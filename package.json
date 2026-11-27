@@ -1,6 +1,6 @@
 {
   "name": "byte-phantom",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "private": true,
   "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with cross-platform private-LAN discovery, persistent history, and a live observed-network map.",
   "scripts": {
