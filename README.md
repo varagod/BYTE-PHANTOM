@@ -1,8 +1,12 @@
-# BYTE PHANTOM v1.10.0
+# BYTE PHANTOM v1.10.1
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.10.0 adds explicit DNS and HTTPS connectivity diagnostics to the persistent, cross-platform NETWORK RADAR.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.10.1 adds explicit DNS and HTTPS connectivity diagnostics to the persistent, cross-platform NETWORK RADAR.
+
+## v1.10.1 hotfix
+
+This patch repairs the Windows Electron main-process syntax error, restores the Windows diagnostics IPC route, and packages the Capacitor JavaScript runtime so the Android Network Radar plugin is registered and callable from the static HTML interface. Rebuild/install this patch rather than reusing a v1.10.0 APK or EXE.
 
 ## Real modules
 
@@ -82,7 +86,7 @@ npm run desktop:build
 
 Portable x64 executable:
 
-**BYTE-PHANTOM-v1.10.0-Windows-x64.exe**
+**BYTE-PHANTOM-v1.10.1-Windows-x64.exe**
 
 The GitHub Actions workflow uploads a version-named artifact. The EXE is portable and does not require a separate installer. It is not code-signed, so Windows SmartScreen may show an unverified publisher warning.
 
@@ -101,7 +105,7 @@ cd android
 
 CI artifact:
 
-**BYTE-PHANTOM-v1.10.0-Android-debug.apk**
+**BYTE-PHANTOM-v1.10.1-Android-debug.apk**
 
 This is a debug APK for testing, not a Play Store release.
 

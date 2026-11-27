@@ -1,16 +1,17 @@
 {
   "name": "byte-phantom",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "private": true,
-  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with cross-platform private-LAN discovery, persistent history, and a live observed-network map.",
+  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with repaired Windows startup, a bundled Capacitor runtime, and cross-platform LAN diagnostics.",
   "scripts": {
     "start": "npx serve web",
     "android:add": "npx cap add android",
     "android:sync": "npx cap sync android",
-    "desktop:dev": "electron .",
-    "desktop:build": "electron-builder --win portable",
+    "desktop:dev": "node scripts/prepare-capacitor-runtime.mjs && electron .",
+    "desktop:build": "node scripts/prepare-capacitor-runtime.mjs && electron-builder --win portable",
     "assets:generate": "python scripts/generate-brand-assets.py",
-    "android:prepare": "node scripts/prepare-android.mjs"
+    "android:prepare": "node scripts/prepare-android.mjs",
+    "capacitor:runtime": "node scripts/prepare-capacitor-runtime.mjs"
   },
   "dependencies": {
     "@capacitor/android": "6.2.1",

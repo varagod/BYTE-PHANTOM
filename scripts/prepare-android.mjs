@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { prepareCapacitorRuntime } from "./prepare-capacitor-runtime.mjs";
 import path from "node:path";
 import process from "node:process";
 
@@ -8,6 +9,9 @@ const appId = String(config.appId || "").trim();
 if (!/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(appId)) {
   throw new Error("capacitor.config.json must contain a valid reverse-DNS appId.");
 }
+
+const androidPublicAssets = path.join(root, "android", "app", "src", "main", "assets", "public");
+await prepareCapacitorRuntime(root, [androidPublicAssets]);
 
 const sourceRoot = path.join(root, "native", "android", "src", "main", "java", "com", "varagod", "bytephantom");
 const destinationRoot = path.join(root, "android", "app", "src", "main", "java", ...appId.split("."));

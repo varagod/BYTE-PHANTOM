@@ -51,6 +51,7 @@
   let networkRadarLastSnapshot = null;
   let networkRadarSelectedNodeKey = null;
   let networkRadarAndroidPlugin = null;
+  let networkRadarAndroidPluginError = null;
   const NETWORK_RADAR_STORAGE_KEY = "bytePhantomNetworkRadarJournal.v1";
   const NETWORK_RADAR_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
   const NETWORK_RADAR_MAX_DEVICES = 120;
@@ -630,7 +631,7 @@
   function buildNetworkRadarJsonReport() {
     return {
       application:"BYTE PHANTOM",
-      version:"1.10.0",
+      version:"1.10.1",
       generatedAt:new Date().toISOString(),
       privacy:"Generated locally. This report is copied only after the user requests it; BYTE PHANTOM does not upload this journal.",
       retentionDays:30,
@@ -858,7 +859,7 @@
 
   async function runNetworkConnectivityDiagnostics() {
     const button=$("runNetworkDiagnostics"),host=$("networkDiagnosticsResults"),bridge=getNetworkRadarBridge();
-    if(!bridge||typeof bridge.diagnose!=="function"){host.textContent="NATIVE CONNECTIVITY DIAGNOSTICS ARE NOT AVAILABLE IN THIS BUILD.";return;}
+    if(!bridge||typeof bridge.diagnose!=="function"){host.textContent="NATIVE CONNECTIVITY DIAGNOSTICS UNAVAILABLE: "+(networkRadarAndroidPluginError||"Native plugin bridge not detected.");return;}
     button.disabled=true;button.textContent="TESTING DNS AND HTTPS...";host.textContent="Running a system DNS lookup and two HTTPS connectivity checks. No LAN hosts are scanned.";
     try {
       const result=await bridge.diagnose();host.replaceChildren();
@@ -875,28 +876,44 @@
   }
 
   function getNetworkRadarBridge() {
-    const desktop=window.bytePhantomDesktop;
-    if(desktop&&typeof desktop.getNetworkRadar==="function") {
-      return {platform:"WINDOWS",scan:(options)=>desktop.getNetworkRadar(options),diagnose:()=>desktop.runConnectivityDiagnostics()};
+    const desktop = window.bytePhantomDesktop;
+    if (desktop && typeof desktop.getNetworkRadar === "function") {
+      return {
+        platform: "WINDOWS",
+        scan: options => desktop.getNetworkRadar(options),
+        diagnose: () => desktop.runConnectivityDiagnostics()
+      };
     }
-    const capacitor=window.Capacitor;
-    if(capacitor) {
-      if(!networkRadarAndroidPlugin) {
-        try {
-          // Capacitor injects legacy per-plugin shims before the page loads.
-          const injected=capacitor.Plugins&&capacitor.Plugins.NetworkRadar;
-          if(injected) {
-            networkRadarAndroidPlugin=injected;
-          } else if(typeof capacitor.getPlatform==="function"&&capacitor.getPlatform()==="android"&&typeof capacitor.registerPlugin==="function") {
-            networkRadarAndroidPlugin=capacitor.registerPlugin("NetworkRadar");
-          }
-        } catch(error) {
-          networkRadarAndroidPlugin=null;
+
+    const capacitor = window.Capacitor;
+    if (!capacitor || typeof capacitor.getPlatform !== "function" || capacitor.getPlatform() !== "android") {
+      return null;
+    }
+
+    if (!networkRadarAndroidPlugin) {
+      try {
+        // Capacitor 6 requires its JavaScript runtime before a native custom plugin is registered.
+        if (typeof capacitor.registerPlugin === "function") {
+          networkRadarAndroidPlugin = capacitor.registerPlugin("NetworkRadar");
+        } else if (capacitor.Plugins && capacitor.Plugins.NetworkRadar) {
+          // Compatibility fallback for the legacy native plugin shim.
+          networkRadarAndroidPlugin = capacitor.Plugins.NetworkRadar;
+        } else {
+          throw new Error("Capacitor runtime/plugin bridge is missing. Rebuild the APK with capacitor.js included.");
         }
+        networkRadarAndroidPluginError = null;
+      } catch (error) {
+        networkRadarAndroidPlugin = null;
+        networkRadarAndroidPluginError = String(error && error.message ? error.message : error);
       }
-      if(networkRadarAndroidPlugin&&typeof networkRadarAndroidPlugin.scan==="function") {
-        return {platform:"ANDROID",scan:(options)=>networkRadarAndroidPlugin.scan(options),diagnose:()=>networkRadarAndroidPlugin.diagnoseConnectivity()};
-      }
+    }
+
+    if (networkRadarAndroidPlugin && typeof networkRadarAndroidPlugin.scan === "function") {
+      return {
+        platform: "ANDROID",
+        scan: options => networkRadarAndroidPlugin.scan(options || {}),
+        diagnose: () => networkRadarAndroidPlugin.diagnoseConnectivity()
+      };
     }
     return null;
   }
@@ -971,7 +988,7 @@
     if(!bridge){
       $("progressArea").hidden=false;$("progressLabel").textContent="NATIVE APP REQUIRED";$("progressPercent").textContent="—";
       $("progressOutput").textContent="[BLOCKED] Active local IPv4 discovery requires the BYTE PHANTOM Windows or Android native application.\n[INFO] Browser/PWA mode cannot access the operating-system network scanner.";
-      $("modalResult").hidden=false;$("modalResult").textContent="NETWORK RADAR UNAVAILABLE\n\nInstall the Windows desktop EXE or Android APK to use the native network scanner. No simulated nodes have been substituted.";
+      $("modalResult").hidden=false;$("modalResult").textContent="NETWORK RADAR UNAVAILABLE\n\nInstall the Windows desktop EXE or Android APK to use the native network scanner. "+(networkRadarAndroidPluginError?"Bridge detail: "+networkRadarAndroidPluginError:"No native bridge was detected.")+" No simulated nodes have been substituted.";
       $("runOperation").disabled=false;$("runOperation").textContent="TRY AGAIN";return;
     }
     if(networkRadarRefreshBusy){networkRadarForceActive=true;$("runOperation").textContent="ACTIVE RESCAN QUEUED";return;}

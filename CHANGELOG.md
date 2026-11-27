@@ -1,5 +1,13 @@
 # BYTE PHANTOM — Changelog
 
+## v1.10.1 — WINDOWS STARTUP + ANDROID NATIVE BRIDGE HOTFIX
+- Rebuilt the corrupted Windows Network Path PowerShell function as a valid line-array script; removed stray duplicated source fragments that prevented Electron's main process from parsing.
+- Restored the Windows connectivity-diagnostics IPC handler and included gateway/DNS/default-route data in Network Radar results.
+- Bundled the Capacitor 6 JavaScript runtime before app code and registered the Android NetworkRadar plugin through `Capacitor.registerPlugin('NetworkRadar')`, with a legacy shim fallback.
+- Copied `capacitor.js` into both Android WebView assets and Windows desktop web assets so native plugin registration is available in static HTML builds.
+- Incremented the release to v1.10.1 for fresh Windows and Android packages.
+
+
 ## v1.10.0 — NETWORK CONNECTIVITY DIAGNOSTICS
 - Added a user-initiated system DNS lookup and two independent HTTPS connectivity checks to NETWORK RADAR on Windows and Android.
 - Windows uses Node.js system DNS resolution and HTTPS requests through Electron's main process; Android uses InetAddress and HttpURLConnection in the native Capacitor plugin.
