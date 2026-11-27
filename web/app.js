@@ -630,7 +630,7 @@
   function buildNetworkRadarJsonReport() {
     return {
       application:"BYTE PHANTOM",
-      version:"1.7.0",
+      version:"1.8.0",
       generatedAt:new Date().toISOString(),
       privacy:"Generated locally. This report is copied only after the user requests it; BYTE PHANTOM does not upload this journal.",
       retentionDays:30,
