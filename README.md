@@ -1,8 +1,8 @@
-# BYTE PHANTOM v1.7.0
+# BYTE PHANTOM v1.8.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.7.0 adds a persistent, on-device history journal to the cross-platform NETWORK RADAR.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.8.0 adds an interactive observed-network map to the persistent, cross-platform NETWORK RADAR.
 
 ## Real modules
 
@@ -17,6 +17,8 @@ The same interface and live monitoring logic now work on both platforms:
 - Device records retain first-seen / last-seen timestamps and visibility state across app restarts.
 - A local journal keeps up to 120 devices and 160 events for up to 30 days; reports can be copied as JSON or CSV, and the journal can be cleared from the radar panel.
 - Each result includes subnet scopes, addresses targeted, probe counts, responding hosts, MAC addresses where available, and skipped-scope warnings.
+- The Network Intelligence Dashboard plots up to 18 peers from the local journal and classifies them as ICMP responders, neighbor records, or not seen recently.
+- Selecting a plotted peer shows its observed IP/MAC/interface/state and first/last-seen timestamps. The map lines describe scan observation relationships only; they are not physical links or confirmed router paths.
 
 **Scope and safety:** active discovery is restricted to RFC1918 private IPv4 subnets directly connected to the scanning device, with prefix lengths /22 through /30 and a maximum of 1,022 host addresses per scan. Each active sweep sends one ICMP echo request per target. The app does not scan ports, test credentials, exploit devices, scan the public internet, elevate privileges, or change network settings. An entry marked "NOT SEEN" is not proof that a device disconnected.
 
@@ -24,7 +26,7 @@ This cannot guarantee a complete list of every client connected to a router. Sle
 
 **Android emulator note:** an emulator may expose only its virtual NAT subnet. A physical phone scans the Wi-Fi/Ethernet LAN to which that phone is connected.
 
-**Local journal privacy:** the app stores IP/MAC/interface metadata and observation timestamps in this installation's local storage only. It does not sync or upload them. JSON and CSV reports are placed on the clipboard only after you press the matching copy action.
+**Local journal privacy:** the app stores IP/MAC/interface metadata and observation timestamps in this installation's local storage only. It does not sync or upload them. JSON and CSV reports are placed on the clipboard only after you press the matching copy action. The network map reads this same local journal and scan result; it performs no additional probes.
 
 ### SYSTEM INTELLIGENCE — Windows desktop
 
@@ -76,7 +78,7 @@ npm run desktop:build
 
 Portable x64 executable:
 
-**BYTE-PHANTOM-v1.7.0-Windows-x64.exe**
+**BYTE-PHANTOM-v1.8.0-Windows-x64.exe**
 
 The GitHub Actions workflow uploads a version-named artifact. The EXE is portable and does not require a separate installer. It is not code-signed, so Windows SmartScreen may show an unverified publisher warning.
 
@@ -95,7 +97,7 @@ cd android
 
 CI artifact:
 
-**BYTE-PHANTOM-v1.7.0-Android-debug.apk**
+**BYTE-PHANTOM-v1.8.0-Android-debug.apk**
 
 This is a debug APK for testing, not a Play Store release.
 

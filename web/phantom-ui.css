@@ -140,3 +140,55 @@
 .network-node-seen{overflow:hidden;color:#78969b!important;font-size:9.5px!important;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:760px){.network-journal-bar{align-items:flex-start;flex-direction:column}.network-journal-actions{width:100%}.network-journal-actions .button{flex:1 1 auto}}
 @media(max-width:420px){.network-journal-actions .button{font-size:9px;padding:6px 6px}}
+
+
+/* BYTE PHANTOM v1.8.0 — observed network intelligence map */
+.network-topology-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:9px 0}
+.network-topology-metrics>div{display:grid;gap:4px;padding:8px 9px;border:1px solid rgba(89,210,210,.15);border-radius:5px;background:linear-gradient(145deg,rgba(8,28,33,.64),rgba(17,12,29,.62))}
+.network-topology-metrics b{color:#8feec0;font:600 16px var(--mono)}
+.network-topology-metrics small{color:#899eac;font:9px var(--mono);letter-spacing:.55px}
+.network-topology-scopes{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.network-topology-scope{padding:5px 7px;border:1px solid rgba(68,232,255,.2);border-radius:4px;background:rgba(9,31,38,.44);color:#89ddd9;font:10px var(--mono);letter-spacing:.35px}
+.network-topology-scope.is-muted{border-style:dashed;color:#8c8a9e}
+.network-topology-canvas{position:relative;overflow:hidden;border:1px solid rgba(80,198,200,.16);border-radius:7px;background:radial-gradient(ellipse at 50% 50%,rgba(15,54,60,.38),rgba(7,14,24,.92) 72%);box-shadow:inset 0 0 38px rgba(48,201,194,.055)}
+.network-topology-canvas:after{position:absolute;inset:0;pointer-events:none;content:"";background:repeating-linear-gradient(0deg,transparent 0 4px,rgba(76,220,210,.018) 5px,transparent 6px)}
+.network-topology-canvas svg{position:relative;z-index:1;display:block;width:100%;height:auto;min-height:220px;max-height:430px}
+.topology-grid line{stroke:rgba(74,188,198,.065);stroke-width:1}
+.topology-orbit{fill:none;stroke:rgba(79,222,204,.18);stroke-width:1;stroke-dasharray:3 7}
+.topology-orbit-inner{stroke:rgba(183,108,255,.16);stroke-dasharray:2 8}
+.topology-edge{stroke-width:1.4;stroke-dasharray:4 6;opacity:.72}
+.topology-edge.responding{stroke:#70f5ad}
+.topology-edge.neighbor{stroke:#56dfe7}
+.topology-edge.not-seen{stroke:#d9b36b;opacity:.45}
+.topology-center-halo{fill:rgba(183,108,255,.055);stroke:rgba(183,108,255,.26);stroke-dasharray:3 5}
+.topology-center-card{fill:rgba(17,19,37,.96);stroke:rgba(162,117,255,.65);stroke-width:1.5}
+.topology-center-title{fill:#e2d5ff;font:600 13px var(--mono);letter-spacing:1px}
+.topology-center-subtitle{fill:#85e6da;font:10px var(--mono)}
+.topology-node{cursor:pointer;outline:none}
+.topology-node-halo{fill:rgba(68,232,255,.04);stroke:rgba(68,232,255,.15);stroke-width:1}
+.topology-node-core{fill:rgba(7,24,34,.97);stroke:#56dfe7;stroke-width:1.6}
+.topology-node.responding .topology-node-core{stroke:#75f2a9;fill:rgba(9,48,33,.94)}
+.topology-node.not-seen .topology-node-core{stroke:#d9b36b;fill:rgba(52,37,18,.84)}
+.topology-node-mark{fill:#a5f4ed;font:10px var(--mono)}
+.topology-node.responding .topology-node-mark{fill:#a3ffc0}
+.topology-node.not-seen .topology-node-mark{fill:#f1d49a}
+.topology-node-label{fill:#8fa9b5;font:8px var(--mono);letter-spacing:.5px}
+.topology-node.is-selected .topology-node-halo,.topology-node:focus .topology-node-halo{stroke:#d2a7ff;stroke-width:2;fill:rgba(183,108,255,.13)}
+.topology-node.is-selected .topology-node-core{stroke:#d2a7ff;stroke-width:2.4}
+.network-topology-empty{position:absolute;z-index:2;inset:0;display:grid;place-items:center;padding:25px;color:#79919d;text-align:center;font:11px var(--mono);letter-spacing:.8px;pointer-events:none}
+.network-topology-empty[hidden]{display:none}
+.network-topology-legend{display:flex;flex-wrap:wrap;gap:9px 15px;align-items:center;padding:8px 1px;color:#95aab4;font:9px var(--mono);letter-spacing:.35px}
+.network-topology-legend span{display:inline-flex;align-items:center;gap:5px}
+.network-topology-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#56dfe7;box-shadow:0 0 8px rgba(86,223,231,.25)}
+.network-topology-legend i.responding{background:#75f2a9}
+.network-topology-legend i.not-seen{background:#d9b36b}
+.network-topology-legend #networkTopologyOverflow{margin-left:auto;color:#c1a2ed}
+.network-topology-selected{display:flex;flex-wrap:wrap;align-items:center;gap:7px 12px;min-height:46px;padding:9px 10px;border:1px solid rgba(183,108,255,.18);border-radius:5px;background:rgba(22,16,36,.48)}
+.network-topology-selected b{color:#e0d1ff;font:600 13px var(--mono)}
+.network-topology-selected small{color:#95a6b0;font:10px/1.5 var(--mono);overflow-wrap:anywhere}
+.network-topology-selected-state{padding:4px 6px;border:1px solid rgba(86,223,231,.25);border-radius:3px;color:#80e6e5;font:9px var(--mono)}
+.network-topology-selected-state.responding{border-color:rgba(117,242,169,.32);color:#8ef0ad}
+.network-topology-selected-state.not-seen{border-color:rgba(217,179,107,.32);color:#e7c37d}
+.network-topology-disclaimer{margin:0;color:#8493a3;font:10px/1.65 var(--mono)}
+@media(max-width:600px){.network-topology-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.network-topology-canvas svg{min-height:190px}.network-topology-legend{gap:7px 10px}.network-topology-legend #networkTopologyOverflow{width:100%;margin-left:0}}
+@media(prefers-reduced-motion:reduce){.topology-node *{transition:none!important}}

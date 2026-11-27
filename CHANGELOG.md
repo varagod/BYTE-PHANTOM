@@ -1,5 +1,15 @@
 # BYTE PHANTOM — Changelog
 
+## v1.8.0 — NETWORK INTELLIGENCE / Observed LAN Map
+- Added an interactive SVG Network Intelligence Dashboard inside NETWORK RADAR on Windows and Android.
+- Plots the local scanning device and up to 18 recently observed peers from the existing Network Radar journal.
+- Adds live counters for journaled peers, peers visible in the current observation window, ICMP responders, and records not seen recently.
+- Shows directly connected subnet/interface scope chips and a selectable peer detail panel with observed IP, MAC, interface, neighbor state, and first/last-seen timestamps.
+- Uses distinct visual states for ICMP responses, neighbor-only records, and historical records not seen recently.
+- The map is a visualization of scan observations, not verified physical topology, router paths, or device-to-device connectivity.
+- The dashboard adds no new network probes and remains within the existing private IPv4 scope and limits.
+- Updated release metadata, documentation, and Windows/Android CI builds to v1.8.0.
+
 ## v1.7.0 — NETWORK RADAR / Persistent Local Journal
 - Added a versioned on-device journal that survives closing and reopening BYTE PHANTOM on Windows and Android.
 - Stores device first-seen / last-seen timestamps, current visibility state, and network-change events for up to 30 days.
