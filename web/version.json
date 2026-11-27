@@ -1,7 +1,7 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.9.0",
-  "build": "1.9.0",
+  "version": "1.10.0",
+  "build": "1.10.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
@@ -10,7 +10,8 @@
   "realCapabilities": [
     "Cross-platform private IPv4 Network Radar and persistent local journal",
     "Interactive observed LAN map",
-    "Read-only gateway, DNS resolver, transport, interface, local IPv4, and default-route intelligence on Windows and Android"
+    "Read-only gateway, DNS resolver, transport, interface, local IPv4, and default-route intelligence on Windows and Android",
+    "User-initiated DNS resolution and two HTTPS connectivity checks on Windows and Android"
   ],
   "simulatedModules": [
     "IP TRACE",
@@ -31,9 +32,21 @@
       "android.permission.ACCESS_NETWORK_STATE"
     ],
     "runtimeLocationPermission": false,
-    "networkPathSource": "ConnectivityManager and LinkProperties"
+    "diagnostics": "InetAddress system DNS lookup and HttpURLConnection HTTPS checks"
   },
-  "security": "Gateway and DNS data are read-only local configuration metadata. No DNS query, external HTTP test, port scan, credential test, exploitation, internet-wide scan, or network configuration change is performed.",
+  "connectivityDiagnostics": {
+    "dnsHost": "example.com",
+    "httpsEndpoints": [
+      "https://www.msftconnecttest.com/connecttest.txt",
+      "https://connectivitycheck.gstatic.com/generate_204"
+    ],
+    "userInitiated": true,
+    "lanScan": false,
+    "portScan": false,
+    "credentialTests": false,
+    "configurationChanges": false
+  },
+  "security": "Connectivity diagnostics make one DNS lookup and two fixed HTTPS GET requests only when the user explicitly starts the check. They do not scan LAN hosts or ports, test credentials, exploit devices, or modify network configuration.",
   "networkPathIntelligence": {
     "dataSource": "Windows Get-NetIPConfiguration/Get-NetRoute; Android ConnectivityManager/LinkProperties",
     "fields": [

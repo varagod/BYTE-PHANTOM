@@ -1,5 +1,14 @@
 # BYTE PHANTOM — Changelog
 
+## v1.10.0 — NETWORK CONNECTIVITY DIAGNOSTICS
+- Added a user-initiated system DNS lookup and two independent HTTPS connectivity checks to NETWORK RADAR on Windows and Android.
+- Windows uses Node.js system DNS resolution and HTTPS requests through Electron's main process; Android uses InetAddress and HttpURLConnection in the native Capacitor plugin.
+- Displays DNS resolution status, resolved addresses, HTTP status codes, and elapsed time for each HTTPS endpoint.
+- HTTPS checks use fixed Microsoft and Google connectivity-check endpoints; success confirms reachability to at least one endpoint, not all websites.
+- Diagnostics do not scan LAN hosts, ports, credentials, or change network settings.
+- Updated release metadata and both platform build workflows to v1.10.0.
+
+
 ## v1.8.0 — NETWORK INTELLIGENCE / Observed LAN Map
 - Added an interactive SVG Network Intelligence Dashboard inside NETWORK RADAR on Windows and Android.
 - Plots the local scanning device and up to 18 recently observed peers from the existing Network Radar journal.

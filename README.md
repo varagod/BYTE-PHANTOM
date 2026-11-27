@@ -1,8 +1,8 @@
-# BYTE PHANTOM v1.8.0
+# BYTE PHANTOM v1.10.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.8.0 adds an interactive observed-network map to the persistent, cross-platform NETWORK RADAR.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.10.0 adds explicit DNS and HTTPS connectivity diagnostics to the persistent, cross-platform NETWORK RADAR.
 
 ## Real modules
 
@@ -28,7 +28,11 @@ This cannot guarantee a complete list of every client connected to a router. Sle
 
 **Local journal privacy:** the app stores IP/MAC/interface metadata and observation timestamps in this installation's local storage only. It does not sync or upload them. JSON and CSV reports are placed on the clipboard only after you press the matching copy action. The network map reads this same local journal and scan result; it performs no additional probes.
 
-### SYSTEM INTELLIGENCE — Windows desktop
+#### NETWORK CONNECTIVITY DIAGNOSTICS — Windows + Android
+
+The operator can explicitly run a read-only connectivity check from NETWORK RADAR. It performs one system DNS lookup for `example.com` and two HTTPS GET checks against fixed Microsoft and Google connectivity-check endpoints. Each HTTPS result includes its HTTP status and elapsed time. One endpoint may be blocked independently; success from either endpoint confirms outbound HTTPS reachability only to that endpoint. This is not a general website availability guarantee. The diagnostics are user-initiated, do not scan LAN hosts, do not test ports or credentials, and do not change network settings.
+
+## SYSTEM INTELLIGENCE — Windows desktop
 
 Reads local Windows hostname and OS details, CPU model/core count, memory totals, system-volume capacity when available, and non-loopback IPv4 adapter metadata. It remains Windows-only; NETWORK RADAR is cross-platform.
 
@@ -78,7 +82,7 @@ npm run desktop:build
 
 Portable x64 executable:
 
-**BYTE-PHANTOM-v1.8.0-Windows-x64.exe**
+**BYTE-PHANTOM-v1.10.0-Windows-x64.exe**
 
 The GitHub Actions workflow uploads a version-named artifact. The EXE is portable and does not require a separate installer. It is not code-signed, so Windows SmartScreen may show an unverified publisher warning.
 
@@ -97,7 +101,7 @@ cd android
 
 CI artifact:
 
-**BYTE-PHANTOM-v1.8.0-Android-debug.apk**
+**BYTE-PHANTOM-v1.10.0-Android-debug.apk**
 
 This is a debug APK for testing, not a Play Store release.
 
