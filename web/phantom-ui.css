@@ -4,8 +4,8 @@
 .app-shell{position:relative;z-index:1}
 .topbar{backdrop-filter:blur(18px);border-bottom-color:rgba(80,224,209,.16)}
 .topbar-left{gap:12px}
-.build-stamp{display:inline-flex;align-items:center;gap:8px;margin-left:10px;padding:5px 8px;border:1px solid rgba(89,225,199,.2);border-radius:4px;background:rgba(11,28,31,.54);color:#89f4db;font:12.1px var(--mono);letter-spacing:.7px;white-space:nowrap}
-.build-stamp i{padding-left:8px;border-left:1px solid rgba(89,225,199,.2);color:#a88bff;font-style:normal;font-size:10.59px}
+.build-stamp{display:inline-flex;align-items:center;gap:8px;margin-left:10px;padding:5px 8px;border:1px solid rgba(89,225,199,.2);border-radius:4px;background:rgba(11,28,31,.54);color:#89f4db;font:11px var(--mono);letter-spacing:.7px;white-space:nowrap}
+.build-stamp i{padding-left:8px;border-left:1px solid rgba(89,225,199,.2);color:#a88bff;font-style:normal;font-size:9.63px}
 .sidebar{backdrop-filter:blur(16px);box-shadow:10px 0 42px rgba(0,0,0,.18)}
 .sidebar:after{position:absolute;top:0;right:0;bottom:0;width:1px;content:"";background:linear-gradient(180deg,transparent,rgba(68,232,255,.38),rgba(183,108,255,.24),transparent);pointer-events:none}
 .sidebar-footer{color:rgba(139,232,208,.65)}
@@ -21,7 +21,7 @@
 .hero-telemetry:before,.hero-telemetry:after{position:absolute;width:18px;height:18px;content:"";pointer-events:none}
 .hero-telemetry:before{top:-1px;left:-1px;border-top:2px solid var(--bp-cyan);border-left:2px solid var(--bp-cyan)}
 .hero-telemetry:after{right:-1px;bottom:-1px;border-right:2px solid var(--bp-violet);border-bottom:2px solid var(--bp-violet)}
-.telemetry-top,.telemetry-bottom{display:flex;width:100%;align-items:center;justify-content:space-between;color:rgba(150,207,218,.65);font:10.59px var(--mono);letter-spacing:1px}
+.telemetry-top,.telemetry-bottom{display:flex;width:100%;align-items:center;justify-content:space-between;color:rgba(150,207,218,.65);font:9.63px var(--mono);letter-spacing:1px}
 .telemetry-top b{color:#80efae;font-weight:400}.telemetry-top b i{display:inline-block;width:5px;height:5px;margin-right:5px;border-radius:50%;background:var(--bp-acid);box-shadow:0 0 9px var(--bp-acid)}
 .hero-radar{position:relative;display:grid;width:166px;height:166px;place-items:center;overflow:hidden;border:1px solid rgba(69,224,223,.3);border-radius:50%;background:radial-gradient(circle,rgba(32,191,187,.12),rgba(5,13,20,.52) 64%,rgba(4,8,15,.9));box-shadow:0 0 0 8px rgba(68,232,255,.025),0 0 35px rgba(68,232,255,.09),inset 0 0 28px rgba(68,232,255,.08)}
 .hero-radar:before{position:absolute;inset:10px;border:1px dashed rgba(102,213,218,.28);border-radius:50%;content:""}
@@ -29,15 +29,15 @@
 .radar-sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 72%,rgba(64,239,201,.02) 77%,rgba(64,239,201,.3) 100%);animation:radarSpin 5.2s linear infinite}
 .radar-cross{position:absolute;inset:0;background:linear-gradient(90deg,transparent calc(50% - .5px),rgba(74,225,220,.25) 50%,transparent calc(50% + .5px)),linear-gradient(0deg,transparent calc(50% - .5px),rgba(74,225,220,.25) 50%,transparent calc(50% + .5px))}
 .radar-core{position:relative;z-index:2;display:grid;width:43px;height:43px;place-items:center;border:1px solid rgba(183,108,255,.6);border-radius:12px;background:rgba(28,14,49,.78);color:#e6d3ff;font:16.5px var(--mono);box-shadow:0 0 20px rgba(183,108,255,.26)}
-.radar-core span{margin-top:-9px;color:#68e8de;font:9.08px var(--mono);letter-spacing:1px}
+.radar-core span{margin-top:-9px;color:#68e8de;font:8.25px var(--mono);letter-spacing:1px}
 .radar-target{position:absolute;z-index:2;top:31px;right:35px;width:7px;height:7px;border-radius:50%;background:var(--bp-acid);box-shadow:0 0 0 4px rgba(99,255,156,.12),0 0 15px var(--bp-acid);animation:targetBlink 1.8s ease-in-out infinite}
-.radar-label{position:absolute;z-index:2;color:rgba(112,229,226,.64);font:9.08px var(--mono);letter-spacing:1px}
+.radar-label{position:absolute;z-index:2;color:rgba(112,229,226,.64);font:8.25px var(--mono);letter-spacing:1px}
 .radar-label-a{top:19px;left:45px}.radar-label-b{right:23px;bottom:25px}
 .telemetry-readouts{display:grid;width:100%;grid-template-columns:repeat(3,1fr);gap:5px}
 .telemetry-readouts div{display:grid;gap:4px;padding:7px 5px;border:1px solid rgba(89,192,201,.13);background:rgba(8,21,29,.48)}
-.telemetry-readouts small{color:#728b9b;font:9.08px var(--mono);letter-spacing:.6px}
-.telemetry-readouts b{color:#a5e8dc;font:10.59px var(--mono);white-space:nowrap}
-.telemetry-bottom{padding-top:7px;border-top:1px solid rgba(91,207,205,.12);font-size:9.08px}
+.telemetry-readouts small{color:#728b9b;font:8.25px var(--mono);letter-spacing:.6px}
+.telemetry-readouts b{color:#a5e8dc;font:9.63px var(--mono);white-space:nowrap}
+.telemetry-bottom{padding-top:7px;border-top:1px solid rgba(91,207,205,.12);font-size:8.25px}
 @keyframes radarSpin{to{transform:rotate(360deg)}}
 @keyframes targetBlink{0%,100%{opacity:1}50%{opacity:.38}}
 .stat-card,.panel,.operation-card{border-color:rgba(119,134,176,.17);background:linear-gradient(145deg,rgba(13,20,30,.91),rgba(10,11,22,.94));box-shadow:0 10px 33px rgba(0,0,0,.17),inset 0 1px rgba(255,255,255,.025)}
@@ -50,7 +50,7 @@
 .operation-card:before{position:absolute;top:0;left:0;width:100%;height:1px;content:"";background:linear-gradient(90deg,transparent,rgba(68,232,255,.32),transparent);opacity:.5}
 .operation-card[data-state="live"]{border-color:rgba(99,255,156,.32);background:linear-gradient(135deg,rgba(9,27,25,.96),rgba(9,15,25,.95));box-shadow:inset 0 0 20px rgba(99,255,156,.035)}
 .operation-card[data-state="live"]:hover{border-color:rgba(99,255,156,.6);box-shadow:0 0 26px rgba(99,255,156,.1)}
-.module-state{display:inline-flex;width:max-content;margin-top:3px;padding:3px 6px;border:1px solid rgba(151,144,184,.16);border-radius:3px;color:#958ca8;font:9.08px var(--mono);letter-spacing:.8px}
+.module-state{display:inline-flex;width:max-content;margin-top:3px;padding:3px 6px;border:1px solid rgba(151,144,184,.16);border-radius:3px;color:#958ca8;font:8.25px var(--mono);letter-spacing:.8px}
 .module-state-live{border-color:rgba(99,255,156,.26);background:rgba(99,255,156,.055);color:#8bf0ad}
 .module-state-sim{border-color:rgba(183,108,255,.17);color:#b89bd1}
 .operation-info{gap:5px}
@@ -61,13 +61,13 @@
 #operationModal[data-state="live"] .target-tag{color:#8bf0ad}
 #operationModal[data-state="simulation"] .target-tag{color:#b89bd1}
 .modal-target{border-color:rgba(68,232,255,.16);background:rgba(3,9,16,.48)}
-.progress-output{font-size:12.1px;line-height:1.75;color:#9be9d1}
-.modal-result{border-color:rgba(99,255,156,.2);background:rgba(7,23,21,.58);color:#bcf5dc;font-size:12.1px;line-height:1.75}
+.progress-output{font-size:11px;line-height:1.75;color:#9be9d1}
+.modal-result{border-color:rgba(99,255,156,.2);background:rgba(7,23,21,.58);color:#bcf5dc;font-size:11px;line-height:1.75}
 .modal-safety{color:#82b5b2}
 .main-footer{border-top-color:rgba(68,232,255,.1)}
 .no-effects .hero-radar:before,.no-effects .radar-sweep,.no-effects .radar-target{animation:none}
 @media(max-width:1180px){.hero-telemetry{display:none}.hero-copy{max-width:100%}}
-@media(max-width:760px){.build-stamp{margin-left:3px;padding:4px 5px;font-size:10.59px}.build-stamp i{display:none}.hero-radar{width:136px;height:136px}.telemetry-readouts{grid-template-columns:1fr 1fr}.hero-telemetry{display:none}}
+@media(max-width:760px){.build-stamp{margin-left:3px;padding:4px 5px;font-size:9.63px}.build-stamp i{display:none}.hero-radar{width:136px;height:136px}.telemetry-readouts{grid-template-columns:1fr 1fr}.hero-telemetry{display:none}}
 @media(prefers-reduced-motion:reduce){.radar-sweep,.radar-target{animation:none!important}}
 
 
@@ -78,32 +78,31 @@
 .network-radar-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
 .network-radar-metrics>div{display:grid;gap:5px;min-width:0;padding:9px 8px;border:1px solid rgba(89,210,210,.16);border-radius:6px;background:linear-gradient(145deg,rgba(8,28,33,.68),rgba(17,12,29,.65))}
 .network-radar-metrics b{overflow:hidden;color:#8ef0c0;font:600 16px var(--mono);text-overflow:ellipsis;white-space:nowrap}
-.network-radar-metrics small{color:#8e9ba9;font:12.1px var(--mono);letter-spacing:.7px}
+.network-radar-metrics small{color:#8e9ba9;font:11px var(--mono);letter-spacing:.7px}
 .network-radar-section{display:grid;gap:7px}
-.network-radar-heading{display:flex;align-items:center;justify-content:space-between;color:#91dcd7;font:13.62px var(--mono);letter-spacing:1px}
-.network-radar-heading i{color:#9e8abb;font-style:normal;font-size:12.1px}
+.network-radar-heading{display:flex;align-items:center;justify-content:space-between;color:#91dcd7;font:12.38px var(--mono);letter-spacing:1px}
+.network-radar-heading i{color:#9e8abb;font-style:normal;font-size:11px}
 .network-interface-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
 .network-interface-card{display:grid;gap:4px;min-width:0;padding:9px 10px;border:1px solid rgba(79,192,189,.16);border-radius:6px;background:rgba(7,22,29,.55)}
-.network-interface-card b{overflow:hidden;color:#c5d5e0;font:600 15.13px var(--mono);text-overflow:ellipsis;white-space:nowrap}
-.network-interface-card span{color:#70eee0;font:15.13px var(--mono)}
-.network-interface-card small{color:#8193a1;font:12.1px var(--mono)}
+.network-interface-card b{overflow:hidden;color:#c5d5e0;font:600 13.75px var(--mono);text-overflow:ellipsis;white-space:nowrap}
+.network-interface-card span{color:#70eee0;font:13.75px var(--mono)}
+.network-interface-card small{color:#8193a1;font:11px var(--mono)}
 .network-node-list{display:grid;gap:6px;max-height:230px;overflow:auto;padding-right:3px}
 .network-node-card{display:grid;grid-template-columns:25px minmax(0,1fr) auto;align-items:center;gap:9px;padding:8px 10px;border:1px solid rgba(89,210,190,.15);border-radius:6px;background:linear-gradient(100deg,rgba(7,24,29,.74),rgba(16,12,28,.72))}
 .network-node-marker{display:grid;width:23px;height:23px;place-items:center;border:1px solid rgba(96,255,164,.3);border-radius:50%;background:rgba(80,255,160,.06);color:#72ffb0;font-size:16.5px;box-shadow:0 0 12px rgba(80,255,160,.08)}
 .network-node-copy{display:grid;gap:3px;min-width:0}
-.network-node-copy b{color:#c6f4e2;font:600 15.13px var(--mono);letter-spacing:.3px}
-.network-node-copy small{overflow:hidden;color:#8298a7;font:12.1px var(--mono);text-overflow:ellipsis;white-space:nowrap}
-.network-node-state{padding:4px 6px;border:1px solid rgba(111,210,171,.2);border-radius:3px;color:#8fe5b2;font:12.1px var(--mono);letter-spacing:.5px}
+.network-node-copy b{color:#c6f4e2;font:600 13.75px var(--mono);letter-spacing:.3px}
+.network-node-copy small{overflow:hidden;color:#8298a7;font:11px var(--mono);text-overflow:ellipsis;white-space:nowrap}
+.network-node-state{padding:4px 6px;border:1px solid rgba(111,210,171,.2);border-radius:3px;color:#8fe5b2;font:11px var(--mono);letter-spacing:.5px}
 .network-node-state[data-state="stale"]{border-color:rgba(229,192,111,.22);color:#e4c47d}
 .network-node-state[data-state="delay"],.network-node-state[data-state="probe"]{border-color:rgba(108,192,255,.25);color:#8acbff}
-.network-empty{padding:12px;border:1px dashed rgba(125,156,173,.22);border-radius:6px;color:#9aa8b4;text-align:center;font:13.62px var(--mono);letter-spacing:.6px}
-.network-radar-note{margin:0;padding:9px 10px;border-left:2px solid rgba(183,108,255,.55);background:rgba(62,37,87,.16);color:#a99bb8;font:13.62px/1.65 var(--mono)}
+.network-empty{padding:12px;border:1px dashed rgba(125,156,173,.22);border-radius:6px;color:#9aa8b4;text-align:center;font:12.38px var(--mono);letter-spacing:.6px}
+.network-radar-note{margin:0;padding:9px 10px;border-left:2px solid rgba(183,108,255,.55);background:rgba(62,37,87,.16);color:#a99bb8;font:12.38px/1.65 var(--mono)}
 #operationModal[data-operation="network-radar"] .modal-icon{border-color:rgba(99,255,156,.38);background:rgba(99,255,156,.08);color:#94ffb5}
 #operationModal[data-operation="network-radar"] .modal-eyebrow{color:#87efa7}
 @media(max-width:520px){.network-radar-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.network-interface-list{grid-template-columns:1fr}.network-node-list{max-height:190px}}
 
 .network-radar-results[hidden]{display:none!important}
-
 
 /* BYTE PHANTOM v1.5.0 — active LAN radar + live network change stream */
 .network-radar-statusbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:7px;padding:8px 10px;border:1px solid rgba(99,255,156,.22);border-radius:5px;background:linear-gradient(90deg,rgba(8,33,27,.56),rgba(17,12,30,.58));color:#8fe8b5;font:11px var(--mono);letter-spacing:.65px}
