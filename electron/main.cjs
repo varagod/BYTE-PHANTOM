@@ -979,8 +979,7 @@ async function executeDnsMutationAsAdministrator(action, settings) {
     "  @{ ok = $false; action = [string]$cfg.action; error = $_.Exception.Message; backupAvailable = (Test-Path -LiteralPath $cfg.statePath) } | ConvertTo-Json -Depth 5 -Compress | Set-Content -LiteralPath $cfg.outputPath -Encoding UTF8",
     "  exit 1",
     "}"
-  ].join("
-");
+  ].join("\r\n");
 
   const innerEncoded = encodePowerShell(innerScript);
   const adminCheckScript = "$p = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent()); if ($p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 'ADMIN' } else { 'USER' }";
@@ -1012,8 +1011,7 @@ async function executeDnsMutationAsAdministrator(action, settings) {
         "  $cancelled = ($message -match '1223|cancel|canceled|cancelled')",
         "  @{ ok = $false; cancelled = $cancelled; error = $message } | ConvertTo-Json -Compress | Set-Content -LiteralPath $cfg.outputPath -Encoding UTF8",
         "}"
-      ].join("
-");
+      ].join("\r\n");
       await execFileAsync("powershell.exe", [
         "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encodePowerShell(outerScript)
       ], { windowsHide: true, timeout: 120000, maxBuffer: 128 * 1024, encoding: "utf8" });

@@ -1,7 +1,7 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.19.0",
-  "build": "1.19.0",
+  "version": "1.19.1",
+  "build": "1.19.1",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
@@ -145,6 +145,7 @@
     "configurationChanges": false
   },
   "fixes": [
+    "Fixed Windows Electron main-process startup SyntaxError by preserving CRLF separators as escaped JavaScript string sequences; Windows startup entrypoint is covered by node --check before packaging.",
     "Added captive-portal and response-integrity checks: redirects are not followed, Microsoft/Google/Cloudflare/Apple response signatures are validated, and Android OS captive-portal/validated-network flags are displayed",
     "Added Network Shutdown Intelligence with three system DNS names, four independent HTTPS providers, conservative path isolation, and per-target results on Windows and Android",
     "Hardened OUTAGE WATCH against transient failures with two-sample incident confirmation and two-success recovery confirmation; added local DNS/HTTPS/gateway latency baselines and trend chart",

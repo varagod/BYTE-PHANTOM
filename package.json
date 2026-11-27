@@ -1,6 +1,6 @@
 {
   "name": "byte-phantom",
-  "version": "1.19.0",
+  "version": "1.19.1",
   "private": true,
   "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with multi-target DNS diagnosis, captive portal detection, HTTPS response integrity validation, Network Radar, and assisted DNS failover.",
   "scripts": {
