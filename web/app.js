@@ -49,6 +49,7 @@
   let networkRadarKnownDevices = new Map();
   let networkRadarEvents = [];
   let networkRadarLastSnapshot = null;
+  let networkRadarSelectedNodeKey = null;
   let networkRadarAndroidPlugin = null;
   const NETWORK_RADAR_STORAGE_KEY = "bytePhantomNetworkRadarJournal.v1";
   const NETWORK_RADAR_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -353,6 +354,7 @@
     networkRadarKnownDevices = new Map();
     networkRadarEvents = [];
     networkRadarLastSnapshot = null;
+    networkRadarSelectedNodeKey = null;
     if(networkOperation) restoreNetworkRadarJournal();
     networkRadarRefreshBusy = false;
     networkRadarForceActive = false;
@@ -676,6 +678,110 @@
     if(status) status.textContent=networkRadarKnownDevices.size+" DEVICES / "+networkRadarEvents.length+" EVENTS SAVED LOCALLY";
   }
 
+  function renderNetworkRadarTopology(data) {
+    const svg=$("networkTopologySvg");
+    if(!svg) return;
+    const ns="http://www.w3.org/2000/svg";
+    const make=(tag,attrs={},label)=>{
+      const el=document.createElementNS(ns,tag);
+      Object.keys(attrs).forEach(key=>el.setAttribute(key,String(attrs[key])));
+      if(label!==undefined&&label!==null) el.textContent=String(label);
+      return el;
+    };
+    const cx=380,cy=190,width=760,height=380;
+    const known=Array.from(networkRadarKnownDevices.values());
+    const present=known.filter(item=>item.visibility!=="NOT SEEN");
+    const responding=present.filter(item=>item.responding===true);
+    const notSeen=known.filter(item=>item.visibility==="NOT SEEN");
+    $("networkTopologyTotal").textContent=String(known.length).padStart(2,"0");
+    $("networkTopologyPresent").textContent=String(present.length).padStart(2,"0");
+    $("networkTopologyResponding").textContent=String(responding.length).padStart(2,"0");
+    $("networkTopologyHistory").textContent=String(notSeen.length).padStart(2,"0");
+    const scopeHost=$("networkTopologyScopes");
+    scopeHost.replaceChildren();
+    const scopes=Array.isArray(data.scopes)?data.scopes:[];
+    (scopes.length?scopes:[{cidr:"NO ELIGIBLE PRIVATE IPV4 SUBNET",interfaceName:""}]).forEach(scope=>{
+      const chip=document.createElement("span");
+      chip.className="network-topology-scope"+(scopes.length?"":" is-muted");
+      chip.textContent=String(scope.cidr)+" · "+String(scope.interfaceName||"");
+      scopeHost.appendChild(chip);
+    });
+    svg.replaceChildren();
+    const grid=make("g",{"class":"topology-grid"});
+    for(let x=20;x<width;x+=38) grid.appendChild(make("line",{x1:x,y1:16,x2:x,y2:height-16}));
+    for(let y=20;y<height;y+=38) grid.appendChild(make("line",{x1:16,y1:y,x2:width-16,y2:y}));
+    svg.appendChild(grid);
+    svg.appendChild(make("circle",{cx,cy,r:154,"class":"topology-orbit"}));
+    svg.appendChild(make("circle",{cx,cy,r:112,"class":"topology-orbit topology-orbit-inner"}));
+    const ordered=known.slice().sort((a,b)=>{
+      const rank=item=>item.visibility==="NOT SEEN"?0:item.responding?2:1;
+      return rank(b)-rank(a)||Number(b.lastSeen||0)-Number(a.lastSeen||0);
+    });
+    const visible=ordered.slice(0,18);
+    const point=(index,total)=>({x:cx+Math.cos(-Math.PI/2+Math.PI*2*index/Math.max(total,1))*272,y:cy+Math.sin(-Math.PI/2+Math.PI*2*index/Math.max(total,1))*145});
+    const edgeLayer=make("g",{"class":"topology-edges"});
+    visible.forEach((item,index)=>{
+      const p=point(index,visible.length);
+      const kind=item.visibility==="NOT SEEN"?"not-seen":item.responding?"responding":"neighbor";
+      edgeLayer.appendChild(make("line",{x1:cx,y1:cy,x2:p.x,y2:p.y,"class":"topology-edge "+kind}));
+    });
+    svg.appendChild(edgeLayer);
+    const center=make("g",{"class":"topology-center"});
+    center.appendChild(make("circle",{cx,cy,r:47,"class":"topology-center-halo"}));
+    center.appendChild(make("rect",{x:cx-82,y:cy-31,width:164,height:62,rx:9,"class":"topology-center-card"}));
+    center.appendChild(make("text",{x:cx,y:cy-5,"text-anchor":"middle","class":"topology-center-title"},"LOCAL SCANNER"));
+    const localAddress=(Array.isArray(data.interfaces)?data.interfaces:[]).slice(0,2).map(item=>item.address).filter(Boolean).join(" / ");
+    center.appendChild(make("text",{x:cx,y:cy+14,"text-anchor":"middle","class":"topology-center-subtitle"},localAddress||"THIS DEVICE"));
+    svg.appendChild(center);
+    visible.forEach((item,index)=>{
+      const p=point(index,visible.length);
+      const kind=item.visibility==="NOT SEEN"?"not-seen":item.responding?"responding":"neighbor";
+      const key=String(item.key||networkRadarDeviceKey(item));
+      const selected=key===networkRadarSelectedNodeKey;
+      const node=make("g",{
+        "class":"topology-node "+kind+(selected?" is-selected":""),
+        tabindex:"0",role:"button","aria-pressed":selected?"true":"false",
+        "aria-label":"Select observed device "+item.ipAddress+" / "+String(item.macAddress||"MAC unavailable")
+      });
+      node.appendChild(make("circle",{cx:p.x,cy:p.y,r:25,"class":"topology-node-halo"}));
+      node.appendChild(make("circle",{cx:p.x,cy:p.y,r:17,"class":"topology-node-core"}));
+      node.appendChild(make("text",{x:p.x,y:p.y+4,"text-anchor":"middle","class":"topology-node-mark"},"·"+String(item.ipAddress||"").split(".").pop()));
+      node.appendChild(make("text",{x:p.x,y:p.y+35,"text-anchor":"middle","class":"topology-node-label"},kind==="responding"?"REPLY":kind==="neighbor"?"NEIGHBOR":"HISTORY"));
+      node.appendChild(make("title",{},item.ipAddress+" · "+String(item.macAddress||"MAC unavailable")+" · "+String(item.interfaceName||"interface unknown")));
+      const select=()=>{
+        networkRadarSelectedNodeKey=key;
+        renderNetworkRadarTopology(data);
+      };
+      node.addEventListener("click",select);
+      node.addEventListener("keydown",event=>{
+        if(event.key==="Enter"||event.key===" "){event.preventDefault();select();}
+      });
+      svg.appendChild(node);
+    });
+    $("networkTopologyOverflow").textContent=known.length>visible.length?"+"+(known.length-visible.length)+" MORE DEVICE(S) IN THE DISCOVERED DEVICE LIST":"";
+    const detail=$("networkTopologySelected");
+    const selectedItem=known.find(item=>String(item.key||networkRadarDeviceKey(item))===networkRadarSelectedNodeKey)||visible[0]||null;
+    if(selectedItem){
+      networkRadarSelectedNodeKey=String(selectedItem.key||networkRadarDeviceKey(selectedItem));
+      const title=document.createElement("b");title.textContent=selectedItem.ipAddress;
+      const status=document.createElement("span");
+      const stateKind=selectedItem.visibility==="NOT SEEN"?"not-seen":selectedItem.responding?"responding":"neighbor";
+      status.className="network-topology-selected-state "+stateKind;
+      status.textContent=stateKind==="not-seen"?"NOT SEEN RECENTLY":stateKind==="responding"?"ICMP RESPONSE":"NEIGHBOR RECORD";
+      const details=document.createElement("small");
+      details.textContent="MAC "+String(selectedItem.macAddress||"UNAVAILABLE")+" · INTERFACE "+String(selectedItem.interfaceName||"UNKNOWN")+" · STATE "+String(selectedItem.state||"UNKNOWN");
+      const times=document.createElement("small");
+      times.textContent="FIRST SEEN "+new Date(Number(selectedItem.firstSeen)||Date.now()).toLocaleString()+" · LAST SEEN "+new Date(Number(selectedItem.lastSeen)||Date.now()).toLocaleString();
+      detail.replaceChildren(title,status,details,times);
+    }else{
+      const empty=document.createElement("span");
+      empty.textContent="No peers are in the local journal yet. Start an active scan to populate this observed network map.";
+      detail.replaceChildren(empty);
+    }
+    $("networkTopologyLegend").hidden=known.length===0;
+    $("networkTopologyEmpty").hidden=known.length!==0;
+  }
+
   function renderNetworkRadarResults(data) {
     $("networkDeviceCount").textContent=String(data.deviceCount).padStart(2,"0");
     $("networkInterfaceCount").textContent=String(data.interfaces.length).padStart(2,"0");
@@ -684,6 +790,7 @@
     $("networkRadarHostsProbed").textContent=String(data.hostsProbed||0);
     $("networkRadarLastUpdate").textContent="LAST UPDATE "+new Date(data.collectedAt||Date.now()).toLocaleTimeString();
     $("networkRadarCoverage").textContent=(data.targetCount||0)+" LOCAL HOST TARGETS";
+    renderNetworkRadarTopology(data);
     const interfaceHost=$("networkInterfaceList");
     interfaceHost.replaceChildren();
     if(data.interfaces.length){
