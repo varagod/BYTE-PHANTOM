@@ -1018,14 +1018,14 @@
         openIncident.lastState = classification.state;
         openIncident.recoveryPendingAt = null;
         sample.incidentStatus = "INCIDENT ACTIVE";
-      } else if (classification.state === "ONLINE") {
-        if (openIncident.recoveryPendingAt && previous && previous.state === "ONLINE") {
+      } else if (classification.httpsOk === true) {
+        if (openIncident.recoveryPendingAt && previous && previous.httpsOk === true) {
           openIncident.recoveryObservedAt = openIncident.recoveryPendingAt;
           openIncident.resolvedAt = at;
           openIncident.recoveryConfirmedAt = at;
           openIncident.durationMs = Math.max(0, Date.parse(openIncident.recoveryObservedAt) - Date.parse(openIncident.startedAt));
           openIncident.recoveryPendingAt = null;
-          transition = "CONNECTIVITY RESTORED AFTER " + formatOutageWatchDuration(openIncident.durationMs) + " (TWO CHECKS CONFIRMED)";
+          transition = "CONNECTIVITY RESTORED AFTER " + formatOutageWatchDuration(openIncident.durationMs) + " (TWO HTTPS-REACHABLE CHECKS CONFIRMED)";
           sample.incidentStatus = "RECOVERY CONFIRMED";
         } else {
           openIncident.recoveryPendingAt = at;
