@@ -1,14 +1,14 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.3.0",
-  "build": "1.3.0",
-  "release": "2026-11-27",
+  "version": "1.4.0",
+  "build": "1.4.0",
+  "release": "2026-11-26",
   "platform": "Windows x64",
   "realCapabilities": [
-    "Read-only Windows host inventory: OS, CPU, memory, disk capacity, IPv4 interface metadata"
+    "Read-only Windows host inventory: OS, CPU, memory, disk capacity, IPv4 interface metadata",
+    "Passive LAN neighbor radar: private IPv4 neighbors from Windows neighbor cache, interface names, MAC addresses, and neighbor state"
   ],
   "simulatedModules": [
-    "NETWORK RADAR",
     "IP TRACE",
     "DEVICE INFILTRATION",
     "FIREWALL BREACH",
@@ -20,5 +20,5 @@
     "DIGITAL FORENSICS",
     "ENCRYPTION BREAKER"
   ],
-  "security": "No network probes, no privilege escalation, no system configuration changes."
+  "security": "No ping sweeps, port scans, packets sent, privilege escalation, or system configuration changes. Discovery reads the existing Windows IPv4 neighbor cache only."
 }
