@@ -2,6 +2,9 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("node:path");
 const os = require("node:os");
 const fs = require("node:fs/promises");
+const { execFile } = require("node:child_process");
+const { promisify } = require("node:util");
+const execFileAsync = promisify(execFile);
 
 let mainWindow;
 
@@ -19,7 +22,7 @@ function createWindow() {
     autoHideMenuBar: true,
     backgroundColor: "#090910",
     icon: path.join(__dirname, "..", "assets", "byte-phantom.ico"),
-    title: "BYTE PHANTOM — Digital Ghost",
+    title: `BYTE PHANTOM v${app.getVersion()} — Digital Ghost`,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -114,6 +117,56 @@ async function collectSystemSnapshot() {
     systemChangesMade: false
   };
 }
+
+
+function isPrivateIPv4(address) {
+  const parts=String(address||"").split(".").map(Number);
+  if(parts.length!==4||parts.some(p=>!Number.isInteger(p)||p<0||p>255)) return false;
+  const [a,b]=parts;
+  return a===10||(a===172&&b>=16&&b<=31)||(a===192&&b===168);
+}
+function getNetworkPrefix(netmask) {
+  return String(netmask||"").split(".").reduce((sum,item)=>{
+    const n=Number(item);
+    return sum+(Number.isInteger(n)&&n>=0&&n<=255?n.toString(2).replace(/0/g,"").length:0);
+  },0);
+}
+async function collectNetworkRadar() {
+  if(process.platform!=="win32") return {supported:false,reason:"Passive LAN neighbor discovery is currently available in the Windows desktop build only."};
+  const startedAt=Date.now();
+  const localInterfaces=Object.entries(os.networkInterfaces())
+    .flatMap(([name,addresses])=>(addresses||[])
+      .filter(e=>!e.internal&&(e.family==="IPv4"||e.family===4)&&isPrivateIPv4(e.address))
+      .map(e=>({name,address:e.address,netmask:e.netmask,cidr:e.address+"/"+getNetworkPrefix(e.netmask)})));
+  const powershellScript=[
+    "$ErrorActionPreference = 'Stop'",
+    "$rows = @(Get-NetNeighbor -AddressFamily IPv4 -ErrorAction Stop | Where-Object {",
+    "  $_.State -in @('Reachable','Stale','Delay','Probe','Permanent') -and",
+    "  $_.IPAddress -match '^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.)' -and",
+    "  $_.LinkLayerAddress -and $_.LinkLayerAddress -notmatch '^00(-00){5}$'",
+    "} | Select-Object @{Name='ipAddress';Expression={$_.IPAddress}},@{Name='macAddress';Expression={$_.LinkLayerAddress}},@{Name='interfaceName';Expression={$_.InterfaceAlias}},@{Name='state';Expression={$_.State}})",
+    "ConvertTo-Json -InputObject @($rows) -Depth 3 -Compress"
+  ].join("; ");
+  const {stdout}=await execFileAsync("powershell.exe",
+    ["-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-Command",powershellScript],
+    {windowsHide:true,timeout:10000,maxBuffer:512*1024,encoding:"utf8"});
+  const raw=String(stdout||"").trim();
+  let entries=raw?JSON.parse(raw):[];
+  if(!Array.isArray(entries)) entries=[entries];
+  const own=new Set(localInterfaces.map(x=>x.address)),seen=new Set();
+  const devices=entries.filter(x=>x&&isPrivateIPv4(x.ipAddress)&&!own.has(x.ipAddress))
+    .map(x=>({ipAddress:String(x.ipAddress),macAddress:String(x.macAddress||"UNAVAILABLE").toUpperCase(),interfaceName:String(x.interfaceName||"UNKNOWN INTERFACE"),state:String(x.state||"UNKNOWN").toUpperCase()}))
+    .filter(x=>{const key=x.interfaceName+"|"+x.ipAddress;if(seen.has(key))return false;seen.add(key);return true;})
+    .sort((a,b)=>a.ipAddress.localeCompare(b.ipAddress,undefined,{numeric:true})).slice(0,512);
+  return {supported:true,collectedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,source:"WINDOWS IPV4 NEIGHBOR CACHE",discoveryMode:"PASSIVE / READ-ONLY",interfaces:localInterfaces,devices,deviceCount:devices.length,networkProbesPerformed:false,packetsSent:0,systemChangesMade:false,limitations:"Shows private IPv4 neighbors already present in the Windows cache. Sleeping devices or devices Windows has not recently contacted may not appear."};
+}
+
+ipcMain.handle("byte-phantom:network-radar", async (event) => {
+  const win=BrowserWindow.fromWebContents(event.sender);
+  const senderUrl=event.senderFrame&&event.senderFrame.url;
+  if(!win||typeof senderUrl!=="string"||!senderUrl.startsWith("file://")) throw new Error("Network radar is only available to the local BYTE PHANTOM desktop window.");
+  return collectNetworkRadar();
+});
 
 ipcMain.handle("byte-phantom:system-snapshot", async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
