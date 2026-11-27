@@ -6,6 +6,8 @@ on:
     paths:
       - "web/**"
       - "electron/**"
+      - "native/**"
+      - "capacitor.config.json"
       - "package.json"
       - "scripts/**"
       - ".github/workflows/desktop-build.yml"
@@ -45,6 +47,7 @@ jobs:
           node --check electron/main.cjs
           node --check electron/preload.cjs
           node --check web/app.js
+          node --check scripts/prepare-android.mjs
           node -e "const fs=require('node:fs');const pkg=require('./package.json');const meta=require('./web/version.json');const version=fs.readFileSync('VERSION','utf8').trim();if(pkg.version!==version||pkg.version!==meta.version)throw new Error('Release version mismatch');console.log('Validated BYTE PHANTOM '+version)"
 
       - name: Generate Windows and web icons

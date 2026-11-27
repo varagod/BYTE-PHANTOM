@@ -1,15 +1,16 @@
 {
   "name": "byte-phantom",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
-  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with active private-LAN IPv4 discovery and live network-change monitoring.",
+  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with native active private-LAN IPv4 discovery on Windows and Android.",
   "scripts": {
     "start": "npx serve web",
     "android:add": "npx cap add android",
     "android:sync": "npx cap sync android",
     "desktop:dev": "electron .",
     "desktop:build": "electron-builder --win portable",
-    "assets:generate": "python scripts/generate-brand-assets.py"
+    "assets:generate": "python scripts/generate-brand-assets.py",
+    "android:prepare": "node scripts/prepare-android.mjs"
   },
   "dependencies": {
     "@capacitor/android": "6.2.1",

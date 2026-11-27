@@ -50,6 +50,9 @@ jobs:
       - name: Sync web assets
         run: npx cap sync android
 
+      - name: Install native Android Network Radar bridge and permissions
+        run: node scripts/prepare-android.mjs
+
       - name: Generate Android launcher icons
         run: |
           python -m pip install --upgrade pip pillow

@@ -1,14 +1,19 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.5.0",
-  "build": "1.5.0",
+  "version": "1.6.0",
+  "build": "1.6.0",
   "release": "2026-11-26",
-  "platform": "Windows x64",
+  "platforms": [
+    "Windows x64",
+    "Android"
+  ],
   "realCapabilities": [
-    "Read-only Windows host inventory: OS, CPU, memory, disk capacity, and IPv4 interface metadata",
-    "Active local IPv4 host discovery on directly connected private subnets from /22 through /30, up to 1,022 host targets per scan",
-    "ICMP echo reachability plus Windows ARP/neighbor-table MAC enrichment",
-    "Continuous network-change monitoring with device arrival, IP-address change, reappearance, and no-longer-visible events"
+    "Windows SYSTEM INTELLIGENCE: read-only local host, CPU, memory, disk, and IPv4 interface inventory",
+    "NETWORK RADAR on Windows and Android using each device's own native network APIs",
+    "Active discovery of directly connected private IPv4 subnets from /22 through /30, capped at 1,022 host addresses per scan",
+    "One ICMP echo request per target host during active sweeps, enriched with ARP/neighbor-table MAC addresses where available",
+    "Four-second neighbour refresh and scheduled active rediscovery every 30 seconds",
+    "Live event history for newly detected devices, IP changes, reappearance, and nodes no longer visible in recent snapshots"
   ],
   "simulatedModules": [
     "IP TRACE",
@@ -22,5 +27,14 @@
     "DIGITAL FORENSICS",
     "ENCRYPTION BREAKER"
   ],
-  "security": "Active discovery sends one ICMP echo request per host only within private IPv4 subnets directly attached to this Windows PC; neighbor-table refresh runs every 4 seconds and active rediscovery every 30 seconds. No port scans, credential tests, exploits, internet-wide scans, privilege escalation, or system configuration changes. Not a guaranteed complete router-client inventory; client isolation, sleeping hosts, filtered ICMP, separate VLANs/subnets, and router-specific behavior can limit visibility."
+  "android": {
+    "nativeBridge": "Capacitor 6 local Java plugin, registered in MainActivity",
+    "permissions": [
+      "android.permission.INTERNET",
+      "android.permission.ACCESS_NETWORK_STATE"
+    ],
+    "runtimeLocationPermission": false,
+    "scanImplementation": "/system/bin/ping with one ICMP echo request per host; /proc/net/arp and ip neigh for MAC/interface enrichment"
+  },
+  "security": "Network discovery is limited to directly connected private IPv4 subnets. No port scanning, credential tests, exploitation, internet-wide scans, privilege escalation, or network/system configuration changes. This is not a guaranteed complete router-client inventory; client isolation, sleeping hosts, filtered ICMP, separate VLANs/subnets, OEM restrictions, and emulator NAT can limit visibility."
 }

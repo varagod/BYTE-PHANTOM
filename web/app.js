@@ -48,6 +48,7 @@
   let networkRadarSessionToken = 0;
   let networkRadarKnownDevices = new Map();
   let networkRadarEvents = [];
+  let networkRadarAndroidPlugin = null;
   let operationCount = 0;
   let activity = [];
   const audioState = {
@@ -474,7 +475,7 @@
     const now=Date.now(),seen=new Set(),newEvents=[];
     data.devices.forEach(item=>{
       const mac=String(item.macAddress||"").toUpperCase();
-      const key=mac&&mac!=="UNAVAILABLE"&&mac!=="UNKNOWN"?"MAC:"+mac:"IP:"+item.ipAddress;
+      const key=mac&&mac!=="UNAVAILABLE"&&mac!=="UNKNOWN"&&mac!=="UNRESOLVED"&&mac!=="INCOMPLETE"?"MAC:"+mac:"IP:"+item.ipAddress;
       seen.add(key);
       const previous=networkRadarKnownDevices.get(key);
       if(!previous) {
@@ -567,12 +568,39 @@
     $("networkRadarResults").hidden=false;
   }
 
-  async function refreshNetworkRadarSnapshot(operation,token,activeSweep) {
+  function getNetworkRadarBridge() {
     const desktop=window.bytePhantomDesktop;
-    if(networkRadarRefreshBusy||!desktop||typeof desktop.getNetworkRadar!=="function") return false;
+    if(desktop&&typeof desktop.getNetworkRadar==="function") {
+      return {platform:"WINDOWS",scan:(options)=>desktop.getNetworkRadar(options)};
+    }
+    const capacitor=window.Capacitor;
+    if(capacitor) {
+      if(!networkRadarAndroidPlugin) {
+        try {
+          // Capacitor injects legacy per-plugin shims before the page loads.
+          const injected=capacitor.Plugins&&capacitor.Plugins.NetworkRadar;
+          if(injected) {
+            networkRadarAndroidPlugin=injected;
+          } else if(typeof capacitor.getPlatform==="function"&&capacitor.getPlatform()==="android"&&typeof capacitor.registerPlugin==="function") {
+            networkRadarAndroidPlugin=capacitor.registerPlugin("NetworkRadar");
+          }
+        } catch(error) {
+          networkRadarAndroidPlugin=null;
+        }
+      }
+      if(networkRadarAndroidPlugin&&typeof networkRadarAndroidPlugin.scan==="function") {
+        return {platform:"ANDROID",scan:(options)=>networkRadarAndroidPlugin.scan(options)};
+      }
+    }
+    return null;
+  }
+
+  async function refreshNetworkRadarSnapshot(operation,token,activeSweep) {
+    const bridge=getNetworkRadarBridge();
+    if(networkRadarRefreshBusy||!bridge) return false;
     networkRadarRefreshBusy=true;
     try{
-      const data=await desktop.getNetworkRadar({activeSweep:activeSweep===true});
+      const data=await bridge.scan({activeSweep:activeSweep===true});
       if(token!==networkRadarSessionToken||selectedOperation!==operation||!$("operationModal").classList.contains("open")) return false;
       if(!data||data.supported!==true) throw new Error(data&&data.reason?data.reason:"Active LAN discovery is unavailable on this platform.");
       const changes=updateNetworkRadarHistory(data);
@@ -591,7 +619,7 @@
         "[SYSTEM] No configuration changes / no port scans / no external targets"
       ].join("\n");
       $("modalResult").hidden=false;
-      $("modalResult").textContent="NETWORK RADAR / CONTINUOUS LOCAL MONITOR\n\n"+data.deviceCount+" device record(s) currently appear in the Windows neighbor table. "+data.respondingCount+" replied to ICMP. "+(data.hostsProbed||0)+" local host address(es) were probed in this cycle.\n\nThe radar refreshes neighbor data every 4 seconds and repeats the active sweep every 30 seconds. A missing node means it was not present in the latest snapshots; it is not proof that the device disconnected.\n\nScope: directly connected private IPv4 networks only. No port scan, credential test, exploit, or internet-wide scan.";
+      $("modalResult").textContent="NETWORK RADAR / CONTINUOUS LOCAL MONITOR\n\nPLATFORM: "+bridge.platform+"\n"+data.deviceCount+" device record(s) currently appear in the local neighbor table. "+data.respondingCount+" replied to ICMP. "+(data.hostsProbed||0)+" local host address(es) were probed in this cycle.\n\nThe radar refreshes neighbor data every 4 seconds and repeats the active sweep every 30 seconds. A missing node means it was not present in the latest snapshots; it is not proof that the device disconnected.\n\nScope: directly connected private IPv4 networks only. No port scan, credential test, exploit, or internet-wide scan.";
       $("runOperation").disabled=false;$("runOperation").textContent="ACTIVE RESCAN NOW";$("runStatus").textContent="LIVE RADAR";
       if(changes.length){
         changes.forEach(item=>addActivity("RADAR / "+item.title,item.detail,item.warning));
@@ -631,11 +659,11 @@
   }
 
   async function runLiveNetworkRadar(operation) {
-    const desktop=window.bytePhantomDesktop;
-    if(!desktop||typeof desktop.getNetworkRadar!=="function"){
-      $("progressArea").hidden=false;$("progressLabel").textContent="WINDOWS DESKTOP REQUIRED";$("progressPercent").textContent="—";
-      $("progressOutput").textContent="[BLOCKED] Active local IPv4 discovery requires the Windows desktop build.\n[INFO] No fabricated network devices are shown on browser or Android.";
-      $("modalResult").hidden=false;$("modalResult").textContent="NETWORK RADAR UNAVAILABLE\n\nThis platform does not expose the Windows network-discovery bridge. No simulated nodes have been substituted.";
+    const bridge=getNetworkRadarBridge();
+    if(!bridge){
+      $("progressArea").hidden=false;$("progressLabel").textContent="NATIVE APP REQUIRED";$("progressPercent").textContent="—";
+      $("progressOutput").textContent="[BLOCKED] Active local IPv4 discovery requires the BYTE PHANTOM Windows or Android native application.\n[INFO] Browser/PWA mode cannot access the operating-system network scanner.";
+      $("modalResult").hidden=false;$("modalResult").textContent="NETWORK RADAR UNAVAILABLE\n\nInstall the Windows desktop EXE or Android APK to use the native network scanner. No simulated nodes have been substituted.";
       $("runOperation").disabled=false;$("runOperation").textContent="TRY AGAIN";return;
     }
     if(networkRadarRefreshBusy){networkRadarForceActive=true;$("runOperation").textContent="ACTIVE RESCAN QUEUED";return;}
