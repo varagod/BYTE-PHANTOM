@@ -922,6 +922,20 @@
     const httpsRows = Array.isArray(result && result.https) ? result.https : [];
     const dnsOk = dns.ok === true;
     const httpsOk = httpsRows.some(item => item && item.ok === true);
+    const validLatency = value => {
+      const number = Number(value);
+      return Number.isFinite(number) && number >= 0 ? Math.round(number) : null;
+    };
+    const httpsSuccessfulLatencies = httpsRows
+      .filter(item => item && item.ok === true)
+      .map(item => validLatency(item.latencyMs))
+      .filter(value => value !== null)
+      .sort((a, b) => a - b);
+    const httpsLatencyMs = httpsSuccessfulLatencies.length
+      ? httpsSuccessfulLatencies.length % 2
+        ? httpsSuccessfulLatencies[(httpsSuccessfulLatencies.length - 1) / 2]
+        : Math.round((httpsSuccessfulLatencies[httpsSuccessfulLatencies.length / 2 - 1] + httpsSuccessfulLatencies[httpsSuccessfulLatencies.length / 2]) / 2)
+      : null;
     let state = "INDETERMINATE";
     let diagnosis = "The available probes did not establish a clear connectivity state.";
 
@@ -948,13 +962,21 @@
       httpsOk,
       gatewayStatus: String(gateway.status || "UNKNOWN"),
       defaultRoute: path.defaultRoute === true ? true : path.defaultRoute === false ? false : null,
-      durationMs: Number.isFinite(Number(result && result.durationMs)) ? Number(result.durationMs) : null
+      durationMs: validLatency(result && result.durationMs),
+      gatewayLatencyMs: gateway.replied === true ? validLatency(gateway.latencyMs) : null,
+      dnsLatencyMs: dnsOk ? validLatency(dns.latencyMs) : null,
+      httpsLatencyMs
     };
+  }
+
+  function outageWatchIsIssue(state) {
+    return state === "NO DEFAULT ROUTE" || state === "DNS FAILURE" || state === "HTTPS UNREACHABLE";
   }
 
   function recordOutageWatchResult(result) {
     const classification = classifyOutageWatchResult(result);
     const at = new Date().toISOString();
+    const previous = outageWatchSamples[0] || null;
     const sample = {
       at,
       state: classification.state,
@@ -963,32 +985,110 @@
       defaultRoute: classification.defaultRoute,
       dnsOk: classification.dnsOk,
       httpsOk: classification.httpsOk,
-      durationMs: classification.durationMs
+      durationMs: classification.durationMs,
+      gatewayLatencyMs: classification.gatewayLatencyMs,
+      dnsLatencyMs: classification.dnsLatencyMs,
+      httpsLatencyMs: classification.httpsLatencyMs,
+      incidentStatus: "NO ACTIVE INCIDENT"
     };
-    outageWatchSamples.unshift(sample);
 
     const openIncident = outageWatchEvents.find(item => !item.resolvedAt);
     let transition = null;
-    if (outageWatchIsIssue(classification.state) && !openIncident) {
-      outageWatchEvents.unshift({
-        startedAt: at,
-        state: classification.state,
-        lastState: classification.state,
-        resolvedAt: null,
-        durationMs: null
-      });
-      transition = "CONNECTIVITY ISSUE DETECTED: " + classification.state;
-    } else if (outageWatchIsIssue(classification.state) && openIncident) {
-      openIncident.lastState = classification.state;
-    } else if (classification.state === "ONLINE" && openIncident) {
-      openIncident.resolvedAt = at;
-      openIncident.durationMs = Math.max(0, Date.parse(at) - Date.parse(openIncident.startedAt));
-      transition = "CONNECTIVITY RESTORED AFTER " + formatOutageWatchDuration(openIncident.durationMs);
+    if (openIncident) {
+      if (outageWatchIsIssue(classification.state)) {
+        openIncident.lastState = classification.state;
+        openIncident.recoveryPendingAt = null;
+        sample.incidentStatus = "INCIDENT ACTIVE";
+      } else if (classification.state === "ONLINE") {
+        if (openIncident.recoveryPendingAt && previous && previous.state === "ONLINE") {
+          openIncident.recoveryObservedAt = openIncident.recoveryPendingAt;
+          openIncident.resolvedAt = at;
+          openIncident.recoveryConfirmedAt = at;
+          openIncident.durationMs = Math.max(0, Date.parse(openIncident.recoveryObservedAt) - Date.parse(openIncident.startedAt));
+          openIncident.recoveryPendingAt = null;
+          transition = "CONNECTIVITY RESTORED AFTER " + formatOutageWatchDuration(openIncident.durationMs) + " (TWO CHECKS CONFIRMED)";
+          sample.incidentStatus = "RECOVERY CONFIRMED";
+        } else {
+          openIncident.recoveryPendingAt = at;
+          sample.incidentStatus = "RECOVERY PENDING · NEEDS ONE MORE SUCCESSFUL CHECK";
+        }
+      } else {
+        openIncident.recoveryPendingAt = null;
+        sample.incidentStatus = "INCIDENT OPEN · PROBE INCONCLUSIVE";
+      }
+    } else if (outageWatchIsIssue(classification.state)) {
+      if (previous && outageWatchIsIssue(previous.state)) {
+        const incident = {
+          startedAt: previous.at,
+          confirmedAt: at,
+          state: previous.state,
+          lastState: classification.state,
+          recoveryPendingAt: null,
+          recoveryObservedAt: null,
+          recoveryConfirmedAt: null,
+          resolvedAt: null,
+          durationMs: null
+        };
+        outageWatchEvents.unshift(incident);
+        transition = "CONNECTIVITY ISSUE CONFIRMED: " + classification.state + " (TWO CONSECUTIVE CHECKS)";
+        sample.incidentStatus = "ISSUE CONFIRMED";
+      } else {
+        sample.incidentStatus = "PENDING ISSUE CONFIRMATION";
+      }
     }
 
+    outageWatchSamples.unshift(sample);
     saveOutageWatchHistory();
     renderOutageWatchHistory();
     return { sample, transition };
+  }
+
+  function medianOutageWatchMetric(field) {
+    const values = outageWatchSamples
+      .filter(item => item && Number.isFinite(Number(item[field])) && item[field] !== null)
+      .slice(0, 12)
+      .map(item => Number(item[field]))
+      .sort((a, b) => a - b);
+    if (!values.length) return null;
+    const middle = Math.floor(values.length / 2);
+    return values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
+  }
+
+  function renderOutageWatchQualityTrend() {
+    const host = $("outageWatchQualityTrend");
+    if (!host) return;
+    host.replaceChildren();
+    const samples = outageWatchSamples.slice(0, 12).reverse();
+    const points = samples.filter(item => item.dnsLatencyMs !== null || item.httpsLatencyMs !== null);
+    if (!points.length) {
+      const empty = document.createElement("div");
+      empty.className = "outage-watch-empty";
+      empty.textContent = "NO SUCCESSFUL DNS / HTTPS LATENCY SAMPLES YET";
+      host.appendChild(empty);
+      return;
+    }
+    const values = points.flatMap(item => [item.dnsLatencyMs, item.httpsLatencyMs])
+      .filter(value => value !== null && Number.isFinite(Number(value)))
+      .map(Number);
+    const ceiling = Math.max(1, ...values);
+    points.forEach(item => {
+      const group = document.createElement("div");
+      group.className = "outage-watch-quality-bar-group";
+      group.setAttribute("aria-label", formatOutageWatchTime(item.at));
+      [["dns", item.dnsLatencyMs], ["https", item.httpsLatencyMs]].forEach(([kind, value]) => {
+        const bar = document.createElement("i");
+        bar.className = "outage-watch-quality-bar outage-watch-quality-bar-" + kind;
+        const valid = value !== null && Number.isFinite(Number(value));
+        bar.style.height = valid ? Math.max(3, Number(value) / ceiling * 58) + "px" : "2px";
+        bar.dataset.empty = valid ? "false" : "true";
+        bar.title = kind.toUpperCase() + ": " + (valid ? Math.round(Number(value)) + " ms" : "no successful sample") + " · " + formatOutageWatchTime(item.at);
+        group.appendChild(bar);
+      });
+      const time = document.createElement("small");
+      time.textContent = new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      group.appendChild(time);
+      host.appendChild(group);
+    });
   }
 
   function formatOutageWatchDuration(value) {
@@ -1033,7 +1133,11 @@
     const feedback = $("outageWatchFeedback");
 
     if (state) {
-      state.textContent = latest ? latest.state : "NOT MONITORED";
+      state.textContent = latest
+        ? latest.incidentStatus === "PENDING ISSUE CONFIRMATION" ? "VERIFYING · " + latest.state
+          : latest.incidentStatus && latest.incidentStatus.startsWith("RECOVERY PENDING") ? "VERIFYING RECOVERY"
+          : latest.state
+        : "NOT MONITORED";
       state.dataset.state = latest ? latest.state.toLowerCase().replace(/[^a-z]+/g, "-") : "idle";
     }
     if (sampleCount) sampleCount.textContent = String(outageWatchSamples.length);
@@ -1058,7 +1162,10 @@
           detail.textContent = "DNS " + (item.dnsOk === true ? "OK" : item.dnsOk === false ? "FAILED" : "N/A") +
             " · HTTPS " + (item.httpsOk === true ? "REACHABLE" : item.httpsOk === false ? "NOT CONFIRMED" : "N/A") +
             " · GATEWAY " + String(item.gatewayStatus || "UNKNOWN") +
-            (item.durationMs != null && Number.isFinite(Number(item.durationMs)) ? " · " + Number(item.durationMs) + " MS" : "");
+            (item.durationMs != null && Number.isFinite(Number(item.durationMs)) ? " · " + Number(item.durationMs) + " MS TOTAL" : "") +
+            " · DNS " + (item.dnsLatencyMs != null ? Math.round(Number(item.dnsLatencyMs)) + " MS" : "N/A") +
+            " · HTTPS " + (item.httpsLatencyMs != null ? Math.round(Number(item.httpsLatencyMs)) + " MS" : "N/A") +
+            " · " + String(item.incidentStatus || "NO INCIDENT");
           row.append(heading, time, detail);
           history.appendChild(row);
         });
@@ -1080,7 +1187,9 @@
           title.dataset.state = item.resolvedAt ? "online" : "issue";
           const time = document.createElement("small");
           time.textContent = formatOutageWatchTime(item.startedAt) +
-            (item.resolvedAt ? " · DURATION " + formatOutageWatchDuration(item.durationMs) : " · STILL OPEN");
+            (item.resolvedAt ? " · DURATION " + formatOutageWatchDuration(item.durationMs) :
+              item.recoveryPendingAt ? " · RECOVERY CHECK IN PROGRESS" : " · STILL OPEN") +
+            (item.confirmedAt ? " · CONFIRMED " + formatOutageWatchTime(item.confirmedAt) : "");
           row.append(title, time);
           events.appendChild(row);
         });
@@ -1089,6 +1198,13 @@
     if (feedback && latest && !outageWatchActive) {
       feedback.textContent = "LAST CHECK: " + formatOutageWatchTime(latest.at) + " · WATCH IS STOPPED.";
     }
+    const dnsMedian = $("outageWatchDnsMedian");
+    const httpsMedian = $("outageWatchHttpsMedian");
+    const gatewayMedian = $("outageWatchGatewayMedian");
+    if (dnsMedian) dnsMedian.textContent = medianOutageWatchMetric("dnsLatencyMs") == null ? "—" : Math.round(medianOutageWatchMetric("dnsLatencyMs")) + " MS";
+    if (httpsMedian) httpsMedian.textContent = medianOutageWatchMetric("httpsLatencyMs") == null ? "—" : Math.round(medianOutageWatchMetric("httpsLatencyMs")) + " MS";
+    if (gatewayMedian) gatewayMedian.textContent = medianOutageWatchMetric("gatewayLatencyMs") == null ? "—" : Math.round(medianOutageWatchMetric("gatewayLatencyMs")) + " MS";
+    renderOutageWatchQualityTrend();
     updateOutageWatchControls();
   }
 
@@ -1103,9 +1219,10 @@
     let value;
     if (format === "csv") {
       const cell = item => '"' + String(item == null ? "" : item).replace(/"/g, '""') + '"';
-      const lines = [["timestamp", "state", "gateway", "default_route", "dns_ok", "https_ok", "duration_ms", "diagnosis"]];
+      const lines = [["timestamp", "state", "incident_status", "gateway", "default_route", "dns_ok", "https_ok", "gateway_latency_ms", "dns_latency_ms", "https_latency_ms", "duration_ms", "diagnosis"]];
       outageWatchSamples.forEach(item => lines.push([
-        item.at, item.state, item.gatewayStatus, item.defaultRoute, item.dnsOk, item.httpsOk, item.durationMs, item.diagnosis
+        item.at, item.state, item.incidentStatus, item.gatewayStatus, item.defaultRoute, item.dnsOk, item.httpsOk,
+        item.gatewayLatencyMs, item.dnsLatencyMs, item.httpsLatencyMs, item.durationMs, item.diagnosis
       ]));
       value = lines.map(line => line.map(cell).join(",")).join("\r\n");
     } else {
@@ -1172,6 +1289,9 @@
         httpsOk: null,
         durationMs: null
       };
+      const openIncident = outageWatchEvents.find(item => !item.resolvedAt);
+      if (openIncident) openIncident.recoveryPendingAt = null;
+      sample.incidentStatus = openIncident ? "INCIDENT OPEN · PROBE ERROR" : "PROBE ERROR · NO INCIDENT";
       outageWatchSamples.unshift(sample);
       saveOutageWatchHistory();
       renderOutageWatchHistory();

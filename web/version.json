@@ -1,13 +1,15 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.16.0",
-  "build": "1.16.0",
+  "version": "1.17.0",
+  "build": "1.17.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
     "Android"
   ],
   "realCapabilities": [
+    "OUTAGE WATCH issue confirmation: two consecutive qualifying failures before opening an incident and two consecutive successful HTTPS checks before recovery",
+    "OUTAGE WATCH DNS, HTTPS, and gateway response latency history with a recent trend view and rolling median baselines",
     "Cross-platform OUTAGE WATCH: interval-based gateway/DNS/HTTPS connectivity checks, local incident start/recovery timeline, and JSON/CSV export",
     "Cross-platform private IPv4 Network Radar and persistent local journal",
     "Interactive observed LAN map",
@@ -85,6 +87,7 @@
     "configurationChanges": false
   },
   "fixes": [
+    "Hardened OUTAGE WATCH against transient failures with two-sample incident confirmation and two-success recovery confirmation; added local DNS/HTTPS/gateway latency baselines and trend chart",
     "Added cross-platform local OUTAGE WATCH with 30-second, 1-minute, and 5-minute probe intervals, incident/recovery tracking, 30-day local history, and JSON/CSV export",
     "Rebuilt malformed Windows PowerShell route-diagnostics function",
     "Registered Android NetworkRadar through the Capacitor 6 JavaScript plugin runtime",
@@ -213,6 +216,24 @@
     "export": [
       "JSON",
       "CSV"
-    ]
+    ],
+    "issueConfirmation": {
+      "consecutiveQualifyingChecks": 2,
+      "requiresSameIssueType": false,
+      "indeterminateResetsStreak": true
+    },
+    "recoveryConfirmation": {
+      "consecutiveSuccessfulHttpsChecks": 2,
+      "intermediateIssueOrIndeterminateResetsStreak": true
+    },
+    "qualityMetrics": [
+      "DNS successful lookup latency",
+      "HTTPS successful endpoint median latency",
+      "gateway ICMP reply latency"
+    ],
+    "qualityTrend": {
+      "windowSamples": 12,
+      "rollingBaseline": "Median of up to the latest 12 successful measurements per metric"
+    }
   }
 }

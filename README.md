@@ -1,8 +1,18 @@
-# BYTE PHANTOM v1.15.0
+# BYTE PHANTOM v1.17.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.15.0 adds explicit DNS and HTTPS connectivity diagnostics to the persistent, cross-platform NETWORK RADAR.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.17.0 hardens the cross-platform OUTAGE WATCH with two-sample incident confirmation and DNS/HTTPS latency history.
+
+## v1.17.0 — OUTAGE WATCH CONFIRMATION + NETWORK QUALITY TREND
+
+- One qualifying failed check is marked pending; two consecutive qualifying failures are required to open an incident.
+- Two consecutive successful HTTPS checks are required to confirm recovery. An intervening failure or inconclusive probe resets the pending recovery streak.
+- Records successful DNS lookup latency, HTTPS successful-endpoint median latency, and gateway ICMP reply latency when available.
+- Displays recent latency samples and rolling medians based on up to 12 successful observations per metric.
+- Incident history records the first observed failure time and the later confirmation time. Local samples and JSON/CSV exports include the confirmation and latency fields.
+- Monitoring still runs only while NETWORK RADAR is open and the app remains active; it is not a background system service.
+
 
 ## v1.15.0 hotfix
 
@@ -98,7 +108,7 @@ npm run desktop:build
 
 Portable x64 executable:
 
-**BYTE-PHANTOM-v1.15.0-Windows-x64.exe**
+**BYTE-PHANTOM-v1.17.0-Windows-x64.exe**
 
 The GitHub Actions workflow uploads a version-named artifact. The EXE is portable and does not require a separate installer. It is not code-signed, so Windows SmartScreen may show an unverified publisher warning.
 
@@ -117,7 +127,7 @@ cd android
 
 CI artifact:
 
-**BYTE-PHANTOM-v1.15.0-Android-debug.apk**
+**BYTE-PHANTOM-v1.17.0-Android-debug.apk**
 
 This is a debug APK for testing, not a Play Store release.
 

@@ -347,3 +347,23 @@
 .outage-watch-disclaimer{border-left:2px solid rgba(255,184,107,.48);color:#b3a28b}
 @media(max-width:700px){.outage-watch-columns{grid-template-columns:1fr}.outage-watch-controls .button{width:100%}}
 @media(max-width:420px){.outage-watch-overview{grid-template-columns:1fr}.outage-watch-controls label{width:100%}.outage-watch-controls select{width:100%}}
+
+
+/* v1.17.0 — outage confirmation and latency quality trend */
+.outage-watch-quality-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.outage-watch-quality-metrics>div{display:grid;gap:5px;min-width:0;padding:10px;border:1px solid rgba(68,232,255,.15);border-radius:7px;background:rgba(4,14,22,.58)}
+.outage-watch-quality-metrics small{color:#7e94a0;font-size:8px;line-height:1.5;letter-spacing:.5px}
+.outage-watch-quality-metrics b{color:#67d8e9;font:600 14px var(--mono);overflow-wrap:anywhere}
+.outage-watch-trend-wrap{margin-top:12px;padding:10px;border:1px solid rgba(130,160,180,.12);border-radius:7px;background:rgba(3,10,16,.48)}
+.outage-watch-quality-legend{display:flex;gap:14px;margin:6px 0;color:#8fa8b4;font-size:8px}
+.outage-watch-quality-legend span{display:flex;align-items:center;gap:5px}
+.outage-watch-quality-legend i{display:inline-block;width:7px;height:7px;border-radius:2px}
+.outage-watch-quality-legend i.dns{background:#67d8e9}
+.outage-watch-quality-legend i.https{background:#bd8cff}
+.outage-watch-quality-trend{display:flex;align-items:end;gap:5px;min-height:84px;overflow-x:auto;padding:5px 2px 0}
+.outage-watch-quality-bar-group{display:flex;align-items:end;justify-content:center;gap:2px;flex:1 0 17px;min-width:17px;height:76px;position:relative}
+.outage-watch-quality-bar{display:block;width:6px;max-height:58px;border-radius:3px 3px 0 0;background:#67d8e9;opacity:.9}
+.outage-watch-quality-bar-https{background:#bd8cff}
+.outage-watch-quality-bar[data-empty="true"]{opacity:.12}
+.outage-watch-quality-bar-group small{position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);color:#718793;font-size:7px;white-space:nowrap}
+@media(max-width:600px){.outage-watch-quality-metrics{grid-template-columns:1fr}.outage-watch-quality-metrics>div{padding:8px}.outage-watch-quality-trend{justify-content:flex-start}}

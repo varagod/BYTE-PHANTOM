@@ -1,5 +1,18 @@
 # BYTE PHANTOM — Changelog
 
+## v1.17.0 — OUTAGE WATCH CONFIRMATION + NETWORK QUALITY TREND
+- Added two-consecutive-sample confirmation before opening an outage incident; a single failed check is labelled pending and does not create an incident.
+- Added two-consecutive-success confirmation before resolving an open incident. A renewed failure or inconclusive probe resets the pending recovery streak.
+- Incident start time is anchored to the first qualifying failed sample; the UI also records when the incident was confirmed.
+- Captures successful DNS lookup latency, successful HTTPS endpoint median latency, and gateway ICMP reply latency when those measurements are available.
+- Adds rolling medians and a recent DNS/HTTPS latency bar trend using up to the latest 12 successful measurements.
+- Adds the confirmation state and latency fields to local samples and CSV exports; JSON exports preserve the full incident structure.
+- Retains existing 30-day local history, caps, selected probe intervals, and NETWORK RADAR lifecycle stop behavior.
+- No new Android permissions, background service, DNS configuration changes, VPN, port scan, or external host discovery.
+- Updated Windows and Android build metadata to v1.17.0.
+
+
+
 ## v1.16.0 — OUTAGE WATCH / CONNECTIVITY INCIDENT HISTORY
 - Added OUTAGE WATCH to NETWORK RADAR on Windows and Android using each platform's existing native connectivity-diagnostics bridge.
 - Added selectable 30-second, 1-minute (default), and 5-minute intervals. A check runs immediately on start; later checks are scheduled after each probe completes to prevent overlapping requests.
