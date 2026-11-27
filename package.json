@@ -1,6 +1,6 @@
 {
   "name": "byte-phantom",
-  "version": "1.13.0",
+  "version": "1.13.1",
   "private": true,
   "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with private LAN discovery, layered connectivity diagnosis, DNS answer comparison, integrity review, and local resolver history.",
   "scripts": {

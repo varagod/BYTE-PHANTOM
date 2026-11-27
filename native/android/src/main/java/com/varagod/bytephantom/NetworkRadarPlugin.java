@@ -498,7 +498,9 @@ public class NetworkRadarPlugin extends Plugin {
         result.put("platform", "ANDROID");
         result.put("collectedAt", java.time.Instant.now().toString());
         result.put("durationMs", Math.max(0L, System.currentTimeMillis() - startedAt));
-        result.put("queryNames", new JSONArray(queryNames));
+        JSArray queryNamesJson = new JSArray();
+        for (String queryName : queryNames) queryNamesJson.put(queryName);
+        result.put("queryNames", queryNamesJson);
         result.put("queryType", "A");
         result.put("transport", "DNS OVER UDP / PORT 53");
         result.put("configuredDnsServers", new JSONArray(configured));

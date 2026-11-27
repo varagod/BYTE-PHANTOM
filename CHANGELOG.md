@@ -1,5 +1,11 @@
 # BYTE PHANTOM — Changelog
 
+## v1.13.1 — ANDROID DNS BUILD HOTFIX
+- Replaced a checked-exception JSON array constructor in the Android DNS report with Capacitor `JSArray` population.
+- No DNS query, comparison, recommendation, history, or network-scope behavior changed.
+- Rebuilt both platform packages under the corrected v1.13.1 version.
+
+
 ## v1.13.0 — DNS INTEGRITY REVIEW + LOCAL PERFORMANCE HISTORY
 - Extended direct resolver tests from one hostname to two public names: `example.com` and `iana.org`, queried once each over UDP/53.
 - Compares normalized A-record sets between configured DNS resolvers and the Cloudflare, Google Public DNS, and Quad9 references.

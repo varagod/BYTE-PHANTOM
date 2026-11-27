@@ -1,7 +1,7 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.13.0",
-  "build": "1.13.0",
+  "version": "1.13.1",
+  "build": "1.13.1",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
@@ -80,7 +80,8 @@
     "Restored Windows DNS/HTTPS diagnostics IPC handler and network-path result",
     "Added layered gateway/DNS/HTTPS-TLS failure isolation on Windows and Android",
     "Added direct DNS-over-UDP resolver tests for configured DNS servers and fixed public resolver references",
-    "Added two-name DNS answer comparison, peer-majority divergence review, non-public address flags, recommended resolver copy, and a 20-entry local DNS test history"
+    "Added two-name DNS answer comparison, peer-majority divergence review, non-public address flags, recommended resolver copy, and a 20-entry local DNS test history",
+    "Fixed Android DNS report query-name JSON construction to use the Capacitor JSArray API without checked JSON exceptions"
   ],
   "dnsResolverIntelligence": {
     "queryNames": [
