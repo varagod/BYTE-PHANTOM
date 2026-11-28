@@ -1,8 +1,17 @@
-# BYTE PHANTOM v1.20.0
+# BYTE PHANTOM v1.21.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.20.0 replaces two former simulation cards with native read-only tools: FILE INTEGRITY calculates and optionally compares a user-selected file's SHA-256 digest, and PROCESS INTELLIGENCE reads Windows process metadata or the Android BYTE PHANTOM app process only.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.21.0 replaces the fictional PASSWORD CRACKER card with CREDENTIAL LAB, a cross-platform local password generator powered by Web Crypto getRandomValues. It offers 12–64 character lengths, selectable character groups, and copy-on-request without saving generated secrets.
+
+## v1.21.0 — CREDENTIAL LAB
+- Replaced the fictional PASSWORD CRACKER scenario with a live local password generator.
+- Uses the platform Web Crypto `getRandomValues` CSPRNG and rejection sampling to avoid modulo bias when selecting characters.
+- Length is configurable from 12 to 64 characters. Lowercase, uppercase, numeric and symbol groups can be selected independently; at least one character from each selected group is guaranteed.
+- The generated secret appears only in the current operation panel. It is not written to activity history, local storage, exported reports or remote services. The secret is copied only after the user presses COPY PASSWORD.
+- The report contains generator settings and a theoretical character-pool entropy estimate, but never includes the generated password. The modal clears the displayed secret when closed.
+- The generator makes no network requests and does not test passwords against accounts or services.
+- The operation catalogue remains at 12 cards: five live local tools and seven clearly labelled simulations.
 
 ## v1.20.0 — FILE INTEGRITY + PROCESS INTELLIGENCE
 - Replaced the fictional DATA EXTRACTION card with FILE INTEGRITY. Windows opens the system file picker; Android uses the Storage Access Framework. The selected file is streamed through SHA-256, with file name, byte count, MIME type and an optional expected-hash comparison.

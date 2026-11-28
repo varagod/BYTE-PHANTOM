@@ -1,5 +1,15 @@
 # BYTE PHANTOM — Changelog
 
+## v1.21.0 — CREDENTIAL LAB
+- Replaced the fictional PASSWORD CRACKER scenario with a live local password generator.
+- Uses the platform Web Crypto `getRandomValues` CSPRNG and rejection sampling to avoid modulo bias when selecting characters.
+- Length is configurable from 12 to 64 characters. Lowercase, uppercase, numeric and symbol groups can be selected independently; at least one character from each selected group is guaranteed.
+- The generated secret appears only in the current operation panel. It is not written to activity history, local storage, exported reports or remote services. The secret is copied only after the user presses COPY PASSWORD.
+- The report contains generator settings and a theoretical character-pool entropy estimate, but never includes the generated password. The modal clears the displayed secret when closed.
+- The generator makes no network requests and does not test passwords against accounts or services.
+- The operation catalogue remains at 12 cards: five live local tools and seven clearly labelled simulations.
+
+
 ## v1.20.0 — FILE INTEGRITY + PROCESS INTELLIGENCE
 - Replaced the fictional DATA EXTRACTION card with FILE INTEGRITY. Windows opens the system file picker; Android uses the Storage Access Framework. The selected file is streamed through SHA-256, with file name, byte count, MIME type and an optional expected-hash comparison.
 - A reference SHA-256 digest is optional and must be 64 hexadecimal characters. Results report MATCH, MISMATCH or NOT REQUESTED. Windows compares file size and modification time before and after the read to flag a possible concurrent change.
