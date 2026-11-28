@@ -1,13 +1,14 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.21.0",
-  "build": "1.21.0",
+  "version": "1.22.0",
+  "build": "1.22.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
     "Android"
   ],
   "realCapabilities": [
+    "FIREWALL INTELLIGENCE: Windows reads the effective Windows Defender Firewall ActiveStore profiles, service state, default inbound/outbound actions, enabled-rule direction/action counts and up to 120 enabled rule summaries. Read-only; no rules are modified and no elevation prompt or network probe is requested.",
     "CREDENTIAL LAB: cross-platform local password generation using Web Crypto getRandomValues, unbiased rejection-sampled character selection, configurable 12–64 character length and four selectable character groups; generated secrets are excluded from reports, activity history and local storage, and copied only on explicit user action",
     "FILE INTEGRITY: Windows open-file dialog and Android Storage Access Framework picker; streaming SHA-256 calculation, optional reference-digest comparison, byte count and metadata-only stability check; no file upload or file modification",
     "PROCESS INTELLIGENCE: Windows read-only top-80 process inventory with PID, working-set memory, CPU time, start time and accessible executable path; Android current BYTE PHANTOM app-process PSS/heap and device memory only",
@@ -44,7 +45,6 @@
   "simulatedModules": [
     "IP TRACE",
     "DEVICE INFILTRATION",
-    "FIREWALL BREACH",
     "CAMERA ACCESS",
     "SATELLITE LINK",
     "MAINFRAME OVERRIDE",
@@ -132,7 +132,7 @@
       "confidence": "A single unexpected response is a warning, not conclusive proof. These probes cannot identify all transparent proxies or TLS interception."
     }
   },
-  "security": "Connectivity diagnostics run only after an explicit user action or while the operator has started OUTAGE WATCH with NETWORK RADAR open. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform three system DNS lookups, and make four fixed HTTPS GET checks. HTTPS requests do not follow redirects and only retain a bounded response sample for expected-signature validation; response bodies are not stored in history or exported. Android reads ConnectivityManager captive portal, validated, and internet capability flags when available. The app does not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends direct DNS A queries only to configured IPv4 DNS servers and fixed public resolver references. DNS answer divergence and non-public address flags are advisory indicators only, not a malware verdict. Windows DNS changes remain opt-in, limited to the active default-route adapter, require UAC Administrator approval, and preserve a local original-configuration backup. Android opens system network settings for manual changes only. FILE INTEGRITY reads only one explicitly user-selected file using the Windows open-file dialog or Android Storage Access Framework. SHA-256 is streamed in memory; no file content is uploaded, changed or stored by the app. Android document providers may be cloud-backed and can fetch content on the user's behalf. PROCESS INTELLIGENCE is read-only: Windows returns up to 80 processes from Get-Process without elevation; Android reports only the current BYTE PHANTOM app process and device memory, not other apps. CREDENTIAL LAB generates passwords locally with Web Crypto getRandomValues and unbiased selection. The secret is kept only in the current UI memory, is not added to local storage, activity history or reports, and is copied only after explicit user action. No password is sent to any account, authentication endpoint or remote service.",
+  "security": "Connectivity diagnostics run only after an explicit user action or while the operator has started OUTAGE WATCH with NETWORK RADAR open. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform three system DNS lookups, and make four fixed HTTPS GET checks. HTTPS requests do not follow redirects and only retain a bounded response sample for expected-signature validation; response bodies are not stored in history or exported. Android reads ConnectivityManager captive portal, validated, and internet capability flags when available. The app does not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends direct DNS A queries only to configured IPv4 DNS servers and fixed public resolver references. DNS answer divergence and non-public address flags are advisory indicators only, not a malware verdict. Windows DNS changes remain opt-in, limited to the active default-route adapter, require UAC Administrator approval, and preserve a local original-configuration backup. Android opens system network settings for manual changes only. FILE INTEGRITY reads only one explicitly user-selected file using the Windows open-file dialog or Android Storage Access Framework. SHA-256 is streamed in memory; no file content is uploaded, changed or stored by the app. Android document providers may be cloud-backed and can fetch content on the user's behalf. PROCESS INTELLIGENCE is read-only: Windows returns up to 80 processes from Get-Process without elevation; Android reports only the current BYTE PHANTOM app process and device memory, not other apps. CREDENTIAL LAB generates passwords locally with Web Crypto getRandomValues and unbiased selection. The secret is kept only in the current UI memory, is not added to local storage, activity history or reports, and is copied only after explicit user action. No password is sent to any account, authentication endpoint or remote service. FIREWALL INTELLIGENCE reads Windows Defender Firewall ActiveStore profiles and enabled rule summaries using PowerShell NetSecurity read commands. It does not modify firewall rules, profiles or services, does not request UAC elevation, and performs no network probes. Android explicitly reports that the public app API does not expose a global firewall rule inventory; VPN, DNS and connectivity signals are not treated as firewall state.",
   "networkPathIntelligence": {
     "dataSource": "Windows Get-NetIPConfiguration/Get-NetRoute; Android ConnectivityManager/LinkProperties",
     "fields": [
@@ -147,6 +147,7 @@
     "configurationChanges": false
   },
   "fixes": [
+    "Replaced simulated FIREWALL BREACH with FIREWALL INTELLIGENCE: read-only Windows Defender Firewall ActiveStore profile, service and enabled-rule inspection; Android reports its public API limitation without guessing firewall state.",
     "Replaced the simulated PASSWORD CRACKER card with CREDENTIAL LAB: secure local password generation using Web Crypto, configurable length and character groups, copy-on-request, and no secret logging or persistence.",
     "Added two real operation modules: FILE INTEGRITY (streamed SHA-256 with optional reference comparison) and PROCESS INTELLIGENCE (Windows local process table; Android own-app process and memory only).",
     "Fixed Windows Electron main-process startup SyntaxError by preserving CRLF separators as escaped JavaScript string sequences; Windows startup entrypoint is covered by node --check before packaging.",
@@ -346,5 +347,36 @@
     "selection": "At least one character from each selected group is guaranteed; remaining characters are sampled from the combined pool and shuffled using cryptographic random integers.",
     "entropyEstimate": "Length × log2(unique selected character pool size), displayed as a theoretical pool-based estimate, not a guarantee of real-world password strength.",
     "privacy": "Generated secrets exist only in the current renderer memory until the modal closes. They are not written to local storage, activity logs, reports or remote services. Clipboard copy occurs only when explicitly requested."
+  },
+  "firewallIntelligence": {
+    "status": "LIVE / PLATFORM-SCOPED",
+    "windows": {
+      "query": "PowerShell NetSecurity Get-NetFirewallProfile and Get-NetFirewallRule using PolicyStore ActiveStore",
+      "fields": [
+        "Windows Defender Firewall MpsSvc service state",
+        "Domain / Private / Public profile enabled state",
+        "Default inbound and outbound actions",
+        "Allow inbound rules / local rule merge / notifications",
+        "Firewall log settings",
+        "Total and enabled rule counts",
+        "Inbound/outbound Allow and Block counts",
+        "Up to 120 enabled rule summaries with direction, action, profile and source type"
+      ],
+      "readOnly": true,
+      "changesFirewallRules": false,
+      "changesProfiles": false,
+      "elevationRequested": false,
+      "networkProbes": false
+    },
+    "android": {
+      "status": "NOT_EXPOSED",
+      "explanation": "Android public APIs for ordinary applications do not expose a system-wide firewall profile or rule inventory. The app reports this limitation and does not infer firewall state from VPN, DNS, captive portal or network-validation signals.",
+      "additionalPermissions": []
+    },
+    "limitations": [
+      "Windows firewall state is a read-only snapshot at the time queried; managed policies may change afterward.",
+      "Protected or policy-managed rule detail may be incomplete on some Windows installations.",
+      "Android global firewall rules cannot be enumerated by this ordinary app."
+    ]
   }
 }

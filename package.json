@@ -1,8 +1,8 @@
 {
   "name": "byte-phantom",
-  "version": "1.21.0",
+  "version": "1.22.0",
   "private": true,
-  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with Network Radar, file integrity, process intelligence, and a cryptographically secure local password generator.",
+  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with Network Radar, file integrity, process and credential intelligence, and read-only Windows Defender Firewall policy inspection.",
   "scripts": {
     "start": "npx serve web",
     "android:add": "npx cap add android",

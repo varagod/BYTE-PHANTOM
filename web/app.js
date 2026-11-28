@@ -7,7 +7,7 @@
     { id:"network-radar", name:"NETWORK RADAR", icon:"◎", tone:"cyan-card", category:"recon", description:"Actively discover private IPv4 hosts on directly connected local subnets, enrich them with ARP/MAC data, and monitor changes live. No port scans or external targets.", target:"DIRECTLY CONNECTED PRIVATE IPV4 SUBNETS", live:true, liveType:"network" },
     { id:"ip-trace", name:"IP TRACE", icon:"⌖", tone:"red-card", category:"recon", description:"Run a theatrical trace animation against a reserved documentation IP address. No lookup is performed.", target:"192.0.2.44 (DOCUMENTATION RANGE)", stages:["Reading sample address","Simulating route hops","Painting fictional map markers","Compiling demo trace"], result:["DESTINATION: 192.0.2.44 (RESERVED EXAMPLE)","ROUTE HOPS: 06 SIMULATED","GEOLOCATION: NOT REQUESTED","TRACE: FICTIONAL RESULT"] },
     { id:"device-infiltration", name:"DEVICE INFILTRATION", icon:"▣", tone:"", category:"access", description:"Play a fictional device-access scenario using a generated device record. No real device is contacted.", target:"MOCK_DEVICE_DELTA", stages:["Loading fictional device record","Animating access-control sequence","Reviewing imaginary permissions","Closing sandbox session"], result:["DEVICE: MOCK-DELTA / OFFLINE SAMPLE","ACCESS LAYERS: 04 SIMULATED","PERMISSIONS: FICTIONAL ONLY","SCENARIO: COMPLETED LOCALLY"] },
-    { id:"firewall-breach", name:"FIREWALL BREACH", icon:"⬡", tone:"red-card", category:"access", description:"Watch a simulated firewall puzzle resolve against a built-in mock rule set.", target:"DEMO_FIREWALL_A7", stages:["Loading sample rule set","Analyzing fictional packet patterns","Resolving demo challenge","Generating firewall report"], result:["RULES REVIEWED: 24 MOCK ENTRIES","CHALLENGE: SIMULATION PASSED","EXTERNAL FIREWALL: NOT CONNECTED","REPORT: LOCAL DEMO"] },
+    { id:"firewall-intelligence", name:"FIREWALL INTELLIGENCE", icon:"⬡", tone:"red-card", category:"access", description:"Windows: inspect active Windows Defender Firewall profiles, default actions, service status and enabled rule summaries. Android: reports that a global firewall rule inventory is not exposed to ordinary apps. Read-only; no rules are changed.", target:"WINDOWS DEFENDER FIREWALL / ACTIVE POLICY STORE", live:true, liveType:"firewall-intelligence" },
     { id:"credential-lab", name:"CREDENTIAL LAB", icon:"✳", tone:"cyan-card", category:"access", description:"Generate a high-entropy password locally with the device cryptographic random-number generator. Choose length and character groups, then copy only when requested. No account or network is contacted.", target:"LOCAL CRYPTOGRAPHIC PASSWORD GENERATOR", live:true, liveType:"credential-lab" },
     { id:"camera-access", name:"CAMERA ACCESS", icon:"◉", tone:"cyan-card", category:"access", description:"Open a fictional CCTV scene with generated test frames. The application never requests camera permission.", target:"VIRTUAL_CAM_03", stages:["Opening virtual camera channel","Loading generated preview frame","Rendering mock telemetry","Closing virtual feed"], result:["CAMERA: VIRTUAL-CAM-03","PREVIEW: GENERATED TEST GRAPHIC","PHYSICAL CAMERA: NOT ACCESSED","FEED: CLOSED SAFELY"] },
     { id:"satellite-link", name:"SATELLITE LINK", icon:"✧", tone:"cyan-card", category:"access", description:"Animate a fictional satellite handshake and orbital telemetry sequence.", target:"ORBITAL_SIM_NODE_09", stages:["Searching local satellite catalog","Simulating orbital handshake","Rendering mock telemetry","Terminating demo link"], result:["SATELLITE: ORBITAL-SIM-09","ALTITUDE: 540 KM (FICTIONAL)","LINK QUALITY: 98% DEMO","RADIO TRANSMISSION: NONE"] },
@@ -23,7 +23,6 @@
     "network-radar": {phases:["GRID WAKE","NODE PLOT","LINK ANALYSIS","RADAR RENDER"],visual:" [N-01]────[N-02]\n    \\       /  \\\n   [N-03]──[N-04]──[N-05]\n       \\       /\n       [N-06]──[N-07]──[N-08]",lines:["Waking the offline radar canvas and sample coordinate grid","Allocating eight fictional nodes across the demo topology","Assigning generated signal strengths and node health values","Drawing edge paths between five imaginary relay links","Resolving two isolated nodes and one high-latency branch","Coloring node clusters by synthetic signal quality","Coordinates belong to bundled DEMO_GRID sample data","Rendering radial topology map with local-only metadata"],report:["NODES 08 FICTIONAL / LINKS 05 ACTIVE","STRONGEST SIGNAL NODE N-04 / 96%","ISOLATED NODES 02","RADAR FRAME GRID-08 / RENDERED LOCALLY"],activity:"Eight generated nodes and their mock links were plotted on the local radar."},
     "ip-trace": {phases:["ADDRESS PARSE","HOP SIMULATION","ROUTE PAINT","TRACE REPORT"],visual:"TRACE 192.0.2.44 [RESERVED EXAMPLE]\nSTART ─ H01 ─ H02 ─ H03\n                 └── H04 ─ H05 ─ END\nROUTE DEPTH: 06 MOCK HOPS",lines:["Parsing reserved documentation address 192.0.2.44","Creating a six-hop sample route from the local scenario seed","Assigning fictional latency values: 04 / 12 / 19 / 31 / 27 / 42 ms","Placing non-geographic route markers on a demo path","Adding one simulated branch to illustrate route divergence","Checking trace consistency against the embedded route template","No DNS lookup, geolocation request, socket, or packet was used","Painting the final trace card from generated sample values"],report:["DESTINATION 192.0.2.44 / DOCUMENTATION RANGE","ROUTE 06 SIMULATED HOPS / 04 → 42 MS","GEOGRAPHY NOT RESOLVED","TRACE CARD BP-TRACE-044"],activity:"A fictional six-hop route card was rendered for a reserved example address."},
     "device-infiltration": {phases:["DEVICE PROFILE","HANDSHAKE THEATRE","PERMISSION MAP","SESSION CLOSE"],visual:"MOCK_DEVICE_DELTA\n[BOOT] → [PAIR] → [AUTH] → [PROFILE]\n  │        │       │        │\nLOCAL   DEMO KEY  PASS     CLOSED",lines:["Loading generated device dossier MOCK_DEVICE_DELTA","Reading fictional model string: DLT-09 / firmware 4.2-demo","Animating a local handshake between two mock records","Comparing four imaginary permission layers","Displaying a sample device state: powered / disconnected","Generating a permission matrix with zero device calls","Bluetooth, USB, ADB, and discovery APIs remain unused","Sealing the mock session and clearing temporary state"],report:["DEVICE MOCK-DELTA / DLT-09","HANDSHAKE THEATRICAL SEQUENCE COMPLETE","PERMISSION LAYERS 04 SAMPLE RECORDS","PHYSICAL DEVICE NOT CONTACTED / SESSION CLOSED"],activity:"A fictional device profile and permission matrix were displayed."},
-    "firewall-breach": {phases:["RULESET LOAD","PATTERN MATCH","PUZZLE RESOLVE","AUDIT CLOSE"],visual:"DEMO FIREWALL / RULE MATRIX\n01 ALLOW     ░░░░░░\n02 DENY      ██████\n03 DENY      ██████\n04 ALLOW     ░░░░░░\n05 CHALLENGE ▒▒▒▒▒▒\n06 ALLOW     ░░░░░░",lines:["Mounting the built-in firewall puzzle with 24 sample rules","Grouping mock entries into allow, deny, and challenge lanes","Comparing generated packet labels against the puzzle rule table","Highlighting three deliberate rule conflicts in the demo matrix","Applying the scenario's harmless resolution sequence","Rechecking the six visible rules for a consistent final state","The puzzle engine uses static local data and no network traffic","Exporting a color-coded firewall audit summary"],report:["RULES 24 MOCK ENTRIES / 03 CONFLICTS RESOLVED","DEMO POLICY CONSISTENT","EXTERNAL FIREWALL NOT CONNECTED","AUDIT BP-FW-024"],activity:"A six-row mock firewall matrix was reviewed and resolved."},
     "camera-access": {phases:["VIRTUAL CHANNEL","FRAME SYNTHESIS","TELEMETRY DRAW","FEED SHUTDOWN"],visual:"VIRTUAL CAM 03 / GENERATED FRAME\n┌──────────────────────────┐\n│ . . . FRAME 003 . . .    │\n│     [ TEST PATTERN ]      │\n│ 00:00:03 / DEMO SIGNAL   │\n└──────────────────────────┘",lines:["Opening the internal VIRTUAL_CAM_03 scene renderer","Generating a synthetic test frame from geometric primitives","Drawing a timestamp, scan bars, and sample frame counter","Adding mock exposure and frame-rate telemetry","Simulating a three-frame buffer with no live video source","Confirming that browser camera permissions were never requested","No webcam, phone camera, stream, or media device is opened","Closing the virtual preview and releasing generated frames"],report:["CHANNEL VIRTUAL-CAM-03 / FRAME 003","PREVIEW GENERATED TEST GRAPHIC","TELEMETRY 30 FPS MOCK / EXPOSURE 0.7","PHYSICAL CAMERA NOT ACCESSED / FEED CLOSED"],activity:"A generated CCTV-style preview frame was rendered without camera access."},
     "satellite-link": {phases:["ORBIT CATALOG","BEACON ALIGN","TELEMETRY DRAW","LINK RELEASE"],visual:"       ✦ ORBIT-SIM-09\n   . . . . . . . . . . . .\n .      [ PLANET / DEMO ]    .\n   . . . . . . . . . . . .\n          GROUND NODE",lines:["Loading the bundled ORBITAL_SIM_NODE_09 profile","Drawing a fictional orbital path at 540 km altitude","Assigning synthetic beacon ID and carrier frequency","Animating antenna alignment against the demo orbit","Calculating sample link quality and signal-to-noise values","Rendering telemetry strip with generated orbital parameters","No radio, GPS, satellite modem, or external service is contacted","Releasing the visual link and closing the scene"],report:["SATELLITE ORBITAL-SIM-09 / ALTITUDE 540 KM","LINK QUALITY 98% DEMO","RADIO TRANSMISSION NONE","TELEMETRY GENERATED LOCALLY"],activity:"A fictional orbital link and synthetic satellite telemetry were visualized."},
     "mainframe-override": {phases:["CORE WAKE","LAYER INSPECT","CONTROL PUZZLE","STATE RESTORE"],visual:"PHANTOM MAINFRAME X\n┌ ROOT CONTROL ────────────┐\n├ LAYER 04 [ LOCKED ]      │\n├ LAYER 03 [ LOCKED ]      │\n├ LAYER 02 [ CHECK  ]      │\n└ LAYER 01 [ SANDBOX ] ────┘",lines:["Booting imaginary PHANTOM_MAINFRAME_X environment","Drawing five mock control layers and their access states","Comparing generated access tokens against puzzle rules","Resolving local sequence in the correct training order","Displaying state change in the fictional control stack","Verifying that only the simulator in-memory model changed","No operating-system privileges or remote mainframe are involved","Restoring every layer to its original demo state"],report:["MAINFRAME VIRTUAL-X / 05 DEMO LAYERS","PUZZLE RESOLVED LOCALLY","REAL SYSTEM STATE UNCHANGED","SANDBOX RESTORED"],activity:"The five-layer imaginary mainframe puzzle was resolved and reset."},
@@ -348,7 +347,9 @@
       ? (operation.liveType === "network" ? "LIVE / ACTIVE LAN" :
         operation.liveType === "file-integrity" ? "LIVE / SHA-256" :
         operation.liveType === "process-intelligence" ? "LIVE / LOCAL PROCESSES" :
-        operation.liveType === "credential-lab" ? "LIVE / CRYPTO RANDOM" : "LIVE / READ-ONLY")
+        operation.liveType === "credential-lab" ? "LIVE / CRYPTO RANDOM" :
+        operation.liveType === "firewall-intelligence" ? (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === "android" ? "LIVE / OS-LIMITED" : "LIVE / FIREWALL") :
+        "LIVE / READ-ONLY")
       : "SIMULATION";
     info.appendChild(state);
     const arrow = document.createElement("i");
@@ -375,6 +376,7 @@
     const fileIntegrityOperation = operation.liveType === "file-integrity";
     const processIntelligenceOperation = operation.liveType === "process-intelligence";
     const credentialLabOperation = operation.liveType === "credential-lab";
+    const firewallIntelligenceOperation = operation.liveType === "firewall-intelligence";
     ++liveScanSequence;
     networkRadarSessionToken = liveScanSequence;
     networkRadarKnownDevices = new Map();
@@ -392,20 +394,22 @@
       ? (networkOperation ? "LIVE LAN RADAR / ACTIVE DISCOVERY" :
         fileIntegrityOperation ? "LIVE FILE INTEGRITY / SHA-256" :
         processIntelligenceOperation ? "LIVE PROCESS INTELLIGENCE" :
-        credentialLabOperation ? "LIVE CREDENTIAL LAB / WEB CRYPTO" : "LIVE WINDOWS INTELLIGENCE")
+        credentialLabOperation ? "LIVE CREDENTIAL LAB / WEB CRYPTO" :
+        firewallIntelligenceOperation ? "LIVE FIREWALL INTELLIGENCE / ACTIVE POLICY" : "LIVE WINDOWS INTELLIGENCE")
       : "SIMULATION MODULE";
     $("modalTargetLabel").textContent = liveOperation
-      ? (networkOperation ? "LOCAL NETWORK SCOPE" : fileIntegrityOperation ? "USER-SELECTED FILE" : processIntelligenceOperation ? "LOCAL PROCESS SCOPE" : credentialLabOperation ? "LOCAL SECURE RANDOM GENERATOR" : "HOST SCOPE")
+      ? (networkOperation ? "LOCAL NETWORK SCOPE" : fileIntegrityOperation ? "USER-SELECTED FILE" : processIntelligenceOperation ? "LOCAL PROCESS SCOPE" : credentialLabOperation ? "LOCAL SECURE RANDOM GENERATOR" : firewallIntelligenceOperation ? "OPERATING-SYSTEM FIREWALL" : "HOST SCOPE")
       : "SIMULATED TARGET";
     $("modalTarget").textContent = operation.target;
     $("modalTargetTag").textContent = liveOperation
-      ? (networkOperation ? "PRIVATE IPV4 / ACTIVE" : fileIntegrityOperation ? "USER CONSENT / READ ONLY" : processIntelligenceOperation ? "LOCAL / READ ONLY" : credentialLabOperation ? "DEVICE CSPRNG / LOCAL" : "LOCAL / READ-ONLY")
+      ? (networkOperation ? "PRIVATE IPV4 / ACTIVE" : fileIntegrityOperation ? "USER CONSENT / READ ONLY" : processIntelligenceOperation ? "LOCAL / READ ONLY" : credentialLabOperation ? "DEVICE CSPRNG / LOCAL" : firewallIntelligenceOperation ? (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === "android" ? "ANDROID API LIMITED" : "WINDOWS ACTIVE STORE") : "LOCAL / READ-ONLY")
       : "DEMO / FICTIONAL";
     $("modalSafety").textContent = liveOperation
       ? (networkOperation ? "PRIVATE LAN ONLY · ICMP + ARP DISCOVERY · NO PORT SCANNING" :
         fileIntegrityOperation ? "OS FILE PICKER · STREAMED SHA-256 · NO UPLOAD · NO FILE MODIFICATION" :
         processIntelligenceOperation ? "READ-ONLY PROCESS INVENTORY · WINDOWS TOP 80 / ANDROID APP PROCESS ONLY · NO ELEVATION" :
         credentialLabOperation ? "WEB CRYPTO GETRANDOMVALUES · LOCAL ONLY · NO NETWORK · NO SECRET STORAGE" :
+        firewallIntelligenceOperation ? (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === "android" ? "ANDROID DOES NOT EXPOSE GLOBAL FIREWALL RULES · NO INFERENCE" : "ACTIVE POLICY STORE · READ ONLY · NO RULE CHANGES · NO UAC") :
         "READ-ONLY INVENTORY · NO NETWORK PROBES · NO SYSTEM CHANGES")
       : "SIMULATED OUTPUT · NO REAL TARGET OR DEVICE ACCESS";
     $("integrityOptions").hidden = !fileIntegrityOperation;
@@ -442,7 +446,8 @@
       ? (networkOperation ? "START ACTIVE NETWORK RADAR <span>↗</span>" :
         fileIntegrityOperation ? "SELECT FILE & CALCULATE SHA-256 <span>↗</span>" :
         processIntelligenceOperation ? "READ PROCESS INTELLIGENCE <span>↗</span>" :
-        credentialLabOperation ? "GENERATE SECURE PASSWORD <span>↗</span>" : "RUN LIVE SYSTEM SCAN <span>↗</span>")
+        credentialLabOperation ? "GENERATE SECURE PASSWORD <span>↗</span>" :
+        firewallIntelligenceOperation ? "INSPECT FIREWALL STATUS <span>↗</span>" : "RUN LIVE SYSTEM SCAN <span>↗</span>")
       : "INITIALIZE SIMULATION <span>▶</span>";
     $("operationModal").classList.add("open");
     $("operationModal").setAttribute("aria-hidden", "false");
@@ -756,6 +761,125 @@
     }
   }
 
+  function buildFirewallSnapshotReport(result) {
+    const profiles = Array.isArray(result.profiles) ? result.profiles : [];
+    const rules = Array.isArray(result.rules) ? result.rules : [];
+    const summary = result.summary || {};
+    const service = result.firewallService || {};
+    const serviceRunning = String(service.status || "").toLowerCase() === "running";
+    const disabledProfiles = profiles.filter(profile => profile.enabled !== true);
+    const warning = !serviceRunning || profiles.length === 0 || disabledProfiles.length > 0;
+    const lines = [
+      "╔══ BYTE PHANTOM / FIREWALL INTELLIGENCE ═══════╗",
+      "PLATFORM       WINDOWS",
+      "COMPUTER       " + String(result.computerName || "LOCAL HOST"),
+      "POLICY STORE   " + String(result.policyStore || "ACTIVE STORE"),
+      "SERVICE        " + String(service.name || "MpsSvc") + " / " + String(service.status || "UNKNOWN"),
+      "PROFILES       " + profiles.length,
+      ""
+    ];
+    profiles.forEach(profile => {
+      lines.push(String(profile.name || "UNKNOWN").toUpperCase() + " PROFILE: " + (profile.enabled === true ? "ENABLED" : "DISABLED / UNKNOWN"));
+      lines.push("  DEFAULT INBOUND: " + String(profile.defaultInboundAction || "UNKNOWN") +
+        " · OUTBOUND: " + String(profile.defaultOutboundAction || "UNKNOWN"));
+      lines.push("  LOCAL RULE MERGE: " + String(profile.allowLocalFirewallRules || "NOT REPORTED") +
+        " · NOTIFY: " + String(profile.notifyOnListen || "NOT REPORTED"));
+      lines.push("  LOGGING: ALLOWED " + String(profile.logAllowed || "UNKNOWN") +
+        " / BLOCKED " + String(profile.logBlocked || "UNKNOWN"));
+    });
+    lines.push(
+      "",
+      "RULE COUNTS / EFFECTIVE ACTIVE STORE",
+      "TOTAL RULES       " + String(summary.totalRules ?? "N/A"),
+      "ENABLED RULES     " + String(summary.enabledRules ?? "N/A"),
+      "DISABLED RULES    " + String(summary.disabledRules ?? "N/A"),
+      "INBOUND ALLOW     " + String(summary.inboundAllow ?? "N/A"),
+      "INBOUND BLOCK     " + String(summary.inboundBlock ?? "N/A"),
+      "OUTBOUND ALLOW    " + String(summary.outboundAllow ?? "N/A"),
+      "OUTBOUND BLOCK    " + String(summary.outboundBlock ?? "N/A"),
+      "",
+      "ENABLED RULE SAMPLE / UP TO 35"
+    );
+    rules.slice(0,35).forEach(rule => {
+      lines.push(
+        "[" + String(rule.direction || "?").toUpperCase() + " / " + String(rule.action || "?").toUpperCase() + "] " +
+        String(rule.displayName || rule.name || "Unnamed rule"),
+        "  PROFILE " + String(rule.profile || "ANY") + " · SOURCE " + String(rule.sourceType || "UNKNOWN") +
+        " · STATUS " + String(rule.primaryStatus || "UNKNOWN")
+      );
+    });
+    if (result.rulesTruncated === true) lines.push("NOTE: Rule sample truncated; copied JSON includes the first 120 enabled rules.");
+    if (!serviceRunning) lines.push("WARNING: Windows Defender Firewall service is not reported as RUNNING.");
+    if (disabledProfiles.length) lines.push("WARNING: One or more firewall profiles are disabled or did not report enabled=true.");
+    lines.push(
+      "",
+      "READ-ONLY QUERY · NO FIREWALL RULES OR PROFILES MODIFIED",
+      "NO ELEVATION REQUESTED · NO NETWORK PROBES",
+      "TIME " + new Date(result.collectedAt || Date.now()).toLocaleString(),
+      "╚═══════════════════════════════════════════════╝"
+    );
+    return {report:lines.join("\n"),warning};
+  }
+
+  async function runLiveFirewallIntelligence(operation) {
+    const bridge = getNetworkRadarBridge();
+    if (!bridge || typeof bridge.getFirewallSnapshot !== "function") {
+      showNativeModuleError(operation,"The native firewall query is unavailable in this build. Install the latest Windows EXE or Android APK.");
+      return;
+    }
+    const runToken = -(++liveScanSequence);
+    operationTimer = runToken;
+    $("progressArea").hidden = false;
+    $("modalResult").hidden = true;
+    $("copyModuleReport").hidden = true;
+    $("runOperation").disabled = true;
+    $("runOperation").textContent = "READING FIREWALL POLICY...";
+    $("progressLabel").textContent = "READ-ONLY FIREWALL SNAPSHOT";
+    $("progressPercent").textContent = "20%";
+    $("progressBar").style.width = "20%";
+    $("progressOutput").textContent = [
+      "╔══ BYTE PHANTOM / FIREWALL INTELLIGENCE ═══════╗",
+      "[READ] Querying operating-system firewall capability",
+      "[SAFE] No rule, profile or service changes",
+      "[SAFE] No elevation prompt / no network probes",
+      "[WAIT] Reading effective policy and rule summary..."
+    ].join("\n");
+    try {
+      const result = await bridge.getFirewallSnapshot();
+      if (selectedOperation !== operation || !$("operationModal").classList.contains("open")) return;
+      if (!result) throw new Error("The operating system returned no firewall intelligence result.");
+      if (result.platform === "ANDROID" || result.supported !== true) {
+        const reason = String(result.reason || "This platform does not expose a system-wide firewall policy inventory.");
+        const report = [
+          "╔══ BYTE PHANTOM / FIREWALL INTELLIGENCE ═══════╗",
+          "PLATFORM       ANDROID",
+          "STATUS         NOT EXPOSED BY PUBLIC APP API",
+          "",
+          reason,
+          "",
+          "IMPORTANT: VPN transport, Private DNS, captive-portal status and internet validation are not proof of firewall enabled/disabled state.",
+          "SCOPE          NO GLOBAL FIREWALL RULES READ",
+          "SYSTEM CHANGES NONE",
+          "╚═══════════════════════════════════════════════╝"
+        ].join("\n");
+        const payload = JSON.stringify({app:"BYTE PHANTOM",report:"FIREWALL INTELLIGENCE",...result},null,2);
+        completeNativeModule(operation,report,payload,"Android does not expose global firewall rules to ordinary applications; firewall state was left UNKNOWN.",true);
+        return;
+      }
+      const formatted = buildFirewallSnapshotReport(result);
+      const payload = JSON.stringify({app:"BYTE PHANTOM",report:"FIREWALL INTELLIGENCE",...result},null,2);
+      const summary = result.summary || {};
+      completeNativeModule(operation,formatted.report,payload,
+        "Read Windows Defender Firewall ActiveStore: "+String((result.profiles||[]).filter(p=>p.enabled===true).length)+"/"+String((result.profiles||[]).length)+" profiles enabled; "+String(summary.enabledRules||0)+" enabled rules.",
+        formatted.warning);
+    } catch (error) {
+      showNativeModuleError(operation,error&&error.message?error.message:String(error));
+    } finally {
+      if(operationTimer===runToken)operationTimer=null;
+      if(selectedOperation===operation&&$("operationModal").classList.contains("open"))$("runOperation").disabled=false;
+    }
+  }
+
   function runOperation() {
     if (!selectedOperation || operationTimer) return;
     const operation = selectedOperation;
@@ -764,6 +888,7 @@
       else if (operation.liveType === "file-integrity") runLiveFileIntegrity(operation);
       else if (operation.liveType === "process-intelligence") runLiveProcessIntelligence(operation);
       else if (operation.liveType === "credential-lab") runLiveCredentialLab(operation);
+      else if (operation.liveType === "firewall-intelligence") runLiveFirewallIntelligence(operation);
       else runLiveSystemScan(operation);
       return;
     }
@@ -2405,6 +2530,7 @@
         discoverDns: () => desktop.discoverDnsResolvers(),
         getDnsFailoverState: () => desktop.getDnsFailoverState(),
         getProcessSnapshot: () => desktop.getProcessSnapshot(),
+        getFirewallSnapshot: () => desktop.getFirewallSnapshot(),
         pickAndHashFile: expectedSha256 => desktop.pickAndHashFile({expectedSha256: expectedSha256 || ""}),
         applyDnsResolver: settings => desktop.applyDnsResolver(settings || {}),
         restoreDnsResolver: options => desktop.restoreDnsResolver(options || {})
@@ -2442,6 +2568,7 @@
         discoverDns: () => networkRadarAndroidPlugin.discoverDnsResolvers(),
         getDnsFailoverState: () => networkRadarAndroidPlugin.getDnsFailoverState(),
         getProcessSnapshot: () => networkRadarAndroidPlugin.getProcessSnapshot(),
+        getFirewallSnapshot: () => networkRadarAndroidPlugin.getFirewallSnapshot(),
         pickAndHashFile: expectedSha256 => networkRadarAndroidPlugin.pickAndHashFile({expectedSha256: expectedSha256 || ""}),
         openDnsSettings: () => networkRadarAndroidPlugin.openDnsSettings()
       };
@@ -2762,6 +2889,7 @@
         terminalLine("scan       - open the live Windows host inventory module");
         terminalLine("radar      - start active local IPv4 discovery and live network monitoring");
         terminalLine("credential - open the local cryptographic password generator");
+        terminalLine("firewall   - inspect Windows Defender Firewall profiles and active rules");
         terminalLine("whoami     - show the current fictional operator");
         terminalLine("date       - show this device's local date and time");
         terminalLine("profile    - open the fictional profile generator");
@@ -2770,7 +2898,7 @@
         break;
       case "status":
         terminalLine("CORE: ONLINE | MODE: LOCAL / READ-ONLY + SIM MODULES", "success");
-        terminalLine("LIVE MODULES: 05 / 12 | SEVEN OTHER MODULES: SIMULATED", "info");
+        terminalLine("LIVE MODULES: 06 / 12 | SIX OTHER MODULES: SIMULATED", "info");
         terminalLine("OPERATIONS THIS SESSION: " + operationCount, "info");
         break;
       case "modules":
@@ -2788,6 +2916,10 @@
       case "credential":
         terminalLine("Opening local cryptographic password generator...", "info");
         openOperation("credential-lab");
+        break;
+      case "firewall":
+        terminalLine("Inspecting the operating-system firewall policy without changing rules...", "info");
+        openOperation("firewall-intelligence");
         break;
       case "whoami":
         terminalLine("OPERATOR: GHOST USER", "success");

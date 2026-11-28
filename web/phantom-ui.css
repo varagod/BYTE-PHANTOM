@@ -414,3 +414,7 @@
 .credential-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
 .credential-actions span{color:#83d9bc;font:9px var(--mono);line-height:1.55}
 @media(max-width:600px){.credential-secret-row{flex-wrap:wrap}.credential-secret-row input{flex:1 1 100%}}
+
+
+/* BYTE PHANTOM v1.22.0 — Windows Firewall Intelligence */
+.firewall-report-note{color:#8e9ba9;font:10px var(--mono);line-height:1.55}

@@ -160,6 +160,88 @@ $payload | ConvertTo-Json -Depth 4 -Compress`;
   };
 }
 
+async function collectFirewallSnapshot() {
+  if (process.platform !== "win32") return {supported:false,platform:process.platform,status:"NOT_AVAILABLE",reason:"A system-wide firewall profile and rule inventory is not exposed by this desktop platform."};
+  const script = `$ErrorActionPreference = 'Stop'
+Import-Module NetSecurity -ErrorAction Stop
+$profiles = @(Get-NetFirewallProfile -PolicyStore ActiveStore -ErrorAction Stop)
+$allRules = @(Get-NetFirewallRule -PolicyStore ActiveStore -ErrorAction Stop)
+$enabledRules = @($allRules | Where-Object { [string]$_.Enabled -ieq 'True' })
+$profileRows = @(foreach ($profile in $profiles) {
+  [pscustomobject]@{
+    name = [string]$profile.Name
+    enabled = ([string]$profile.Enabled -ieq 'True')
+    defaultInboundAction = [string]$profile.DefaultInboundAction
+    defaultOutboundAction = [string]$profile.DefaultOutboundAction
+    allowInboundRules = [string]$profile.AllowInboundRules
+    allowLocalFirewallRules = [string]$profile.AllowLocalFirewallRules
+    notifyOnListen = [string]$profile.NotifyOnListen
+    logAllowed = [string]$profile.LogAllowed
+    logBlocked = [string]$profile.LogBlocked
+    logFileName = [string]$profile.LogFileName
+    logMaxSizeKilobytes = [long]$profile.LogMaxSizeKilobytes
+  }
+})
+$ruleRows = @($enabledRules | Sort-Object -Property Direction, Action, DisplayName | Select-Object -First 120 @{
+  Name = 'name'; Expression = { [string]$_.Name }
+}, @{
+  Name = 'displayName'; Expression = { [string]$_.DisplayName }
+}, @{
+  Name = 'description'; Expression = { [string]$_.Description }
+}, @{
+  Name = 'direction'; Expression = { [string]$_.Direction }
+}, @{
+  Name = 'action'; Expression = { [string]$_.Action }
+}, @{
+  Name = 'profile'; Expression = { [string]$_.Profile }
+}, @{
+  Name = 'enabled'; Expression = { [string]$_.Enabled }
+}, @{
+  Name = 'primaryStatus'; Expression = { [string]$_.PrimaryStatus }
+}, @{
+  Name = 'sourceType'; Expression = { [string]$_.PolicyStoreSourceType }
+}, @{
+  Name = 'source'; Expression = { [string]$_.PolicyStoreSource }
+})
+$service = Get-Service -Name 'MpsSvc' -ErrorAction SilentlyContinue
+$serviceStatus = if ($null -ne $service) { [string]$service.Status } else { 'NOT FOUND' }
+$summary = [pscustomobject]@{
+  totalRules = $allRules.Count
+  enabledRules = $enabledRules.Count
+  disabledRules = ($allRules.Count - $enabledRules.Count)
+  inboundAllow = @($enabledRules | Where-Object { $_.Direction -eq 'Inbound' -and $_.Action -eq 'Allow' }).Count
+  inboundBlock = @($enabledRules | Where-Object { $_.Direction -eq 'Inbound' -and $_.Action -eq 'Block' }).Count
+  outboundAllow = @($enabledRules | Where-Object { $_.Direction -eq 'Outbound' -and $_.Action -eq 'Allow' }).Count
+  outboundBlock = @($enabledRules | Where-Object { $_.Direction -eq 'Outbound' -and $_.Action -eq 'Block' }).Count
+}
+$payload = [pscustomobject]@{
+  supported = $true
+  platform = 'WINDOWS'
+  status = 'READ_ONLY_SNAPSHOT'
+  collectedAt = (Get-Date).ToUniversalTime().ToString('o')
+  computerName = $env:COMPUTERNAME
+  policyStore = 'ActiveStore'
+  firewallService = [pscustomobject]@{ name = 'MpsSvc'; status = $serviceStatus }
+  profiles = @($profileRows)
+  summary = $summary
+  returnedRuleCount = $ruleRows.Count
+  rulesTruncated = ($enabledRules.Count -gt $ruleRows.Count)
+  rules = @($ruleRows)
+  systemChangesMade = $false
+  elevatedPrivilegesRequested = $false
+  networkProbesPerformed = $false
+}
+$payload | ConvertTo-Json -Depth 6 -Compress`;
+  const { stdout } = await execFileAsync("powershell.exe", [
+    "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script
+  ], { windowsHide: true, timeout: 30000, maxBuffer: 4 * 1024 * 1024, encoding: "utf8" });
+  const result = JSON.parse(String(stdout || "{}").trim());
+  if (!result || result.supported !== true || !Array.isArray(result.profiles) || !result.summary) {
+    throw new Error("Windows returned an incomplete firewall policy snapshot.");
+  }
+  return result;
+}
+
 async function hashSelectedFile(mainWindow, expectedSha256) {
   const expected = String(expectedSha256 || "").trim().toLowerCase();
   if (expected && !/^[a-f0-9]{64}$/.test(expected)) throw new Error("Expected SHA-256 must contain exactly 64 hexadecimal characters.");
@@ -1193,6 +1275,15 @@ ipcMain.handle("byte-phantom:file-integrity", async (event, settings = {}) => {
   const senderUrl = event.senderFrame && event.senderFrame.url;
   if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) throw new Error("File integrity is only available to the local BYTE PHANTOM desktop window.");
   return hashSelectedFile(win, settings.expectedSha256 || "");
+});
+
+ipcMain.handle("byte-phantom:firewall-snapshot", async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const senderUrl = event.senderFrame && event.senderFrame.url;
+  if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) {
+    throw new Error("Firewall intelligence is only available to the local BYTE PHANTOM desktop window.");
+  }
+  return collectFirewallSnapshot();
 });
 
 ipcMain.handle("byte-phantom:window-state", (event) => {

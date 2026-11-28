@@ -157,6 +157,20 @@ public class NetworkRadarPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getFirewallSnapshot(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("supported", false);
+        result.put("platform", "ANDROID");
+        result.put("status", "NOT_EXPOSED");
+        result.put("reason", "Android's public APIs for ordinary applications do not expose a system-wide firewall profile or rule inventory. BYTE PHANTOM will not infer firewall status from VPN, DNS, captive-portal or network-validation signals.");
+        result.put("scope", "NO GLOBAL FIREWALL RULES READ / NO NETWORK PROBES / NO SETTINGS CHANGED");
+        result.put("systemChangesMade", false);
+        result.put("elevatedPrivilegesRequested", false);
+        result.put("networkProbesPerformed", false);
+        call.resolve(result);
+    }
+
+    @PluginMethod
     public void getProcessSnapshot(PluginCall call) {
         scanExecutor.execute(() -> {
             try {
