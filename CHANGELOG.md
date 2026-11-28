@@ -1,5 +1,17 @@
 # BYTE PHANTOM — Changelog
 
+## v1.23.0 — CAMERA PRIVACY AUDIT
+- Replaced the fictional CAMERA ACCESS card with a real, read-only camera privacy audit and a direct system-settings shortcut.
+- Windows reads the current user's webcam consent values, desktop-app consent, recorded packaged/desktop-app permission entries and LastUsedTimeStart/Stop timestamps, plus the LetAppsAccessCamera device policy and configured per-app allow/deny lists when present.
+- The report shows a matching BYTE PHANTOM executable entry when one exists. Missing registry entries are labelled NOT_RECORDED, not guessed as allow or deny.
+- Windows can open `ms-settings:privacy-webcam` after the user presses the settings button.
+- Android checks only BYTE PHANTOM's own manifest CAMERA permission declaration, current runtime grant and AppOps camera mode via `checkOpNoThrow`. It does not inspect other applications or device-wide camera history.
+- Android opens system Privacy settings, falling back to BYTE PHANTOM's app details if the privacy page is unavailable.
+- No CAMERA permission is added or requested; no camera hardware is enumerated or opened, no image or video is captured, and no system setting is changed.
+- Registry consent and timestamps are policy/history signals, not proof that a camera is active at the present moment.
+- The operation catalogue remains at 12 cards: seven live local tools and five clearly labelled simulations.
+
+
 ## v1.22.0 — FIREWALL INTELLIGENCE
 - Replaced the fictional FIREWALL BREACH card with a real, read-only Windows Defender Firewall inspector.
 - Windows queries the effective `ActiveStore` using PowerShell `Get-NetFirewallProfile` and `Get-NetFirewallRule`; it reports the MpsSvc service state, Domain/Private/Public profile states, default inbound/outbound actions, rule merge/notification/logging settings, enabled/disabled rule counts and inbound/outbound Allow/Block counts.

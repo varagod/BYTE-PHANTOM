@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("node:path");
 const os = require("node:os");
 const fs = require("node:fs/promises");
@@ -158,6 +158,115 @@ $payload | ConvertTo-Json -Depth 4 -Compress`;
     processes, scope: "READ-ONLY LOCAL PROCESS INVENTORY; TOP 80 BY WORKING SET; PATH MAY BE UNAVAILABLE WITHOUT ACCESS",
     systemChangesMade: false, networkProbesPerformed: false
   };
+}
+
+async function collectCameraPrivacySnapshot() {
+  if (process.platform !== "win32") {
+    return { supported: false, platform: process.platform, status: "NOT_AVAILABLE", reason: "Windows camera privacy registry inspection is only available in the Windows desktop build." };
+  }
+  const ownExecutable = path.basename(process.execPath).replace(/'/g, "''");
+  const script = `$ErrorActionPreference = 'Stop'
+$userRoot = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\webcam'
+$desktopRoot = Join-Path $userRoot 'NonPackaged'
+$policyRoot = 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy'
+$ownExe = '${ownExecutable}'
+function Read-RegistryValue($keyPath, $name) {
+  try {
+    if (Test-Path -LiteralPath $keyPath) {
+      $item = Get-ItemProperty -LiteralPath $keyPath -Name $name -ErrorAction SilentlyContinue
+      if ($null -ne $item) { return $item.$name }
+    }
+  } catch {}
+  return $null
+}
+function Convert-CameraFileTime($raw) {
+  try {
+    $value = [Int64]$raw
+    if ($value -gt 0) { return [DateTime]::FromFileTimeUtc($value).ToString('o') }
+  } catch {}
+  return $null
+}
+$entries = New-Object System.Collections.Generic.List[object]
+if (Test-Path -LiteralPath $userRoot) {
+  foreach ($child in @(Get-ChildItem -LiteralPath $userRoot -ErrorAction SilentlyContinue)) {
+    if ($child.PSChildName -eq 'NonPackaged') {
+      foreach ($desktopEntry in @(Get-ChildItem -LiteralPath $desktopRoot -ErrorAction SilentlyContinue)) {
+        $props = Get-ItemProperty -LiteralPath $desktopEntry.PSPath -ErrorAction SilentlyContinue
+        $entries.Add([pscustomobject]@{
+          identity = [string]$desktopEntry.PSChildName
+          type = 'DESKTOP_APP'
+          setting = if ($null -ne $props.Value) { [string]$props.Value } else { 'NOT_RECORDED' }
+          lastUsedStartUtc = (Convert-CameraFileTime $props.LastUsedTimeStart)
+          lastUsedStopUtc = (Convert-CameraFileTime $props.LastUsedTimeStop)
+        })
+      }
+    } else {
+      $props = Get-ItemProperty -LiteralPath $child.PSPath -ErrorAction SilentlyContinue
+      $entries.Add([pscustomobject]@{
+        identity = [string]$child.PSChildName
+        type = 'PACKAGED_APP'
+        setting = if ($null -ne $props.Value) { [string]$props.Value } else { 'NOT_RECORDED' }
+        lastUsedStartUtc = (Convert-CameraFileTime $props.LastUsedTimeStart)
+        lastUsedStopUtc = (Convert-CameraFileTime $props.LastUsedTimeStop)
+      })
+    }
+  }
+}
+$policyItem = Get-ItemProperty -LiteralPath $policyRoot -ErrorAction SilentlyContinue
+$policyRaw = if ($null -ne $policyItem) { $policyItem.LetAppsAccessCamera } else { $null }
+$policyMode = 'NOT_CONFIGURED'
+if ($null -ne $policyRaw) {
+  switch ([int]$policyRaw) {
+    0 { $policyMode = 'USER_IN_CONTROL' }
+    1 { $policyMode = 'FORCE_ALLOW' }
+    2 { $policyMode = 'FORCE_DENY' }
+    default { $policyMode = 'UNKNOWN_VALUE' }
+  }
+}
+$allowList = if ($null -ne $policyItem.LetAppsAccessCamera_ForceAllowTheseApps) { [string]$policyItem.LetAppsAccessCamera_ForceAllowTheseApps } else { '' }
+$denyList = if ($null -ne $policyItem.LetAppsAccessCamera_ForceDenyTheseApps) { [string]$policyItem.LetAppsAccessCamera_ForceDenyTheseApps } else { '' }
+$unsignedDeny = if ($null -ne $policyItem.LetAppsAccessCamera_ForceDenyUnsigned) { [int]$policyItem.LetAppsAccessCamera_ForceDenyUnsigned } else { $null }
+$unsignedAllow = if ($null -ne $policyItem.LetAppsAccessCamera_ForceAllowUnsigned) { [int]$policyItem.LetAppsAccessCamera_ForceAllowUnsigned } else { $null }
+$allRows = @($entries.ToArray())
+$ownRows = @($allRows | Where-Object { $_.identity -like ('*' + $ownExe + '*') })
+$payload = [pscustomobject]@{
+  supported = $true
+  platform = 'WINDOWS'
+  status = 'READ_ONLY_SNAPSHOT'
+  collectedAt = (Get-Date).ToUniversalTime().ToString('o')
+  computerName = $env:COMPUTERNAME
+  userCameraConsent = if ($null -ne (Read-RegistryValue $userRoot 'Value')) { [string](Read-RegistryValue $userRoot 'Value') } else { 'NOT_RECORDED' }
+  desktopAppsCameraConsent = if ($null -ne (Read-RegistryValue $desktopRoot 'Value')) { [string](Read-RegistryValue $desktopRoot 'Value') } else { 'NOT_RECORDED' }
+  policy = [pscustomobject]@{
+    modeValue = $policyRaw
+    mode = $policyMode
+    forceAllowTheseApps = $allowList
+    forceDenyTheseApps = $denyList
+    forceDenyUnsigned = $unsignedDeny
+    forceAllowUnsigned = $unsignedAllow
+    source = if ($null -ne $policyRaw -or $allowList -or $denyList) { 'HKLM AppPrivacy policy registry' } else { 'NO CAMERA POLICY VALUE RECORDED' }
+  }
+  perAppEntryCount = $allRows.Count
+  returnedEntryCount = [Math]::Min(100, $allRows.Count)
+  entriesTruncated = ($allRows.Count -gt 100)
+  perAppEntries = @($allRows | Select-Object -First 100)
+  ownAppExecutable = $ownExe
+  ownAppEntries = @($ownRows)
+  scope = 'CURRENT USER CONSENT + DEVICE CAMERA POLICY + RECORDED PER-APP ENTRIES; TIMESTAMPS ARE HISTORICAL; NO CAMERA DEVICE IS OPENED'
+  cameraOpened = $false
+  cameraFramesCaptured = $false
+  systemChangesMade = $false
+  networkProbesPerformed = $false
+}
+$payload | ConvertTo-Json -Depth 6 -Compress`;
+  const { stdout } = await execFileAsync("powershell.exe", [
+    "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script
+  ], { windowsHide: true, timeout: 20000, maxBuffer: 2 * 1024 * 1024, encoding: "utf8" });
+  const result = JSON.parse(String(stdout || "{}").trim());
+  if (!result || result.supported !== true || !result.policy || !Array.isArray(result.perAppEntries)) {
+    throw new Error("Windows returned an incomplete camera privacy snapshot.");
+  }
+  return result;
 }
 
 async function collectFirewallSnapshot() {
@@ -1284,6 +1393,25 @@ ipcMain.handle("byte-phantom:firewall-snapshot", async (event) => {
     throw new Error("Firewall intelligence is only available to the local BYTE PHANTOM desktop window.");
   }
   return collectFirewallSnapshot();
+});
+
+ipcMain.handle("byte-phantom:camera-privacy-snapshot", async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const senderUrl = event.senderFrame && event.senderFrame.url;
+  if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) {
+    throw new Error("Camera privacy audit is only available to the local BYTE PHANTOM desktop window.");
+  }
+  return collectCameraPrivacySnapshot();
+});
+
+ipcMain.handle("byte-phantom:camera-privacy-settings", async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const senderUrl = event.senderFrame && event.senderFrame.url;
+  if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) {
+    throw new Error("Camera privacy settings are only available to the local BYTE PHANTOM desktop window.");
+  }
+  await shell.openExternal("ms-settings:privacy-webcam");
+  return { opened: true, destination: "WINDOWS_CAMERA_PRIVACY_SETTINGS" };
 });
 
 ipcMain.handle("byte-phantom:window-state", (event) => {

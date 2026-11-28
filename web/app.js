@@ -9,7 +9,7 @@
     { id:"device-infiltration", name:"DEVICE INFILTRATION", icon:"▣", tone:"", category:"access", description:"Play a fictional device-access scenario using a generated device record. No real device is contacted.", target:"MOCK_DEVICE_DELTA", stages:["Loading fictional device record","Animating access-control sequence","Reviewing imaginary permissions","Closing sandbox session"], result:["DEVICE: MOCK-DELTA / OFFLINE SAMPLE","ACCESS LAYERS: 04 SIMULATED","PERMISSIONS: FICTIONAL ONLY","SCENARIO: COMPLETED LOCALLY"] },
     { id:"firewall-intelligence", name:"FIREWALL INTELLIGENCE", icon:"⬡", tone:"red-card", category:"access", description:"Windows: inspect active Windows Defender Firewall profiles, default actions, service status and enabled rule summaries. Android: reports that a global firewall rule inventory is not exposed to ordinary apps. Read-only; no rules are changed.", target:"WINDOWS DEFENDER FIREWALL / ACTIVE POLICY STORE", live:true, liveType:"firewall-intelligence" },
     { id:"credential-lab", name:"CREDENTIAL LAB", icon:"✳", tone:"cyan-card", category:"access", description:"Generate a high-entropy password locally with the device cryptographic random-number generator. Choose length and character groups, then copy only when requested. No account or network is contacted.", target:"LOCAL CRYPTOGRAPHIC PASSWORD GENERATOR", live:true, liveType:"credential-lab" },
-    { id:"camera-access", name:"CAMERA ACCESS", icon:"◉", tone:"cyan-card", category:"access", description:"Open a fictional CCTV scene with generated test frames. The application never requests camera permission.", target:"VIRTUAL_CAM_03", stages:["Opening virtual camera channel","Loading generated preview frame","Rendering mock telemetry","Closing virtual feed"], result:["CAMERA: VIRTUAL-CAM-03","PREVIEW: GENERATED TEST GRAPHIC","PHYSICAL CAMERA: NOT ACCESSED","FEED: CLOSED SAFELY"] },
+    { id:"camera-privacy-audit", name:"CAMERA PRIVACY AUDIT", icon:"◉", tone:"cyan-card", category:"access", description:"Windows: inspect camera consent, applicable device policy and recorded per-app access entries. Android: inspect only BYTE PHANTOM camera permission and AppOps state. No camera is opened and no images are captured.", target:"OPERATING-SYSTEM CAMERA PRIVACY CONTROLS", live:true, liveType:"camera-privacy-audit" },
     { id:"satellite-link", name:"SATELLITE LINK", icon:"✧", tone:"cyan-card", category:"access", description:"Animate a fictional satellite handshake and orbital telemetry sequence.", target:"ORBITAL_SIM_NODE_09", stages:["Searching local satellite catalog","Simulating orbital handshake","Rendering mock telemetry","Terminating demo link"], result:["SATELLITE: ORBITAL-SIM-09","ALTITUDE: 540 KM (FICTIONAL)","LINK QUALITY: 98% DEMO","RADIO TRANSMISSION: NONE"] },
     { id:"mainframe-override", name:"MAINFRAME OVERRIDE", icon:"▤", tone:"", category:"access", description:"Run a fictional access-control puzzle inside an imaginary mainframe environment.", target:"PHANTOM_MAINFRAME_X", stages:["Loading virtual mainframe","Checking mock access layers","Resolving local control puzzle","Restoring default sandbox state"], result:["MAINFRAME: VIRTUAL-X","CONTROL LAYERS: 05 DEMO LAYERS","OVERRIDE: SIMULATION COMPLETE","SYSTEM STATE: RESTORED"] },
     { id:"file-integrity", name:"FILE INTEGRITY", icon:"⌗", tone:"amber-card", category:"data", description:"Select one file with the operating-system picker, calculate its SHA-256 digest, and optionally compare it with a known hash. Read-only; no file upload or modification.", target:"ONE USER-SELECTED FILE", live:true, liveType:"file-integrity" },
@@ -23,7 +23,6 @@
     "network-radar": {phases:["GRID WAKE","NODE PLOT","LINK ANALYSIS","RADAR RENDER"],visual:" [N-01]────[N-02]\n    \\       /  \\\n   [N-03]──[N-04]──[N-05]\n       \\       /\n       [N-06]──[N-07]──[N-08]",lines:["Waking the offline radar canvas and sample coordinate grid","Allocating eight fictional nodes across the demo topology","Assigning generated signal strengths and node health values","Drawing edge paths between five imaginary relay links","Resolving two isolated nodes and one high-latency branch","Coloring node clusters by synthetic signal quality","Coordinates belong to bundled DEMO_GRID sample data","Rendering radial topology map with local-only metadata"],report:["NODES 08 FICTIONAL / LINKS 05 ACTIVE","STRONGEST SIGNAL NODE N-04 / 96%","ISOLATED NODES 02","RADAR FRAME GRID-08 / RENDERED LOCALLY"],activity:"Eight generated nodes and their mock links were plotted on the local radar."},
     "ip-trace": {phases:["ADDRESS PARSE","HOP SIMULATION","ROUTE PAINT","TRACE REPORT"],visual:"TRACE 192.0.2.44 [RESERVED EXAMPLE]\nSTART ─ H01 ─ H02 ─ H03\n                 └── H04 ─ H05 ─ END\nROUTE DEPTH: 06 MOCK HOPS",lines:["Parsing reserved documentation address 192.0.2.44","Creating a six-hop sample route from the local scenario seed","Assigning fictional latency values: 04 / 12 / 19 / 31 / 27 / 42 ms","Placing non-geographic route markers on a demo path","Adding one simulated branch to illustrate route divergence","Checking trace consistency against the embedded route template","No DNS lookup, geolocation request, socket, or packet was used","Painting the final trace card from generated sample values"],report:["DESTINATION 192.0.2.44 / DOCUMENTATION RANGE","ROUTE 06 SIMULATED HOPS / 04 → 42 MS","GEOGRAPHY NOT RESOLVED","TRACE CARD BP-TRACE-044"],activity:"A fictional six-hop route card was rendered for a reserved example address."},
     "device-infiltration": {phases:["DEVICE PROFILE","HANDSHAKE THEATRE","PERMISSION MAP","SESSION CLOSE"],visual:"MOCK_DEVICE_DELTA\n[BOOT] → [PAIR] → [AUTH] → [PROFILE]\n  │        │       │        │\nLOCAL   DEMO KEY  PASS     CLOSED",lines:["Loading generated device dossier MOCK_DEVICE_DELTA","Reading fictional model string: DLT-09 / firmware 4.2-demo","Animating a local handshake between two mock records","Comparing four imaginary permission layers","Displaying a sample device state: powered / disconnected","Generating a permission matrix with zero device calls","Bluetooth, USB, ADB, and discovery APIs remain unused","Sealing the mock session and clearing temporary state"],report:["DEVICE MOCK-DELTA / DLT-09","HANDSHAKE THEATRICAL SEQUENCE COMPLETE","PERMISSION LAYERS 04 SAMPLE RECORDS","PHYSICAL DEVICE NOT CONTACTED / SESSION CLOSED"],activity:"A fictional device profile and permission matrix were displayed."},
-    "camera-access": {phases:["VIRTUAL CHANNEL","FRAME SYNTHESIS","TELEMETRY DRAW","FEED SHUTDOWN"],visual:"VIRTUAL CAM 03 / GENERATED FRAME\n┌──────────────────────────┐\n│ . . . FRAME 003 . . .    │\n│     [ TEST PATTERN ]      │\n│ 00:00:03 / DEMO SIGNAL   │\n└──────────────────────────┘",lines:["Opening the internal VIRTUAL_CAM_03 scene renderer","Generating a synthetic test frame from geometric primitives","Drawing a timestamp, scan bars, and sample frame counter","Adding mock exposure and frame-rate telemetry","Simulating a three-frame buffer with no live video source","Confirming that browser camera permissions were never requested","No webcam, phone camera, stream, or media device is opened","Closing the virtual preview and releasing generated frames"],report:["CHANNEL VIRTUAL-CAM-03 / FRAME 003","PREVIEW GENERATED TEST GRAPHIC","TELEMETRY 30 FPS MOCK / EXPOSURE 0.7","PHYSICAL CAMERA NOT ACCESSED / FEED CLOSED"],activity:"A generated CCTV-style preview frame was rendered without camera access."},
     "satellite-link": {phases:["ORBIT CATALOG","BEACON ALIGN","TELEMETRY DRAW","LINK RELEASE"],visual:"       ✦ ORBIT-SIM-09\n   . . . . . . . . . . . .\n .      [ PLANET / DEMO ]    .\n   . . . . . . . . . . . .\n          GROUND NODE",lines:["Loading the bundled ORBITAL_SIM_NODE_09 profile","Drawing a fictional orbital path at 540 km altitude","Assigning synthetic beacon ID and carrier frequency","Animating antenna alignment against the demo orbit","Calculating sample link quality and signal-to-noise values","Rendering telemetry strip with generated orbital parameters","No radio, GPS, satellite modem, or external service is contacted","Releasing the visual link and closing the scene"],report:["SATELLITE ORBITAL-SIM-09 / ALTITUDE 540 KM","LINK QUALITY 98% DEMO","RADIO TRANSMISSION NONE","TELEMETRY GENERATED LOCALLY"],activity:"A fictional orbital link and synthetic satellite telemetry were visualized."},
     "mainframe-override": {phases:["CORE WAKE","LAYER INSPECT","CONTROL PUZZLE","STATE RESTORE"],visual:"PHANTOM MAINFRAME X\n┌ ROOT CONTROL ────────────┐\n├ LAYER 04 [ LOCKED ]      │\n├ LAYER 03 [ LOCKED ]      │\n├ LAYER 02 [ CHECK  ]      │\n└ LAYER 01 [ SANDBOX ] ────┘",lines:["Booting imaginary PHANTOM_MAINFRAME_X environment","Drawing five mock control layers and their access states","Comparing generated access tokens against puzzle rules","Resolving local sequence in the correct training order","Displaying state change in the fictional control stack","Verifying that only the simulator in-memory model changed","No operating-system privileges or remote mainframe are involved","Restoring every layer to its original demo state"],report:["MAINFRAME VIRTUAL-X / 05 DEMO LAYERS","PUZZLE RESOLVED LOCALLY","REAL SYSTEM STATE UNCHANGED","SANDBOX RESTORED"],activity:"The five-layer imaginary mainframe puzzle was resolved and reset."},
     "data-extraction": {phases:["ARCHIVE MOUNT","FILE INDEX","METADATA PASS","PACKAGE BUILD"],visual:"DEMO_ARCHIVE_001/\n├── logs/  kernel.log  session.log\n├── media/ frame_003.mock\n├── records/ index.json manifest.dat\n└── checksum.bp",lines:["Creating an in-memory sample archive DEMO_ARCHIVE_001","Enumerating 18 fictional entries across four demo folders","Reading mock file sizes, types, and timestamps from seed data","Building compact metadata index with synthetic checksums","Flagging two duplicate sample names for visual review","Packing display manifest and summary into a local report","No user files, folders, or storage locations are read","Removing temporary archive objects after report generation"],report:["FILES 18 FICTIONAL ITEMS / 04 FOLDERS","DUPLICATE LABELS 02","PACKAGE DEMO-PACKAGE-001","SOURCE BUILT-IN DATA / TEMP OBJECTS REMOVED"],activity:"A fictional archive tree and metadata index were generated in memory."},
@@ -349,6 +348,7 @@
         operation.liveType === "process-intelligence" ? "LIVE / LOCAL PROCESSES" :
         operation.liveType === "credential-lab" ? "LIVE / CRYPTO RANDOM" :
         operation.liveType === "firewall-intelligence" ? (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === "android" ? "LIVE / OS-LIMITED" : "LIVE / FIREWALL") :
+        operation.liveType === "camera-privacy-audit" ? "LIVE / PRIVACY AUDIT" :
         "LIVE / READ-ONLY")
       : "SIMULATION";
     info.appendChild(state);
@@ -377,6 +377,7 @@
     const processIntelligenceOperation = operation.liveType === "process-intelligence";
     const credentialLabOperation = operation.liveType === "credential-lab";
     const firewallIntelligenceOperation = operation.liveType === "firewall-intelligence";
+    const cameraPrivacyOperation = operation.liveType === "camera-privacy-audit";
     ++liveScanSequence;
     networkRadarSessionToken = liveScanSequence;
     networkRadarKnownDevices = new Map();
@@ -395,14 +396,15 @@
         fileIntegrityOperation ? "LIVE FILE INTEGRITY / SHA-256" :
         processIntelligenceOperation ? "LIVE PROCESS INTELLIGENCE" :
         credentialLabOperation ? "LIVE CREDENTIAL LAB / WEB CRYPTO" :
-        firewallIntelligenceOperation ? "LIVE FIREWALL INTELLIGENCE / ACTIVE POLICY" : "LIVE WINDOWS INTELLIGENCE")
+        firewallIntelligenceOperation ? "LIVE FIREWALL INTELLIGENCE / ACTIVE POLICY" :
+        cameraPrivacyOperation ? "LIVE CAMERA PRIVACY AUDIT / PERMISSION ONLY" : "LIVE WINDOWS INTELLIGENCE")
       : "SIMULATION MODULE";
     $("modalTargetLabel").textContent = liveOperation
-      ? (networkOperation ? "LOCAL NETWORK SCOPE" : fileIntegrityOperation ? "USER-SELECTED FILE" : processIntelligenceOperation ? "LOCAL PROCESS SCOPE" : credentialLabOperation ? "LOCAL SECURE RANDOM GENERATOR" : firewallIntelligenceOperation ? "OPERATING-SYSTEM FIREWALL" : "HOST SCOPE")
+      ? (networkOperation ? "LOCAL NETWORK SCOPE" : fileIntegrityOperation ? "USER-SELECTED FILE" : processIntelligenceOperation ? "LOCAL PROCESS SCOPE" : credentialLabOperation ? "LOCAL SECURE RANDOM GENERATOR" : firewallIntelligenceOperation ? "OPERATING-SYSTEM FIREWALL" : cameraPrivacyOperation ? "CAMERA PRIVACY SETTINGS" : "HOST SCOPE")
       : "SIMULATED TARGET";
     $("modalTarget").textContent = operation.target;
     $("modalTargetTag").textContent = liveOperation
-      ? (networkOperation ? "PRIVATE IPV4 / ACTIVE" : fileIntegrityOperation ? "USER CONSENT / READ ONLY" : processIntelligenceOperation ? "LOCAL / READ ONLY" : credentialLabOperation ? "DEVICE CSPRNG / LOCAL" : firewallIntelligenceOperation ? (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === "android" ? "ANDROID API LIMITED" : "WINDOWS ACTIVE STORE") : "LOCAL / READ-ONLY")
+      ? (networkOperation ? "PRIVATE IPV4 / ACTIVE" : fileIntegrityOperation ? "USER CONSENT / READ ONLY" : processIntelligenceOperation ? "LOCAL / READ ONLY" : credentialLabOperation ? "DEVICE CSPRNG / LOCAL" : firewallIntelligenceOperation ? (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === "android" ? "ANDROID API LIMITED" : "WINDOWS ACTIVE STORE") : cameraPrivacyOperation ? "NO CAMERA ACCESS" : "LOCAL / READ-ONLY")
       : "DEMO / FICTIONAL";
     $("modalSafety").textContent = liveOperation
       ? (networkOperation ? "PRIVATE LAN ONLY · ICMP + ARP DISCOVERY · NO PORT SCANNING" :
@@ -410,8 +412,11 @@
         processIntelligenceOperation ? "READ-ONLY PROCESS INVENTORY · WINDOWS TOP 80 / ANDROID APP PROCESS ONLY · NO ELEVATION" :
         credentialLabOperation ? "WEB CRYPTO GETRANDOMVALUES · LOCAL ONLY · NO NETWORK · NO SECRET STORAGE" :
         firewallIntelligenceOperation ? (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === "android" ? "ANDROID DOES NOT EXPOSE GLOBAL FIREWALL RULES · NO INFERENCE" : "ACTIVE POLICY STORE · READ ONLY · NO RULE CHANGES · NO UAC") :
+        cameraPrivacyOperation ? "PERMISSION AND CONSENT AUDIT ONLY · CAMERA NEVER OPENED · NO FRAMES · NO RECORDING" :
         "READ-ONLY INVENTORY · NO NETWORK PROBES · NO SYSTEM CHANGES")
       : "SIMULATED OUTPUT · NO REAL TARGET OR DEVICE ACCESS";
+    $("cameraPrivacyOptions").hidden = !cameraPrivacyOperation;
+    $("cameraPrivacySettingsFeedback").textContent = "NO CAMERA DEVICE WILL BE OPENED OR USED.";
     $("integrityOptions").hidden = !fileIntegrityOperation;
     $("expectedSha256").value = "";
     $("credentialOptions").hidden = !credentialLabOperation;
@@ -447,7 +452,8 @@
         fileIntegrityOperation ? "SELECT FILE & CALCULATE SHA-256 <span>↗</span>" :
         processIntelligenceOperation ? "READ PROCESS INTELLIGENCE <span>↗</span>" :
         credentialLabOperation ? "GENERATE SECURE PASSWORD <span>↗</span>" :
-        firewallIntelligenceOperation ? "INSPECT FIREWALL STATUS <span>↗</span>" : "RUN LIVE SYSTEM SCAN <span>↗</span>")
+        firewallIntelligenceOperation ? "INSPECT FIREWALL STATUS <span>↗</span>" :
+        cameraPrivacyOperation ? "AUDIT CAMERA PRIVACY SETTINGS <span>↗</span>" : "RUN LIVE SYSTEM SCAN <span>↗</span>")
       : "INITIALIZE SIMULATION <span>▶</span>";
     $("operationModal").classList.add("open");
     $("operationModal").setAttribute("aria-hidden", "false");
@@ -880,6 +886,151 @@
     }
   }
 
+  function buildCameraPrivacyReport(result) {
+    const policy = result.policy || {};
+    const entries = Array.isArray(result.perAppEntries) ? result.perAppEntries : [];
+    const ownEntries = Array.isArray(result.ownAppEntries) ? result.ownAppEntries : [];
+    const userConsent = String(result.userCameraConsent || "NOT_RECORDED").toUpperCase();
+    const desktopConsent = String(result.desktopAppsCameraConsent || "NOT_RECORDED").toUpperCase();
+    const policyMode = String(policy.mode || "NOT_CONFIGURED").toUpperCase();
+    const warning = userConsent === "DENY" || desktopConsent === "DENY" || policyMode === "FORCE_DENY";
+    const lines = [
+      "╔══ BYTE PHANTOM / CAMERA PRIVACY AUDIT ════════╗",
+      "PLATFORM          WINDOWS",
+      "COMPUTER          " + String(result.computerName || "LOCAL HOST"),
+      "USER APP CONSENT  " + userConsent,
+      "DESKTOP APP CONSENT " + desktopConsent,
+      "DEVICE POLICY     " + policyMode + (policy.modeValue == null ? "" : " / " + String(policy.modeValue)),
+      "POLICY SOURCE     " + String(policy.source || "NOT REPORTED"),
+      "FORCE-ALLOW LIST  " + String(policy.forceAllowTheseApps || "NONE RECORDED"),
+      "FORCE-DENY LIST   " + String(policy.forceDenyTheseApps || "NONE RECORDED"),
+      "UNSIGNED DENY     " + String(policy.forceDenyUnsigned ?? "NOT RECORDED"),
+      "UNSIGNED ALLOW    " + String(policy.forceAllowUnsigned ?? "NOT RECORDED"),
+      "",
+      "RECORDED PER-APP ENTRIES " + String(result.perAppEntryCount ?? entries.length),
+      "RETURNED ENTRIES         " + String(result.returnedEntryCount ?? entries.length),
+      "BYTE PHANTOM EXE         " + String(result.ownAppExecutable || "NOT IDENTIFIED"),
+      "BYTE PHANTOM MATCHES     " + String(ownEntries.length)
+    ];
+    ownEntries.slice(0,5).forEach(entry => {
+      lines.push("  " + String(entry.identity || "UNKNOWN") + " / " + String(entry.setting || "NOT_RECORDED"));
+    });
+    lines.push("", "RECORDED ACCESS ENTRIES / UP TO 25");
+    entries.slice(0,25).forEach(entry => {
+      lines.push(
+        "[" + String(entry.type || "APP") + "] " + String(entry.identity || "UNKNOWN") +
+        " / " + String(entry.setting || "NOT_RECORDED")
+      );
+      if (entry.lastUsedStartUtc || entry.lastUsedStopUtc) {
+        lines.push("  RECORDED START " + String(entry.lastUsedStartUtc || "N/A") +
+          " · STOP " + String(entry.lastUsedStopUtc || "N/A"));
+      }
+    });
+    if (result.entriesTruncated === true) lines.push("NOTE: Access entries truncated; copied JSON includes the first 100.");
+    lines.push(
+      "",
+      "IMPORTANT: Registry consent and timestamps are policy/history signals, not proof that a camera is active right now.",
+      "CAMERA OPENED      NO",
+      "FRAMES CAPTURED    NO",
+      "SYSTEM CHANGES     NONE",
+      "TIME " + new Date(result.collectedAt || Date.now()).toLocaleString(),
+      "╚═══════════════════════════════════════════════╝"
+    );
+    return {report:lines.join("\n"),warning};
+  }
+
+  async function runLiveCameraPrivacyAudit(operation) {
+    const bridge = getNetworkRadarBridge();
+    if (!bridge || typeof bridge.getCameraPrivacySnapshot !== "function") {
+      showNativeModuleError(operation,"The native camera privacy audit is unavailable in this build. Install the latest Windows EXE or Android APK.");
+      return;
+    }
+    const runToken = -(++liveScanSequence);
+    operationTimer = runToken;
+    $("progressArea").hidden = false;
+    $("modalResult").hidden = true;
+    $("copyModuleReport").hidden = true;
+    $("runOperation").disabled = true;
+    $("runOperation").textContent = "AUDITING CAMERA PRIVACY...";
+    $("progressLabel").textContent = "READ-ONLY PERMISSION SNAPSHOT";
+    $("progressPercent").textContent = "20%";
+    $("progressBar").style.width = "20%";
+    $("progressOutput").textContent = [
+      "╔══ BYTE PHANTOM / CAMERA PRIVACY AUDIT ════════╗",
+      "[READ] Inspecting operating-system privacy controls",
+      "[SAFE] Camera capture APIs are not called",
+      "[SAFE] No image, video or microphone stream is opened",
+      "[SAFE] No permission prompt or system setting change",
+      "[WAIT] Reading available consent and permission metadata..."
+    ].join("\n");
+    try {
+      const result = await bridge.getCameraPrivacySnapshot();
+      if (selectedOperation !== operation || !$("operationModal").classList.contains("open")) return;
+      if (!result || result.supported !== true) throw new Error(result && result.reason ? result.reason : "The operating system did not return a camera privacy snapshot.");
+
+      if (result.platform === "ANDROID") {
+        const declared = result.cameraPermissionDeclared === true;
+        const granted = result.cameraPermissionGranted === true;
+        const appOp = String(result.cameraAppOpMode || "UNKNOWN");
+        const state = !declared ? "NOT DECLARED BY BYTE PHANTOM" : granted ? "GRANTED TO BYTE PHANTOM" : "NOT GRANTED TO BYTE PHANTOM";
+        const report = [
+          "╔══ BYTE PHANTOM / CAMERA PRIVACY AUDIT ════════╗",
+          "PLATFORM             ANDROID",
+          "PACKAGE              " + String(result.packageName || "BYTE PHANTOM"),
+          "CAMERA PERMISSION    " + state,
+          "PERMISSION DECLARED  " + String(declared ? "YES" : "NO"),
+          "PERMISSION GRANTED   " + String(granted ? "YES" : "NO"),
+          "CAMERA APP-OP MODE   " + appOp,
+          "",
+          "SCOPE                BYTE PHANTOM PACKAGE ONLY",
+          "OTHER APPS           NOT INSPECTED",
+          "CAMERA HISTORY       NOT AVAILABLE TO THIS AUDIT",
+          "CAMERA HARDWARE      NOT ENUMERATED",
+          "CAMERA OPENED        NO",
+          "FRAMES CAPTURED      NO",
+          "SYSTEM CHANGES       NONE",
+          "TIME                 " + new Date(result.collectedAt || Date.now()).toLocaleString(),
+          "╚═══════════════════════════════════════════════╝"
+        ].join("\n");
+        const payload = JSON.stringify({app:"BYTE PHANTOM",report:"CAMERA PRIVACY AUDIT",...result},null,2);
+        completeNativeModule(operation,report,payload,
+          "Audited BYTE PHANTOM's own Android CAMERA permission and AppOps state. Other apps were not inspected and no camera was opened.",
+          !declared || !granted);
+      } else {
+        const formatted = buildCameraPrivacyReport(result);
+        const payload = JSON.stringify({app:"BYTE PHANTOM",report:"CAMERA PRIVACY AUDIT",...result},null,2);
+        completeNativeModule(operation,formatted.report,payload,
+          "Read Windows camera consent, policy and "+String(result.perAppEntryCount || 0)+" recorded per-app entries; no camera device was opened.",
+          formatted.warning);
+      }
+    } catch (error) {
+      showNativeModuleError(operation,error&&error.message?error.message:String(error));
+    } finally {
+      if(operationTimer===runToken)operationTimer=null;
+      if(selectedOperation===operation&&$("operationModal").classList.contains("open"))$("runOperation").disabled=false;
+    }
+  }
+
+  async function openCameraPrivacySettings() {
+    const bridge=getNetworkRadarBridge();
+    if(!bridge||typeof bridge.openCameraPrivacySettings!=="function") {
+      $("cameraPrivacySettingsFeedback").textContent="SYSTEM PRIVACY SETTINGS ARE UNAVAILABLE IN THIS BUILD.";
+      return;
+    }
+    $("openCameraPrivacySettings").disabled=true;
+    $("cameraPrivacySettingsFeedback").textContent="OPENING SYSTEM PRIVACY SETTINGS...";
+    try {
+      const result=await bridge.openCameraPrivacySettings();
+      $("cameraPrivacySettingsFeedback").textContent=result&&result.opened
+        ? "SYSTEM PRIVACY SETTINGS OPENED · REVIEW CAMERA ACCESS THERE."
+        : "SYSTEM DID NOT CONFIRM THAT PRIVACY SETTINGS OPENED.";
+    } catch(error) {
+      $("cameraPrivacySettingsFeedback").textContent="COULD NOT OPEN SETTINGS · "+String(error&&error.message?error.message:"UNKNOWN ERROR");
+    } finally {
+      $("openCameraPrivacySettings").disabled=false;
+    }
+  }
+
   function runOperation() {
     if (!selectedOperation || operationTimer) return;
     const operation = selectedOperation;
@@ -889,6 +1040,7 @@
       else if (operation.liveType === "process-intelligence") runLiveProcessIntelligence(operation);
       else if (operation.liveType === "credential-lab") runLiveCredentialLab(operation);
       else if (operation.liveType === "firewall-intelligence") runLiveFirewallIntelligence(operation);
+      else if (operation.liveType === "camera-privacy-audit") runLiveCameraPrivacyAudit(operation);
       else runLiveSystemScan(operation);
       return;
     }
@@ -2531,6 +2683,8 @@
         getDnsFailoverState: () => desktop.getDnsFailoverState(),
         getProcessSnapshot: () => desktop.getProcessSnapshot(),
         getFirewallSnapshot: () => desktop.getFirewallSnapshot(),
+        getCameraPrivacySnapshot: () => desktop.getCameraPrivacySnapshot(),
+        openCameraPrivacySettings: () => desktop.openCameraPrivacySettings(),
         pickAndHashFile: expectedSha256 => desktop.pickAndHashFile({expectedSha256: expectedSha256 || ""}),
         applyDnsResolver: settings => desktop.applyDnsResolver(settings || {}),
         restoreDnsResolver: options => desktop.restoreDnsResolver(options || {})
@@ -2569,6 +2723,8 @@
         getDnsFailoverState: () => networkRadarAndroidPlugin.getDnsFailoverState(),
         getProcessSnapshot: () => networkRadarAndroidPlugin.getProcessSnapshot(),
         getFirewallSnapshot: () => networkRadarAndroidPlugin.getFirewallSnapshot(),
+        getCameraPrivacySnapshot: () => networkRadarAndroidPlugin.getCameraPrivacySnapshot(),
+        openCameraPrivacySettings: () => networkRadarAndroidPlugin.openCameraPrivacySettings(),
         pickAndHashFile: expectedSha256 => networkRadarAndroidPlugin.pickAndHashFile({expectedSha256: expectedSha256 || ""}),
         openDnsSettings: () => networkRadarAndroidPlugin.openDnsSettings()
       };
@@ -2802,6 +2958,7 @@
     $("credentialFeedback").textContent=copied?"PASSWORD COPIED TO CLIPBOARD. BYTE PHANTOM DOES NOT STORE THE SECRET.":"COPY FAILED · SELECT THE PASSWORD FIELD AND COPY IT MANUALLY.";
     if(copied)playSfx("success");
   });
+  $("openCameraPrivacySettings").addEventListener("click", openCameraPrivacySettings);
   $("copyModuleReport").addEventListener("click", async function () {
     if (!moduleReportPayload) return;
     const copied = await copyNetworkRadarText(moduleReportPayload);
@@ -2890,6 +3047,7 @@
         terminalLine("radar      - start active local IPv4 discovery and live network monitoring");
         terminalLine("credential - open the local cryptographic password generator");
         terminalLine("firewall   - inspect Windows Defender Firewall profiles and active rules");
+        terminalLine("camera     - audit camera privacy permissions without opening a camera");
         terminalLine("whoami     - show the current fictional operator");
         terminalLine("date       - show this device's local date and time");
         terminalLine("profile    - open the fictional profile generator");
@@ -2898,7 +3056,7 @@
         break;
       case "status":
         terminalLine("CORE: ONLINE | MODE: LOCAL / READ-ONLY + SIM MODULES", "success");
-        terminalLine("LIVE MODULES: 06 / 12 | SIX OTHER MODULES: SIMULATED", "info");
+        terminalLine("LIVE MODULES: 07 / 12 | FIVE OTHER MODULES: SIMULATED", "info");
         terminalLine("OPERATIONS THIS SESSION: " + operationCount, "info");
         break;
       case "modules":
@@ -2920,6 +3078,10 @@
       case "firewall":
         terminalLine("Inspecting the operating-system firewall policy without changing rules...", "info");
         openOperation("firewall-intelligence");
+        break;
+      case "camera":
+        terminalLine("Auditing camera privacy consent without accessing camera hardware...", "info");
+        openOperation("camera-privacy-audit");
         break;
       case "whoami":
         terminalLine("OPERATOR: GHOST USER", "success");

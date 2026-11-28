@@ -1,6 +1,11 @@
 package com.varagod.bytephantom;
 
 import android.content.Context;
+import android.Manifest;
+import android.app.AppOpsManager;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.app.ActivityManager;
 import android.database.Cursor;
 import android.net.Uri;
@@ -154,6 +159,103 @@ public class NetworkRadarPlugin extends Plugin {
                 }
             }
         });
+    }
+
+    @PluginMethod
+    public void getCameraPrivacySnapshot(PluginCall call) {
+        try {
+            String packageName = getContext().getPackageName();
+            PackageInfo packageInfo = getContext().getPackageManager().getPackageInfo(
+                packageName, PackageManager.GET_PERMISSIONS
+            );
+            boolean permissionDeclared = false;
+            if (packageInfo.requestedPermissions != null) {
+                for (String permission : packageInfo.requestedPermissions) {
+                    if (Manifest.permission.CAMERA.equals(permission)) {
+                        permissionDeclared = true;
+                        break;
+                    }
+                }
+            }
+
+            int permissionResult;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                permissionResult = getContext().checkSelfPermission(Manifest.permission.CAMERA);
+            } else {
+                permissionResult = getContext().getPackageManager().checkPermission(
+                    Manifest.permission.CAMERA, packageName
+                );
+            }
+            boolean permissionGranted = permissionResult == PackageManager.PERMISSION_GRANTED;
+
+            String appOpMode = "UNAVAILABLE";
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                AppOpsManager appOps = (AppOpsManager) getContext().getSystemService(Context.APP_OPS_SERVICE);
+                if (appOps != null) {
+                    int mode = appOps.checkOpNoThrow(
+                        AppOpsManager.OPSTR_CAMERA, android.os.Process.myUid(), packageName
+                    );
+                    if (mode == AppOpsManager.MODE_ALLOWED) appOpMode = "ALLOWED";
+                    else if (mode == AppOpsManager.MODE_IGNORED) appOpMode = "IGNORED";
+                    else if (mode == AppOpsManager.MODE_ERRORED) appOpMode = "ERRORED";
+                    else if (mode == AppOpsManager.MODE_DEFAULT) appOpMode = "DEFAULT";
+                    else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                        mode == AppOpsManager.MODE_FOREGROUND) appOpMode = "FOREGROUND";
+                    else appOpMode = "UNKNOWN (" + mode + ")";
+                }
+            }
+
+            JSObject result = new JSObject();
+            result.put("supported", true);
+            result.put("platform", "ANDROID");
+            result.put("status", "OWN_APP_PERMISSION_SNAPSHOT");
+            result.put("collectedAt", java.time.Instant.now().toString());
+            result.put("packageName", packageName);
+            result.put("cameraPermissionDeclared", permissionDeclared);
+            result.put("cameraPermissionGranted", permissionGranted);
+            result.put("cameraPermissionState", !permissionDeclared ? "NOT_DECLARED_BY_BYTE_PHANTOM" :
+                (permissionGranted ? "GRANTED_TO_BYTE_PHANTOM" : "NOT_GRANTED_TO_BYTE_PHANTOM"));
+            result.put("cameraAppOpMode", appOpMode);
+            result.put("scope", "BYTE PHANTOM PACKAGE ONLY; DOES NOT ENUMERATE OTHER APPS OR DEVICE-WIDE CAMERA HISTORY");
+            result.put("otherAppPermissionsInspected", false);
+            result.put("cameraHardwareEnumerated", false);
+            result.put("cameraOpened", false);
+            result.put("cameraFramesCaptured", false);
+            result.put("systemChangesMade", false);
+            result.put("networkProbesPerformed", false);
+            result.put("historyAvailable", false);
+            call.resolve(result);
+        } catch (Exception exception) {
+            call.reject("Android camera privacy audit failed: " +
+                (exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage()), exception);
+        }
+    }
+
+    @PluginMethod
+    public void openCameraPrivacySettings(PluginCall call) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_PRIVACY_SETTINGS);
+            String destination = "ANDROID_PRIVACY_SETTINGS";
+            if (intent.resolveActivity(getContext().getPackageManager()) == null) {
+                intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getContext().getPackageName()));
+                destination = "ANDROID_APP_DETAILS";
+            }
+            if (intent.resolveActivity(getContext().getPackageManager()) == null) {
+                call.reject("Android does not provide an available privacy settings activity.");
+                return;
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            JSObject result = new JSObject();
+            result.put("opened", true);
+            result.put("destination", destination);
+            result.put("cameraPermissionRequestedByApp", false);
+            call.resolve(result);
+        } catch (Exception exception) {
+            call.reject("Could not open Android privacy settings: " +
+                (exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage()), exception);
+        }
     }
 
     @PluginMethod

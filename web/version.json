@@ -1,13 +1,14 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.22.0",
-  "build": "1.22.0",
+  "version": "1.23.0",
+  "build": "1.23.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
     "Android"
   ],
   "realCapabilities": [
+    "CAMERA PRIVACY AUDIT: Windows read-only inspection of current-user camera consent, desktop-app consent, LetAppsAccessCamera device policy and recorded per-app webcam access entries/timestamps; Android checks only BYTE PHANTOM's own declared CAMERA permission, current permission grant and AppOps mode. No camera device is enumerated or opened, no frames are captured, and no camera permission is added.",
     "FIREWALL INTELLIGENCE: Windows reads the effective Windows Defender Firewall ActiveStore profiles, service state, default inbound/outbound actions, enabled-rule direction/action counts and up to 120 enabled rule summaries. Read-only; no rules are modified and no elevation prompt or network probe is requested.",
     "CREDENTIAL LAB: cross-platform local password generation using Web Crypto getRandomValues, unbiased rejection-sampled character selection, configurable 12–64 character length and four selectable character groups; generated secrets are excluded from reports, activity history and local storage, and copied only on explicit user action",
     "FILE INTEGRITY: Windows open-file dialog and Android Storage Access Framework picker; streaming SHA-256 calculation, optional reference-digest comparison, byte count and metadata-only stability check; no file upload or file modification",
@@ -45,7 +46,6 @@
   "simulatedModules": [
     "IP TRACE",
     "DEVICE INFILTRATION",
-    "CAMERA ACCESS",
     "SATELLITE LINK",
     "MAINFRAME OVERRIDE",
     "ENCRYPTION BREAKER"
@@ -132,7 +132,7 @@
       "confidence": "A single unexpected response is a warning, not conclusive proof. These probes cannot identify all transparent proxies or TLS interception."
     }
   },
-  "security": "Connectivity diagnostics run only after an explicit user action or while the operator has started OUTAGE WATCH with NETWORK RADAR open. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform three system DNS lookups, and make four fixed HTTPS GET checks. HTTPS requests do not follow redirects and only retain a bounded response sample for expected-signature validation; response bodies are not stored in history or exported. Android reads ConnectivityManager captive portal, validated, and internet capability flags when available. The app does not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends direct DNS A queries only to configured IPv4 DNS servers and fixed public resolver references. DNS answer divergence and non-public address flags are advisory indicators only, not a malware verdict. Windows DNS changes remain opt-in, limited to the active default-route adapter, require UAC Administrator approval, and preserve a local original-configuration backup. Android opens system network settings for manual changes only. FILE INTEGRITY reads only one explicitly user-selected file using the Windows open-file dialog or Android Storage Access Framework. SHA-256 is streamed in memory; no file content is uploaded, changed or stored by the app. Android document providers may be cloud-backed and can fetch content on the user's behalf. PROCESS INTELLIGENCE is read-only: Windows returns up to 80 processes from Get-Process without elevation; Android reports only the current BYTE PHANTOM app process and device memory, not other apps. CREDENTIAL LAB generates passwords locally with Web Crypto getRandomValues and unbiased selection. The secret is kept only in the current UI memory, is not added to local storage, activity history or reports, and is copied only after explicit user action. No password is sent to any account, authentication endpoint or remote service. FIREWALL INTELLIGENCE reads Windows Defender Firewall ActiveStore profiles and enabled rule summaries using PowerShell NetSecurity read commands. It does not modify firewall rules, profiles or services, does not request UAC elevation, and performs no network probes. Android explicitly reports that the public app API does not expose a global firewall rule inventory; VPN, DNS and connectivity signals are not treated as firewall state.",
+  "security": "Connectivity diagnostics run only after an explicit user action or while the operator has started OUTAGE WATCH with NETWORK RADAR open. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform three system DNS lookups, and make four fixed HTTPS GET checks. HTTPS requests do not follow redirects and only retain a bounded response sample for expected-signature validation; response bodies are not stored in history or exported. Android reads ConnectivityManager captive portal, validated, and internet capability flags when available. The app does not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends direct DNS A queries only to configured IPv4 DNS servers and fixed public resolver references. DNS answer divergence and non-public address flags are advisory indicators only, not a malware verdict. Windows DNS changes remain opt-in, limited to the active default-route adapter, require UAC Administrator approval, and preserve a local original-configuration backup. Android opens system network settings for manual changes only. FILE INTEGRITY reads only one explicitly user-selected file using the Windows open-file dialog or Android Storage Access Framework. SHA-256 is streamed in memory; no file content is uploaded, changed or stored by the app. Android document providers may be cloud-backed and can fetch content on the user's behalf. PROCESS INTELLIGENCE is read-only: Windows returns up to 80 processes from Get-Process without elevation; Android reports only the current BYTE PHANTOM app process and device memory, not other apps. CREDENTIAL LAB generates passwords locally with Web Crypto getRandomValues and unbiased selection. The secret is kept only in the current UI memory, is not added to local storage, activity history or reports, and is copied only after explicit user action. No password is sent to any account, authentication endpoint or remote service. FIREWALL INTELLIGENCE reads Windows Defender Firewall ActiveStore profiles and enabled rule summaries using PowerShell NetSecurity read commands. It does not modify firewall rules, profiles or services, does not request UAC elevation, and performs no network probes. Android explicitly reports that the public app API does not expose a global firewall rule inventory; VPN, DNS and connectivity signals are not treated as firewall state. CAMERA PRIVACY AUDIT reads Windows camera consent/policy registry values and recorded per-app access timestamps without opening a camera. On Android it inspects only BYTE PHANTOM's own requested CAMERA permission, current grant and AppOps mode; it does not enumerate other apps or query camera hardware. No CAMERA permission is declared or requested by the audit, no camera stream or frames are opened/captured, and no system settings are modified. Opening privacy settings is an explicit user action. Windows registry timestamps are historical records and do not prove live camera use.",
   "networkPathIntelligence": {
     "dataSource": "Windows Get-NetIPConfiguration/Get-NetRoute; Android ConnectivityManager/LinkProperties",
     "fields": [
@@ -147,6 +147,7 @@
     "configurationChanges": false
   },
   "fixes": [
+    "Replaced simulated CAMERA ACCESS with CAMERA PRIVACY AUDIT: read-only Windows consent/policy/history inspection and Android BYTE PHANTOM-only runtime permission/AppOps audit. Added direct links to system privacy settings; no camera is opened and no CAMERA permission is added.",
     "Replaced simulated FIREWALL BREACH with FIREWALL INTELLIGENCE: read-only Windows Defender Firewall ActiveStore profile, service and enabled-rule inspection; Android reports its public API limitation without guessing firewall state.",
     "Replaced the simulated PASSWORD CRACKER card with CREDENTIAL LAB: secure local password generation using Web Crypto, configurable length and character groups, copy-on-request, and no secret logging or persistence.",
     "Added two real operation modules: FILE INTEGRITY (streamed SHA-256 with optional reference comparison) and PROCESS INTELLIGENCE (Windows local process table; Android own-app process and memory only).",
@@ -378,5 +379,50 @@
       "Protected or policy-managed rule detail may be incomplete on some Windows installations.",
       "Android global firewall rules cannot be enumerated by this ordinary app."
     ]
+  },
+  "cameraPrivacyAudit": {
+    "status": "LIVE / PLATFORM-SCOPED",
+    "windows": {
+      "dataSources": [
+        "HKCU CapabilityAccessManager ConsentStore webcam Value",
+        "HKCU webcam NonPackaged Value and recorded per-desktop-app entries",
+        "HKCU webcam packaged-app consent entries",
+        "HKLM Software Policies Microsoft Windows AppPrivacy LetAppsAccessCamera policy and per-app allow/deny lists"
+      ],
+      "fields": [
+        "Current-user camera consent when recorded",
+        "Desktop-app camera consent when recorded",
+        "Device policy mode: user in control / force allow / force deny",
+        "Force-allow and force-deny package lists when present",
+        "Recorded per-app consent values and LastUsedTimeStart/Stop timestamps",
+        "Byte Phantom executable match when a registry entry exists"
+      ],
+      "opensCamera": false,
+      "framesCaptured": false,
+      "settingsModified": false,
+      "settingsUri": "ms-settings:privacy-webcam",
+      "caveat": "Recorded consent and timestamps are policy/history signals, not proof of live camera use. Missing registry entries are reported as NOT_RECORDED, not interpreted as allow or deny."
+    },
+    "android": {
+      "status": "OWN_APP_ONLY",
+      "fields": [
+        "Whether BYTE PHANTOM declares android.permission.CAMERA",
+        "Current runtime CAMERA permission grant for BYTE PHANTOM",
+        "BYTE PHANTOM AppOps camera mode (checkOpNoThrow)"
+      ],
+      "otherAppPermissionsInspected": false,
+      "cameraHardwareEnumerated": false,
+      "cameraOpened": false,
+      "framesCaptured": false,
+      "historyAvailable": false,
+      "additionalPermissions": [],
+      "settingsAction": "Open Android Privacy settings; fallback to BYTE PHANTOM app details"
+    },
+    "shared": {
+      "networkProbes": false,
+      "systemChanges": false,
+      "cameraPermissionRequested": false,
+      "imagesOrVideoCaptured": false
+    }
   }
 }

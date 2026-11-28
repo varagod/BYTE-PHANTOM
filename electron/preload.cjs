@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("bytePhantomDesktop", Object.freeze({
   getSystemSnapshot: () => ipcRenderer.invoke("byte-phantom:system-snapshot"),
   getProcessSnapshot: () => ipcRenderer.invoke("byte-phantom:process-snapshot"),
   getFirewallSnapshot: () => ipcRenderer.invoke("byte-phantom:firewall-snapshot"),
+  getCameraPrivacySnapshot: () => ipcRenderer.invoke("byte-phantom:camera-privacy-snapshot"),
+  openCameraPrivacySettings: () => ipcRenderer.invoke("byte-phantom:camera-privacy-settings"),
   pickAndHashFile: (settings) => ipcRenderer.invoke("byte-phantom:file-integrity", settings || {}),
   getNetworkRadar: (options) => ipcRenderer.invoke("byte-phantom:network-radar", options || {}),
   runConnectivityDiagnostics: () => ipcRenderer.invoke("byte-phantom:connectivity-diagnostics"),
