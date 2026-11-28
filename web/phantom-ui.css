@@ -397,3 +397,20 @@
 .module-options-note{color:#8e9ba9;font-size:10px;line-height:1.55}
 #copyModuleReport{min-width:120px}
 @media(max-width:600px){.modal-actions{flex-wrap:wrap}.modal-actions button{flex:1 1 100%}}
+
+
+/* BYTE PHANTOM v1.21.0 — local cryptographic credential lab */
+.credential-options{display:grid;gap:10px;margin:12px 0;padding:13px;border:1px solid rgba(68,232,255,.22);border-radius:8px;background:linear-gradient(145deg,rgba(5,18,26,.88),rgba(14,10,26,.8))}
+.credential-options[hidden]{display:none}
+.credential-control-row{display:flex;align-items:center;justify-content:space-between}
+.credential-control-row output{color:#8ef0c0;font:600 16px var(--mono)}
+.credential-options input[type="range"]{width:100%;accent-color:#42e5d7}
+.credential-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.credential-groups label{display:flex;align-items:center;gap:7px;padding:8px;border:1px solid rgba(119,134,176,.17);border-radius:5px;color:#aab8c7;font:10px var(--mono);letter-spacing:.6px}
+.credential-groups input{accent-color:#48e6ce}
+.credential-secret-row{display:flex;gap:7px;min-width:0}
+.credential-secret-row input{min-width:0;flex:1;font-family:var(--mono);letter-spacing:.6px}
+.credential-secret-row button{flex:0 0 66px}
+.credential-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.credential-actions span{color:#83d9bc;font:9px var(--mono);line-height:1.55}
+@media(max-width:600px){.credential-secret-row{flex-wrap:wrap}.credential-secret-row input{flex:1 1 100%}}

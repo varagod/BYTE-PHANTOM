@@ -8,7 +8,7 @@
     { id:"ip-trace", name:"IP TRACE", icon:"⌖", tone:"red-card", category:"recon", description:"Run a theatrical trace animation against a reserved documentation IP address. No lookup is performed.", target:"192.0.2.44 (DOCUMENTATION RANGE)", stages:["Reading sample address","Simulating route hops","Painting fictional map markers","Compiling demo trace"], result:["DESTINATION: 192.0.2.44 (RESERVED EXAMPLE)","ROUTE HOPS: 06 SIMULATED","GEOLOCATION: NOT REQUESTED","TRACE: FICTIONAL RESULT"] },
     { id:"device-infiltration", name:"DEVICE INFILTRATION", icon:"▣", tone:"", category:"access", description:"Play a fictional device-access scenario using a generated device record. No real device is contacted.", target:"MOCK_DEVICE_DELTA", stages:["Loading fictional device record","Animating access-control sequence","Reviewing imaginary permissions","Closing sandbox session"], result:["DEVICE: MOCK-DELTA / OFFLINE SAMPLE","ACCESS LAYERS: 04 SIMULATED","PERMISSIONS: FICTIONAL ONLY","SCENARIO: COMPLETED LOCALLY"] },
     { id:"firewall-breach", name:"FIREWALL BREACH", icon:"⬡", tone:"red-card", category:"access", description:"Watch a simulated firewall puzzle resolve against a built-in mock rule set.", target:"DEMO_FIREWALL_A7", stages:["Loading sample rule set","Analyzing fictional packet patterns","Resolving demo challenge","Generating firewall report"], result:["RULES REVIEWED: 24 MOCK ENTRIES","CHALLENGE: SIMULATION PASSED","EXTERNAL FIREWALL: NOT CONNECTED","REPORT: LOCAL DEMO"] },
-    { id:"password-cracker", name:"PASSWORD CRACKER", icon:"✳", tone:"", category:"access", description:"Animate a fictional password-strength puzzle with a generated sample hash. No passwords are tested.", target:"SAMPLE_HASH_7F3A", stages:["Creating temporary sample hash","Running visual character animation","Checking fictional strength score","Discarding temporary sample"], result:["SAMPLE HASH: DEMO-7F3A-91C2","STRENGTH: STRONG (MOCK RESULT)","REAL CREDENTIALS: NOT ACCEPTED","TEMPORARY DATA: DISCARDED"] },
+    { id:"credential-lab", name:"CREDENTIAL LAB", icon:"✳", tone:"cyan-card", category:"access", description:"Generate a high-entropy password locally with the device cryptographic random-number generator. Choose length and character groups, then copy only when requested. No account or network is contacted.", target:"LOCAL CRYPTOGRAPHIC PASSWORD GENERATOR", live:true, liveType:"credential-lab" },
     { id:"camera-access", name:"CAMERA ACCESS", icon:"◉", tone:"cyan-card", category:"access", description:"Open a fictional CCTV scene with generated test frames. The application never requests camera permission.", target:"VIRTUAL_CAM_03", stages:["Opening virtual camera channel","Loading generated preview frame","Rendering mock telemetry","Closing virtual feed"], result:["CAMERA: VIRTUAL-CAM-03","PREVIEW: GENERATED TEST GRAPHIC","PHYSICAL CAMERA: NOT ACCESSED","FEED: CLOSED SAFELY"] },
     { id:"satellite-link", name:"SATELLITE LINK", icon:"✧", tone:"cyan-card", category:"access", description:"Animate a fictional satellite handshake and orbital telemetry sequence.", target:"ORBITAL_SIM_NODE_09", stages:["Searching local satellite catalog","Simulating orbital handshake","Rendering mock telemetry","Terminating demo link"], result:["SATELLITE: ORBITAL-SIM-09","ALTITUDE: 540 KM (FICTIONAL)","LINK QUALITY: 98% DEMO","RADIO TRANSMISSION: NONE"] },
     { id:"mainframe-override", name:"MAINFRAME OVERRIDE", icon:"▤", tone:"", category:"access", description:"Run a fictional access-control puzzle inside an imaginary mainframe environment.", target:"PHANTOM_MAINFRAME_X", stages:["Loading virtual mainframe","Checking mock access layers","Resolving local control puzzle","Restoring default sandbox state"], result:["MAINFRAME: VIRTUAL-X","CONTROL LAYERS: 05 DEMO LAYERS","OVERRIDE: SIMULATION COMPLETE","SYSTEM STATE: RESTORED"] },
@@ -24,7 +24,6 @@
     "ip-trace": {phases:["ADDRESS PARSE","HOP SIMULATION","ROUTE PAINT","TRACE REPORT"],visual:"TRACE 192.0.2.44 [RESERVED EXAMPLE]\nSTART ─ H01 ─ H02 ─ H03\n                 └── H04 ─ H05 ─ END\nROUTE DEPTH: 06 MOCK HOPS",lines:["Parsing reserved documentation address 192.0.2.44","Creating a six-hop sample route from the local scenario seed","Assigning fictional latency values: 04 / 12 / 19 / 31 / 27 / 42 ms","Placing non-geographic route markers on a demo path","Adding one simulated branch to illustrate route divergence","Checking trace consistency against the embedded route template","No DNS lookup, geolocation request, socket, or packet was used","Painting the final trace card from generated sample values"],report:["DESTINATION 192.0.2.44 / DOCUMENTATION RANGE","ROUTE 06 SIMULATED HOPS / 04 → 42 MS","GEOGRAPHY NOT RESOLVED","TRACE CARD BP-TRACE-044"],activity:"A fictional six-hop route card was rendered for a reserved example address."},
     "device-infiltration": {phases:["DEVICE PROFILE","HANDSHAKE THEATRE","PERMISSION MAP","SESSION CLOSE"],visual:"MOCK_DEVICE_DELTA\n[BOOT] → [PAIR] → [AUTH] → [PROFILE]\n  │        │       │        │\nLOCAL   DEMO KEY  PASS     CLOSED",lines:["Loading generated device dossier MOCK_DEVICE_DELTA","Reading fictional model string: DLT-09 / firmware 4.2-demo","Animating a local handshake between two mock records","Comparing four imaginary permission layers","Displaying a sample device state: powered / disconnected","Generating a permission matrix with zero device calls","Bluetooth, USB, ADB, and discovery APIs remain unused","Sealing the mock session and clearing temporary state"],report:["DEVICE MOCK-DELTA / DLT-09","HANDSHAKE THEATRICAL SEQUENCE COMPLETE","PERMISSION LAYERS 04 SAMPLE RECORDS","PHYSICAL DEVICE NOT CONTACTED / SESSION CLOSED"],activity:"A fictional device profile and permission matrix were displayed."},
     "firewall-breach": {phases:["RULESET LOAD","PATTERN MATCH","PUZZLE RESOLVE","AUDIT CLOSE"],visual:"DEMO FIREWALL / RULE MATRIX\n01 ALLOW     ░░░░░░\n02 DENY      ██████\n03 DENY      ██████\n04 ALLOW     ░░░░░░\n05 CHALLENGE ▒▒▒▒▒▒\n06 ALLOW     ░░░░░░",lines:["Mounting the built-in firewall puzzle with 24 sample rules","Grouping mock entries into allow, deny, and challenge lanes","Comparing generated packet labels against the puzzle rule table","Highlighting three deliberate rule conflicts in the demo matrix","Applying the scenario's harmless resolution sequence","Rechecking the six visible rules for a consistent final state","The puzzle engine uses static local data and no network traffic","Exporting a color-coded firewall audit summary"],report:["RULES 24 MOCK ENTRIES / 03 CONFLICTS RESOLVED","DEMO POLICY CONSISTENT","EXTERNAL FIREWALL NOT CONNECTED","AUDIT BP-FW-024"],activity:"A six-row mock firewall matrix was reviewed and resolved."},
-    "password-cracker": {phases:["SAMPLE HASH","TOY SEARCH","STRENGTH SCORE","DATA PURGE"],visual:"TOY HASH LAB\nHASH 7F3A-91C2\nMASK ****-****\nSPACE 16 SYMBOLS × 4 SLOTS\nMATCH TRAINING TOKEN ONLY",lines:["Creating an ephemeral training hash from the built-in toy phrase","Displaying a fictional four-slot character mask","Enumerating a deliberately tiny 16-symbol demonstration space","Scoring entropy against the simulator teaching rubric","Revealing the pre-seeded training token: GHOST-42","This toy result is not a real password recovery","No entered credentials, hashes, files, or accounts are accepted","Discarding the temporary token and synthetic hash"],report:["EXERCISE TOY HASH / 7F3A-91C2","TRAINING TOKEN GHOST-42","REAL CREDENTIALS NOT ACCEPTED","TEMPORARY VALUES DISCARDED"],activity:"A tiny built-in password-strength teaching puzzle was completed."},
     "camera-access": {phases:["VIRTUAL CHANNEL","FRAME SYNTHESIS","TELEMETRY DRAW","FEED SHUTDOWN"],visual:"VIRTUAL CAM 03 / GENERATED FRAME\n┌──────────────────────────┐\n│ . . . FRAME 003 . . .    │\n│     [ TEST PATTERN ]      │\n│ 00:00:03 / DEMO SIGNAL   │\n└──────────────────────────┘",lines:["Opening the internal VIRTUAL_CAM_03 scene renderer","Generating a synthetic test frame from geometric primitives","Drawing a timestamp, scan bars, and sample frame counter","Adding mock exposure and frame-rate telemetry","Simulating a three-frame buffer with no live video source","Confirming that browser camera permissions were never requested","No webcam, phone camera, stream, or media device is opened","Closing the virtual preview and releasing generated frames"],report:["CHANNEL VIRTUAL-CAM-03 / FRAME 003","PREVIEW GENERATED TEST GRAPHIC","TELEMETRY 30 FPS MOCK / EXPOSURE 0.7","PHYSICAL CAMERA NOT ACCESSED / FEED CLOSED"],activity:"A generated CCTV-style preview frame was rendered without camera access."},
     "satellite-link": {phases:["ORBIT CATALOG","BEACON ALIGN","TELEMETRY DRAW","LINK RELEASE"],visual:"       ✦ ORBIT-SIM-09\n   . . . . . . . . . . . .\n .      [ PLANET / DEMO ]    .\n   . . . . . . . . . . . .\n          GROUND NODE",lines:["Loading the bundled ORBITAL_SIM_NODE_09 profile","Drawing a fictional orbital path at 540 km altitude","Assigning synthetic beacon ID and carrier frequency","Animating antenna alignment against the demo orbit","Calculating sample link quality and signal-to-noise values","Rendering telemetry strip with generated orbital parameters","No radio, GPS, satellite modem, or external service is contacted","Releasing the visual link and closing the scene"],report:["SATELLITE ORBITAL-SIM-09 / ALTITUDE 540 KM","LINK QUALITY 98% DEMO","RADIO TRANSMISSION NONE","TELEMETRY GENERATED LOCALLY"],activity:"A fictional orbital link and synthetic satellite telemetry were visualized."},
     "mainframe-override": {phases:["CORE WAKE","LAYER INSPECT","CONTROL PUZZLE","STATE RESTORE"],visual:"PHANTOM MAINFRAME X\n┌ ROOT CONTROL ────────────┐\n├ LAYER 04 [ LOCKED ]      │\n├ LAYER 03 [ LOCKED ]      │\n├ LAYER 02 [ CHECK  ]      │\n└ LAYER 01 [ SANDBOX ] ────┘",lines:["Booting imaginary PHANTOM_MAINFRAME_X environment","Drawing five mock control layers and their access states","Comparing generated access tokens against puzzle rules","Resolving local sequence in the correct training order","Displaying state change in the fictional control stack","Verifying that only the simulator in-memory model changed","No operating-system privileges or remote mainframe are involved","Restoring every layer to its original demo state"],report:["MAINFRAME VIRTUAL-X / 05 DEMO LAYERS","PUZZLE RESOLVED LOCALLY","REAL SYSTEM STATE UNCHANGED","SANDBOX RESTORED"],activity:"The five-layer imaginary mainframe puzzle was resolved and reset."},
@@ -73,6 +72,7 @@
   let dnsFailoverActionBusy = false;
   let operationCount = 0;
   let moduleReportPayload = "";
+  let credentialGenerationMetadata = null;
   let activity = [];
   const audioState = {
     context: null, masterGain: null, musicGain: null, sfxGain: null,
@@ -347,7 +347,8 @@
     state.textContent = operation.live
       ? (operation.liveType === "network" ? "LIVE / ACTIVE LAN" :
         operation.liveType === "file-integrity" ? "LIVE / SHA-256" :
-        operation.liveType === "process-intelligence" ? "LIVE / LOCAL PROCESSES" : "LIVE / READ-ONLY")
+        operation.liveType === "process-intelligence" ? "LIVE / LOCAL PROCESSES" :
+        operation.liveType === "credential-lab" ? "LIVE / CRYPTO RANDOM" : "LIVE / READ-ONLY")
       : "SIMULATION";
     info.appendChild(state);
     const arrow = document.createElement("i");
@@ -373,6 +374,7 @@
     const networkOperation = operation.liveType === "network";
     const fileIntegrityOperation = operation.liveType === "file-integrity";
     const processIntelligenceOperation = operation.liveType === "process-intelligence";
+    const credentialLabOperation = operation.liveType === "credential-lab";
     ++liveScanSequence;
     networkRadarSessionToken = liveScanSequence;
     networkRadarKnownDevices = new Map();
@@ -389,23 +391,37 @@
     $("modalModeLabel").textContent = liveOperation
       ? (networkOperation ? "LIVE LAN RADAR / ACTIVE DISCOVERY" :
         fileIntegrityOperation ? "LIVE FILE INTEGRITY / SHA-256" :
-        processIntelligenceOperation ? "LIVE PROCESS INTELLIGENCE" : "LIVE WINDOWS INTELLIGENCE")
+        processIntelligenceOperation ? "LIVE PROCESS INTELLIGENCE" :
+        credentialLabOperation ? "LIVE CREDENTIAL LAB / WEB CRYPTO" : "LIVE WINDOWS INTELLIGENCE")
       : "SIMULATION MODULE";
     $("modalTargetLabel").textContent = liveOperation
-      ? (networkOperation ? "LOCAL NETWORK SCOPE" : fileIntegrityOperation ? "USER-SELECTED FILE" : processIntelligenceOperation ? "LOCAL PROCESS SCOPE" : "HOST SCOPE")
+      ? (networkOperation ? "LOCAL NETWORK SCOPE" : fileIntegrityOperation ? "USER-SELECTED FILE" : processIntelligenceOperation ? "LOCAL PROCESS SCOPE" : credentialLabOperation ? "LOCAL SECURE RANDOM GENERATOR" : "HOST SCOPE")
       : "SIMULATED TARGET";
     $("modalTarget").textContent = operation.target;
     $("modalTargetTag").textContent = liveOperation
-      ? (networkOperation ? "PRIVATE IPV4 / ACTIVE" : fileIntegrityOperation ? "USER CONSENT / READ ONLY" : processIntelligenceOperation ? "LOCAL / READ ONLY" : "LOCAL / READ-ONLY")
+      ? (networkOperation ? "PRIVATE IPV4 / ACTIVE" : fileIntegrityOperation ? "USER CONSENT / READ ONLY" : processIntelligenceOperation ? "LOCAL / READ ONLY" : credentialLabOperation ? "DEVICE CSPRNG / LOCAL" : "LOCAL / READ-ONLY")
       : "DEMO / FICTIONAL";
     $("modalSafety").textContent = liveOperation
       ? (networkOperation ? "PRIVATE LAN ONLY · ICMP + ARP DISCOVERY · NO PORT SCANNING" :
         fileIntegrityOperation ? "OS FILE PICKER · STREAMED SHA-256 · NO UPLOAD · NO FILE MODIFICATION" :
         processIntelligenceOperation ? "READ-ONLY PROCESS INVENTORY · WINDOWS TOP 80 / ANDROID APP PROCESS ONLY · NO ELEVATION" :
+        credentialLabOperation ? "WEB CRYPTO GETRANDOMVALUES · LOCAL ONLY · NO NETWORK · NO SECRET STORAGE" :
         "READ-ONLY INVENTORY · NO NETWORK PROBES · NO SYSTEM CHANGES")
       : "SIMULATED OUTPUT · NO REAL TARGET OR DEVICE ACCESS";
     $("integrityOptions").hidden = !fileIntegrityOperation;
     $("expectedSha256").value = "";
+    $("credentialOptions").hidden = !credentialLabOperation;
+    $("credentialPassword").value = "";
+    $("credentialFeedback").textContent = "GENERATE A PASSWORD TO BEGIN. THE SECRET IS NOT SAVED IN REPORTS OR HISTORY.";
+    $("credentialLength").value = "24";
+    $("credentialLengthValue").textContent = "24";
+    $("credentialLower").checked = true;
+    $("credentialUpper").checked = true;
+    $("credentialDigits").checked = true;
+    $("credentialSymbols").checked = true;
+    $("credentialPassword").type = "password";
+    $("toggleCredentialVisibility").textContent = "SHOW";
+    credentialGenerationMetadata = null;
     $("copyModuleReport").hidden = true;
     moduleReportPayload = "";
     $("operationModal").dataset.state = liveOperation ? "live" : "simulation";
@@ -425,7 +441,8 @@
     $("runOperation").innerHTML = liveOperation
       ? (networkOperation ? "START ACTIVE NETWORK RADAR <span>↗</span>" :
         fileIntegrityOperation ? "SELECT FILE & CALCULATE SHA-256 <span>↗</span>" :
-        processIntelligenceOperation ? "READ PROCESS INTELLIGENCE <span>↗</span>" : "RUN LIVE SYSTEM SCAN <span>↗</span>")
+        processIntelligenceOperation ? "READ PROCESS INTELLIGENCE <span>↗</span>" :
+        credentialLabOperation ? "GENERATE SECURE PASSWORD <span>↗</span>" : "RUN LIVE SYSTEM SCAN <span>↗</span>")
       : "INITIALIZE SIMULATION <span>▶</span>";
     $("operationModal").classList.add("open");
     $("operationModal").setAttribute("aria-hidden", "false");
@@ -440,6 +457,9 @@
     operationTimer = null;
     $("operationModal").classList.remove("open");
     $("operationModal").setAttribute("aria-hidden", "true");
+    if($("credentialPassword"))$("credentialPassword").value="";
+    if($("expectedSha256"))$("expectedSha256").value="";
+    credentialGenerationMetadata=null;moduleReportPayload="";
   }
   $("closeModal").addEventListener("click", closeOperation);
   $("cancelOperation").addEventListener("click", closeOperation);
@@ -631,6 +651,111 @@
     }
   }
 
+  function secureCredentialRandomInteger(maxExclusive) {
+    const cryptoApi = window.crypto;
+    if (!cryptoApi || typeof cryptoApi.getRandomValues !== "function") {
+      throw new Error("This platform does not expose a cryptographically secure random-number generator.");
+    }
+    const max = Math.floor(Number(maxExclusive));
+    if (!Number.isSafeInteger(max) || max < 1 || max > 0x100000000) throw new Error("The selected character set is invalid.");
+    const range = 0x100000000;
+    const limit = range - (range % max);
+    const word = new Uint32Array(1);
+    for (let attempt = 0; attempt < 128; attempt += 1) {
+      cryptoApi.getRandomValues(word);
+      if (word[0] < limit) return word[0] % max;
+    }
+    throw new Error("Secure random generation did not return an acceptable value.");
+  }
+
+  function createCredentialPassword(length, includeLower, includeUpper, includeDigits, includeSymbols) {
+    const groups = [];
+    if (includeLower) groups.push("abcdefghijklmnopqrstuvwxyz");
+    if (includeUpper) groups.push("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    if (includeDigits) groups.push("0123456789");
+    if (includeSymbols) groups.push("!#$%&()*+,-./:;<=>?@[]^_{|}~");
+    if (!groups.length) throw new Error("Select at least one character group.");
+    if (!Number.isInteger(length) || length < 12 || length > 64) throw new Error("Password length must be between 12 and 64 characters.");
+    const alphabet = Array.from(new Set(groups.join("")));
+    const output = groups.map(group => group[secureCredentialRandomInteger(group.length)]);
+    while (output.length < length) output.push(alphabet[secureCredentialRandomInteger(alphabet.length)]);
+    for (let index = output.length - 1; index > 0; index -= 1) {
+      const swap = secureCredentialRandomInteger(index + 1);
+      const value = output[index]; output[index] = output[swap]; output[swap] = value;
+    }
+    return {password:output.join(""),length,alphabetSize:alphabet.length,enabledGroups:groups.length,
+      estimatedBits:Math.round(length*Math.log2(alphabet.length)*10)/10};
+  }
+
+  function runLiveCredentialLab(operation) {
+    if (selectedOperation !== operation || !$("operationModal").classList.contains("open")) return;
+    $("progressArea").hidden = false;
+    $("modalResult").hidden = true;
+    $("copyModuleReport").hidden = true;
+    $("runOperation").disabled = true;
+    $("runOperation").textContent = "GENERATING SECURE PASSWORD...";
+    $("progressLabel").textContent = "WEB CRYPTO / CSPRNG";
+    $("progressPercent").textContent = "50%";
+    $("progressBar").style.width = "50%";
+    $("progressOutput").textContent = [
+      "╔══ BYTE PHANTOM / CREDENTIAL LAB ══════════════╗",
+      "[INIT] Requesting cryptographically secure random values",
+      "[SAFE] Web Crypto getRandomValues / rejection sampling",
+      "[SAFE] At least one character from each selected group",
+      "[SAFE] No network request / no account / no password storage",
+      "[RUN] Generating requested local secret..."
+    ].join("\n");
+    const runToken = -(++liveScanSequence);
+    operationTimer = runToken;
+    $("credentialPassword").value = "";
+    try {
+      const result = createCredentialPassword(
+        Number($("credentialLength").value),
+        $("credentialLower").checked,$("credentialUpper").checked,
+        $("credentialDigits").checked,$("credentialSymbols").checked
+      );
+      $("credentialPassword").value = result.password;
+      $("credentialPassword").type = "password";
+      $("toggleCredentialVisibility").textContent = "SHOW";
+      const strength = result.estimatedBits >= 128 ? "VERY HIGH" : result.estimatedBits >= 90 ? "HIGH" : result.estimatedBits >= 60 ? "MODERATE" : "LOW";
+      const metadata = {length:result.length,alphabetSize:result.alphabetSize,enabledGroups:result.enabledGroups,
+        estimatedBits:result.estimatedBits,strengthEstimate:strength,generator:"WEB CRYPTO getRandomValues",
+        rejectionSampling:true,generatedAt:new Date().toISOString()};
+      credentialGenerationMetadata = metadata;
+      $("credentialFeedback").textContent = "GENERATED · "+result.length+" CHARACTERS · "+result.alphabetSize+" POSSIBLE SYMBOLS · "+result.estimatedBits+" ESTIMATED BITS";
+      const report = [
+        "╔══ BYTE PHANTOM / CREDENTIAL LAB ══════════════╗",
+        "GENERATOR   WEB CRYPTO getRandomValues",
+        "LENGTH      "+result.length+" CHARACTERS",
+        "CHARSET     "+result.alphabetSize+" POSSIBLE CHARACTERS / "+result.enabledGroups+" GROUPS",
+        "ENTROPY     "+result.estimatedBits+" BITS / THEORETICAL POOL ESTIMATE",
+        "ESTIMATE    "+strength,
+        "SECRET      DISPLAYED IN THE PASSWORD FIELD ONLY",
+        "STORAGE     NOT SAVED / NOT LOGGED / NOT INCLUDED IN REPORT",
+        "NETWORK     NO CONNECTIONS / NO ACCOUNT TESTS",
+        "╚═══════════════════════════════════════════════╝"
+      ].join("\n");
+      $("progressPercent").textContent="100%";$("progressBar").style.width="100%";
+      $("progressLabel").textContent="PASSWORD GENERATED LOCALLY";
+      $("progressOutput").textContent=report;$("modalResult").hidden=false;$("modalResult").textContent=report;
+      $("runOperation").textContent="GENERATE ANOTHER PASSWORD";$("copyModuleReport").hidden=false;
+      moduleReportPayload=JSON.stringify({app:"BYTE PHANTOM",report:"CREDENTIAL LAB",...metadata},null,2);
+      operationCount+=1;$("runCount").textContent=String(operationCount).padStart(2,"0");$("runStatus").textContent="COMPLETE";
+      addActivity(operation.name,"Generated a local cryptographic password ("+result.length+" characters, "+result.estimatedBits+" estimated pool bits). The secret itself was not logged.",false);
+      appendDashboardLog("CREDENTIAL LAB generated a local password; secret not recorded.","term-green");
+      playSfx("success");
+    } catch(error) {
+      $("progressLabel").textContent="GENERATION FAILED";$("progressPercent").textContent="—";
+      $("progressOutput").textContent="[ERROR] "+(error&&error.message?error.message:String(error));
+      $("modalResult").hidden=false;$("modalResult").textContent="CREDENTIAL LAB COULD NOT GENERATE A PASSWORD\n\n"+(error&&error.message?error.message:String(error));
+      $("credentialFeedback").textContent="GENERATION FAILED · CHECK THE SELECTED OPTIONS.";
+      $("runOperation").textContent="TRY AGAIN";
+    } finally {
+      $("runOperation").disabled=false;
+      if(operationTimer===runToken)operationTimer=null;
+    }
+  }
+
   function runOperation() {
     if (!selectedOperation || operationTimer) return;
     const operation = selectedOperation;
@@ -638,6 +763,7 @@
       if (operation.liveType === "network") runLiveNetworkRadar(operation);
       else if (operation.liveType === "file-integrity") runLiveFileIntegrity(operation);
       else if (operation.liveType === "process-intelligence") runLiveProcessIntelligence(operation);
+      else if (operation.liveType === "credential-lab") runLiveCredentialLab(operation);
       else runLiveSystemScan(operation);
       return;
     }
@@ -2538,6 +2664,17 @@
     playSfx("success");
   }
   $("runOperation").addEventListener("click", runOperation);
+  $("credentialLength").addEventListener("input", function () {$("credentialLengthValue").textContent=String($("credentialLength").value);});
+  $("toggleCredentialVisibility").addEventListener("click",function(){
+    const field=$("credentialPassword"),visible=field.type==="password";field.type=visible?"text":"password";
+    $("toggleCredentialVisibility").textContent=visible?"HIDE":"SHOW";
+  });
+  $("copyCredential").addEventListener("click",async function(){
+    const value=$("credentialPassword").value;if(!value){$("credentialFeedback").textContent="GENERATE A PASSWORD BEFORE COPYING.";return;}
+    const copied=await copyNetworkRadarText(value);
+    $("credentialFeedback").textContent=copied?"PASSWORD COPIED TO CLIPBOARD. BYTE PHANTOM DOES NOT STORE THE SECRET.":"COPY FAILED · SELECT THE PASSWORD FIELD AND COPY IT MANUALLY.";
+    if(copied)playSfx("success");
+  });
   $("copyModuleReport").addEventListener("click", async function () {
     if (!moduleReportPayload) return;
     const copied = await copyNetworkRadarText(moduleReportPayload);
@@ -2624,6 +2761,7 @@
         terminalLine("modules    - list available operation modules");
         terminalLine("scan       - open the live Windows host inventory module");
         terminalLine("radar      - start active local IPv4 discovery and live network monitoring");
+        terminalLine("credential - open the local cryptographic password generator");
         terminalLine("whoami     - show the current fictional operator");
         terminalLine("date       - show this device's local date and time");
         terminalLine("profile    - open the fictional profile generator");
@@ -2632,7 +2770,7 @@
         break;
       case "status":
         terminalLine("CORE: ONLINE | MODE: LOCAL / READ-ONLY + SIM MODULES", "success");
-        terminalLine("LIVE MODULES: 01 / 12 | ALL OTHER MODULES: SIMULATED", "info");
+        terminalLine("LIVE MODULES: 05 / 12 | SEVEN OTHER MODULES: SIMULATED", "info");
         terminalLine("OPERATIONS THIS SESSION: " + operationCount, "info");
         break;
       case "modules":
@@ -2646,6 +2784,10 @@
       case "radar":
         terminalLine("Opening active local IPv4 Network Radar and live change monitor...", "info");
         openOperation("network-radar");
+        break;
+      case "credential":
+        terminalLine("Opening local cryptographic password generator...", "info");
+        openOperation("credential-lab");
         break;
       case "whoami":
         terminalLine("OPERATOR: GHOST USER", "success");
