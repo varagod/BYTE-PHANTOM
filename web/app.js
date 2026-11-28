@@ -12,8 +12,8 @@
     { id:"camera-access", name:"CAMERA ACCESS", icon:"◉", tone:"cyan-card", category:"access", description:"Open a fictional CCTV scene with generated test frames. The application never requests camera permission.", target:"VIRTUAL_CAM_03", stages:["Opening virtual camera channel","Loading generated preview frame","Rendering mock telemetry","Closing virtual feed"], result:["CAMERA: VIRTUAL-CAM-03","PREVIEW: GENERATED TEST GRAPHIC","PHYSICAL CAMERA: NOT ACCESSED","FEED: CLOSED SAFELY"] },
     { id:"satellite-link", name:"SATELLITE LINK", icon:"✧", tone:"cyan-card", category:"access", description:"Animate a fictional satellite handshake and orbital telemetry sequence.", target:"ORBITAL_SIM_NODE_09", stages:["Searching local satellite catalog","Simulating orbital handshake","Rendering mock telemetry","Terminating demo link"], result:["SATELLITE: ORBITAL-SIM-09","ALTITUDE: 540 KM (FICTIONAL)","LINK QUALITY: 98% DEMO","RADIO TRANSMISSION: NONE"] },
     { id:"mainframe-override", name:"MAINFRAME OVERRIDE", icon:"▤", tone:"", category:"access", description:"Run a fictional access-control puzzle inside an imaginary mainframe environment.", target:"PHANTOM_MAINFRAME_X", stages:["Loading virtual mainframe","Checking mock access layers","Resolving local control puzzle","Restoring default sandbox state"], result:["MAINFRAME: VIRTUAL-X","CONTROL LAYERS: 05 DEMO LAYERS","OVERRIDE: SIMULATION COMPLETE","SYSTEM STATE: RESTORED"] },
-    { id:"data-extraction", name:"DATA EXTRACTION", icon:"▧", tone:"amber-card", category:"data", description:"Generate a local preview of fictional files and package sample metadata.", target:"DEMO_ARCHIVE_001", stages:["Creating temporary sample archive","Enumerating fictional file names","Building mock metadata index","Removing temporary archive"], result:["FILES INDEXED: 18 FICTIONAL ITEMS","ARCHIVE: DEMO-PACKAGE-001","SOURCE: BUILT-IN SAMPLE DATA","TEMPORARY FILES: REMOVED"] },
-    { id:"digital-forensics", name:"DIGITAL FORENSICS", icon:"⌕", tone:"amber-card", category:"data", description:"Analyze a built-in fictional evidence set and generate a local forensic summary.", target:"CASE_FILE_PH-014", stages:["Opening fictional evidence case","Reviewing mock file metadata","Comparing sample timestamps","Preparing forensic summary"], result:["CASE: PH-014 / TRAINING SAMPLE","ARTIFACTS: 09 MOCK ITEMS","TIMELINE: GENERATED LOCALLY","CONCLUSION: DEMO REPORT READY"] },
+    { id:"file-integrity", name:"FILE INTEGRITY", icon:"⌗", tone:"amber-card", category:"data", description:"Select one file with the operating-system picker, calculate its SHA-256 digest, and optionally compare it with a known hash. Read-only; no file upload or modification.", target:"ONE USER-SELECTED FILE", live:true, liveType:"file-integrity" },
+    { id:"process-intelligence", name:"PROCESS INTELLIGENCE", icon:"◌", tone:"cyan-card", category:"recon", description:"Windows: inspect up to 80 local processes with PID, working-set memory, CPU time and available path. Android: inspect only the BYTE PHANTOM app process and memory, not other apps.", target:"LOCAL PROCESS INVENTORY", live:true, liveType:"process-intelligence" },
     { id:"encryption-breaker", name:"ENCRYPTION BREAKER", icon:"⟡", tone:"amber-card", category:"data", description:"Solve a toy cipher embedded in the simulator. No external files or real encrypted data are used.", target:"TOY_CIPHER_C-12", stages:["Loading built-in toy cipher","Mapping sample substitution table","Resolving training puzzle","Verifying local demonstration"], result:["CIPHER: C-12 / TOY EXERCISE","PUZZLE: SOLVED LOCALLY","REAL ENCRYPTION: UNTOUCHED","OUTPUT: FICTIONAL TRAINING TEXT"] }
   ];
 
@@ -72,6 +72,7 @@
   let dnsFailoverState = null;
   let dnsFailoverActionBusy = false;
   let operationCount = 0;
+  let moduleReportPayload = "";
   let activity = [];
   const audioState = {
     context: null, masterGain: null, musicGain: null, sfxGain: null,
@@ -343,7 +344,11 @@
     info.append(title, description);
     const state = document.createElement("em");
     state.className = "module-state " + (operation.live ? "module-state-live" : "module-state-sim");
-    state.textContent = operation.live ? (operation.liveType === "network" ? "LIVE / ACTIVE LAN" : "LIVE / READ-ONLY") : "SIMULATION";
+    state.textContent = operation.live
+      ? (operation.liveType === "network" ? "LIVE / ACTIVE LAN" :
+        operation.liveType === "file-integrity" ? "LIVE / SHA-256" :
+        operation.liveType === "process-intelligence" ? "LIVE / LOCAL PROCESSES" : "LIVE / READ-ONLY")
+      : "SIMULATION";
     info.appendChild(state);
     const arrow = document.createElement("i");
     arrow.className = "operation-arrow";
@@ -366,6 +371,8 @@
     selectedOperation = operation;
     const liveOperation = operation.live === true;
     const networkOperation = operation.liveType === "network";
+    const fileIntegrityOperation = operation.liveType === "file-integrity";
+    const processIntelligenceOperation = operation.liveType === "process-intelligence";
     ++liveScanSequence;
     networkRadarSessionToken = liveScanSequence;
     networkRadarKnownDevices = new Map();
@@ -379,11 +386,28 @@
     $("modalIcon").textContent = operation.icon;
     $("modalTitle").textContent = operation.name;
     $("modalDescription").textContent = operation.description;
-    $("modalModeLabel").textContent = liveOperation ? (networkOperation ? "LIVE LAN RADAR / ACTIVE DISCOVERY" : "LIVE WINDOWS INTELLIGENCE") : "SIMULATION MODULE";
-    $("modalTargetLabel").textContent = liveOperation ? (networkOperation ? "LOCAL NETWORK SCOPE" : "HOST SCOPE") : "SIMULATED TARGET";
+    $("modalModeLabel").textContent = liveOperation
+      ? (networkOperation ? "LIVE LAN RADAR / ACTIVE DISCOVERY" :
+        fileIntegrityOperation ? "LIVE FILE INTEGRITY / SHA-256" :
+        processIntelligenceOperation ? "LIVE PROCESS INTELLIGENCE" : "LIVE WINDOWS INTELLIGENCE")
+      : "SIMULATION MODULE";
+    $("modalTargetLabel").textContent = liveOperation
+      ? (networkOperation ? "LOCAL NETWORK SCOPE" : fileIntegrityOperation ? "USER-SELECTED FILE" : processIntelligenceOperation ? "LOCAL PROCESS SCOPE" : "HOST SCOPE")
+      : "SIMULATED TARGET";
     $("modalTarget").textContent = operation.target;
-    $("modalTargetTag").textContent = liveOperation ? (networkOperation ? "PRIVATE IPV4 / ACTIVE" : "LOCAL / READ-ONLY") : "DEMO / FICTIONAL";
-    $("modalSafety").textContent = liveOperation ? (networkOperation ? "PRIVATE LAN ONLY · ICMP + ARP DISCOVERY · NO PORT SCANNING" : "READ-ONLY INVENTORY · NO NETWORK PROBES · NO SYSTEM CHANGES") : "SIMULATED OUTPUT · NO REAL TARGET OR DEVICE ACCESS";
+    $("modalTargetTag").textContent = liveOperation
+      ? (networkOperation ? "PRIVATE IPV4 / ACTIVE" : fileIntegrityOperation ? "USER CONSENT / READ ONLY" : processIntelligenceOperation ? "LOCAL / READ ONLY" : "LOCAL / READ-ONLY")
+      : "DEMO / FICTIONAL";
+    $("modalSafety").textContent = liveOperation
+      ? (networkOperation ? "PRIVATE LAN ONLY · ICMP + ARP DISCOVERY · NO PORT SCANNING" :
+        fileIntegrityOperation ? "OS FILE PICKER · STREAMED SHA-256 · NO UPLOAD · NO FILE MODIFICATION" :
+        processIntelligenceOperation ? "READ-ONLY PROCESS INVENTORY · WINDOWS TOP 80 / ANDROID APP PROCESS ONLY · NO ELEVATION" :
+        "READ-ONLY INVENTORY · NO NETWORK PROBES · NO SYSTEM CHANGES")
+      : "SIMULATED OUTPUT · NO REAL TARGET OR DEVICE ACCESS";
+    $("integrityOptions").hidden = !fileIntegrityOperation;
+    $("expectedSha256").value = "";
+    $("copyModuleReport").hidden = true;
+    moduleReportPayload = "";
     $("operationModal").dataset.state = liveOperation ? "live" : "simulation";
     $("operationModal").dataset.operation = operation.id;
     $("networkRadarResults").hidden = true;
@@ -398,7 +422,11 @@
     $("progressOutput").textContent = "";
     $("progressLabel").textContent = "INITIALIZING";
     $("runOperation").disabled = false;
-    $("runOperation").innerHTML = liveOperation ? (networkOperation ? "START ACTIVE NETWORK RADAR <span>↗</span>" : "RUN LIVE SYSTEM SCAN <span>↗</span>") : "INITIALIZE SIMULATION <span>▶</span>";
+    $("runOperation").innerHTML = liveOperation
+      ? (networkOperation ? "START ACTIVE NETWORK RADAR <span>↗</span>" :
+        fileIntegrityOperation ? "SELECT FILE & CALCULATE SHA-256 <span>↗</span>" :
+        processIntelligenceOperation ? "READ PROCESS INTELLIGENCE <span>↗</span>" : "RUN LIVE SYSTEM SCAN <span>↗</span>")
+      : "INITIALIZE SIMULATION <span>▶</span>";
     $("operationModal").classList.add("open");
     $("operationModal").setAttribute("aria-hidden", "false");
     tone();
@@ -425,11 +453,191 @@
     }
   });
 
+  function completeNativeModule(operation, reportText, payload, activityText, warning) {
+    if (selectedOperation !== operation || !$("operationModal").classList.contains("open")) return;
+    $("progressArea").hidden = false;
+    $("progressLabel").textContent = "READ-ONLY REPORT READY";
+    $("progressPercent").textContent = "100%";
+    $("progressBar").style.width = "100%";
+    $("progressOutput").textContent = reportText;
+    $("modalResult").hidden = false;
+    $("modalResult").textContent = reportText;
+    $("runOperation").disabled = false;
+    $("runOperation").textContent = "RUN AGAIN";
+    moduleReportPayload = payload;
+    $("copyModuleReport").hidden = false;
+    operationCount += 1;
+    $("runCount").textContent = String(operationCount).padStart(2, "0");
+    $("runStatus").textContent = "COMPLETE";
+    addActivity(operation.name, activityText, warning === true);
+    appendDashboardLog(operation.name + " completed a local read-only report.", warning ? "term-amber" : "term-green");
+    playSfx(warning ? "warning" : "success");
+  }
+
+  function showNativeModuleError(operation, message) {
+    if (selectedOperation !== operation || !$("operationModal").classList.contains("open")) return;
+    $("progressArea").hidden = false;
+    $("progressLabel").textContent = "OPERATION COULD NOT COMPLETE";
+    $("progressPercent").textContent = "—";
+    $("progressOutput").textContent = "[ERROR] " + message;
+    $("modalResult").hidden = false;
+    $("modalResult").textContent = operation.name + " UNAVAILABLE\n\n" + message + "\n\nNo data has been changed or uploaded.";
+    $("runOperation").disabled = false;
+    $("runOperation").textContent = "TRY AGAIN";
+  }
+
+  async function runLiveFileIntegrity(operation) {
+    const bridge = getNetworkRadarBridge();
+    if (!bridge || typeof bridge.pickAndHashFile !== "function") {
+      showNativeModuleError(operation, "Install the Windows EXE or Android APK to use the native operating-system file picker.");
+      return;
+    }
+    const expected = String($("expectedSha256").value || "").trim().toLowerCase();
+    if (expected && !/^[a-f0-9]{64}$/.test(expected)) {
+      showNativeModuleError(operation, "The expected SHA-256 value must be exactly 64 hexadecimal characters.");
+      $("expectedSha256").focus();
+      return;
+    }
+    const runToken = -(++liveScanSequence);
+    operationTimer = runToken;
+    $("progressArea").hidden = false;
+    $("modalResult").hidden = true;
+    $("copyModuleReport").hidden = true;
+    $("runOperation").disabled = true;
+    $("runOperation").textContent = "WAITING FOR FILE SELECTION...";
+    $("progressLabel").textContent = "OPENING SYSTEM FILE PICKER";
+    $("progressPercent").textContent = "10%";
+    $("progressBar").style.width = "10%";
+    $("progressOutput").textContent = [
+      "╔══ BYTE PHANTOM / FILE INTEGRITY ═══════════════╗",
+      "[SAFE] Read-only file access; no file is modified",
+      "[SAFE] File content is not uploaded by BYTE PHANTOM",
+      "[HASH] Streaming SHA-256 calculation",
+      expected ? "[COMPARE] A reference digest was supplied" : "[COMPARE] No reference digest; calculate only",
+      "[WAIT] Choose one file in the operating-system picker..."
+    ].join("\n");
+    try {
+      const result = await bridge.pickAndHashFile(expected);
+      if (selectedOperation !== operation || !$("operationModal").classList.contains("open")) return;
+      if (result && result.cancelled === true) {
+        $("progressLabel").textContent = "FILE SELECTION CANCELLED";
+        $("progressPercent").textContent = "—";
+        $("progressOutput").textContent += "\n[INFO] No file was selected. No file was read.";
+        $("modalResult").hidden = false;
+        $("modalResult").textContent = "FILE ANALYSIS CANCELLED\n\nNo file was selected and no data was read.";
+        return;
+      }
+      if (!result || result.supported !== true || !result.sha256) {
+        throw new Error(result && result.reason ? result.reason : "The native file-integrity provider returned no SHA-256 digest.");
+      }
+      const matchState = result.match === true ? "MATCH" : result.match === false ? "MISMATCH" : "NOT REQUESTED";
+      const stableState = result.stableRead === false ? "FILE CHANGED DURING READ" : result.stableRead === true ? "STABLE METADATA" : "PROVIDER STABILITY NOT VERIFIED";
+      const report = [
+        "╔══ BYTE PHANTOM / FILE INTEGRITY REPORT ═══════╗",
+        "FILE       " + String(result.fileName || "Selected file"),
+        result.filePath ? "PATH       " + result.filePath : "PATH       PROVIDED BY DOCUMENT PICKER",
+        "PLATFORM   " + String(result.platform || bridge.platform || "NATIVE"),
+        "SIZE       " + formatBytes(result.sizeBytes),
+        "MIME TYPE  " + String(result.mimeType || "UNKNOWN"),
+        "SHA-256    " + result.sha256,
+        "REFERENCE  " + (result.expectedSha256 || "NOT PROVIDED"),
+        "COMPARE    " + matchState,
+        "READ       " + stableState,
+        "TIME       " + new Date(result.collectedAt || Date.now()).toLocaleString(),
+        "SCOPE      READ-ONLY / NO BYTE PHANTOM UPLOAD / NO FILE WRITE",
+        "╚═══════════════════════════════════════════════╝"
+      ].join("\n");
+      const payload = JSON.stringify({app:"BYTE PHANTOM",report:"FILE INTEGRITY",result:{...result,integrityStatus:matchState}},null,2);
+      completeNativeModule(operation,report,payload,
+        "SHA-256 calculated for "+String(result.fileName||"the selected file")+" ("+formatBytes(result.sizeBytes)+"). Comparison: "+matchState+".",
+        matchState==="MISMATCH"||stableState==="FILE CHANGED DURING READ");
+    } catch (error) {
+      showNativeModuleError(operation,error&&error.message?error.message:String(error));
+    } finally {
+      if (operationTimer === runToken) operationTimer = null;
+      if (selectedOperation === operation && $("operationModal").classList.contains("open")) {
+        $("runOperation").disabled = false;
+        if (!moduleReportPayload) $("runOperation").textContent = "SELECT FILE & CALCULATE SHA-256";
+      }
+    }
+  }
+
+  async function runLiveProcessIntelligence(operation) {
+    const bridge = getNetworkRadarBridge();
+    if (!bridge || typeof bridge.getProcessSnapshot !== "function") {
+      showNativeModuleError(operation,"Install the Windows EXE or Android APK to access the local process snapshot.");
+      return;
+    }
+    const runToken = -(++liveScanSequence);
+    operationTimer = runToken;
+    $("progressArea").hidden = false;
+    $("modalResult").hidden = true;
+    $("copyModuleReport").hidden = true;
+    $("runOperation").disabled = true;
+    $("runOperation").textContent = "READING LOCAL PROCESSES...";
+    $("progressLabel").textContent = "READ-ONLY PROCESS SNAPSHOT";
+    $("progressPercent").textContent = "20%";
+    $("progressBar").style.width = "20%";
+    $("progressOutput").textContent = [
+      "╔══ BYTE PHANTOM / PROCESS INTELLIGENCE ════════╗",
+      "[READ] Querying local operating-system process data",
+      "[SAFE] No process is stopped, suspended, injected or modified",
+      "[SAFE] No elevation or network probes",
+      "[WAIT] Collecting process and memory details..."
+    ].join("\n");
+    try {
+      const result = await bridge.getProcessSnapshot();
+      if (selectedOperation !== operation || !$("operationModal").classList.contains("open")) return;
+      if (!result || result.supported !== true) throw new Error(result&&result.reason?result.reason:"The platform did not provide a process snapshot.");
+      const lines = ["╔══ BYTE PHANTOM / PROCESS INTELLIGENCE ═══════════════════╗","PLATFORM "+String(result.platform||bridge.platform||"NATIVE")];
+      if (result.platform === "ANDROID" && result.process) {
+        const item=result.process;
+        lines.push(
+          "SCOPE    CURRENT BYTE PHANTOM APP PROCESS ONLY",
+          "PACKAGE  "+String(item.name||"UNKNOWN"),
+          "PID      "+String(item.pid||"N/A")+" / UID "+String(item.uid||"N/A"),
+          "APP PSS  "+formatBytes(item.memoryPssBytes),
+          "HEAP     "+formatBytes(item.heapUsedBytes)+" USED / "+formatBytes(item.heapAllocatedBytes)+" ALLOCATED",
+          "HEAP MAX "+formatBytes(item.heapMaxBytes),
+          "DEVICE RAM "+formatBytes(result.systemMemory&&result.systemMemory.availableBytes)+" AVAILABLE / "+formatBytes(result.systemMemory&&result.systemMemory.totalBytes)+" TOTAL",
+          "NOTE     Android does not expose a general inventory of other apps' processes to ordinary apps."
+        );
+      } else {
+        const rows=Array.isArray(result.processes)?result.processes:[];
+        lines.push("TOTAL PROCESSES "+String(result.totalCount||rows.length),
+          "DISPLAYED       "+String(result.returnedCount||rows.length)+(result.truncated?" / TOP 80 BY WORKING SET":""),
+          "","PID       MEMORY       CPU(s)    PROCESS","──────────────────────────────────────────────────────────");
+        rows.slice(0,40).forEach(item=>{
+          const pid=String(item.pid||"").padEnd(8);
+          const memory=formatBytes(item.memoryBytes).padEnd(12);
+          const cpu=item.cpuSeconds==null?"N/A":String(item.cpuSeconds);
+          lines.push(pid+" "+memory+" "+cpu.padEnd(8)+" "+String(item.name||"UNKNOWN"));
+        });
+        lines.push("","Executable paths are collected when Windows permits access; protected processes may omit them.");
+      }
+      lines.push("","TIME  "+new Date(result.collectedAt||Date.now()).toLocaleString(),"SCOPE READ-ONLY LOCAL INVENTORY / NO PROCESS CONTROL / NO NETWORK PROBES");
+      const report=lines.join("\n");
+      const payload=JSON.stringify({app:"BYTE PHANTOM",report:"PROCESS INTELLIGENCE",result},null,2);
+      completeNativeModule(operation,report,payload,
+        result.platform==="ANDROID"
+          ? "Read the BYTE PHANTOM app process and device memory snapshot. Other Android apps' processes were not enumerated."
+          : "Read "+String(result.returnedCount||0)+" local Windows process records from "+String(result.totalCount||0)+" available processes.",
+        false);
+    } catch(error) {
+      showNativeModuleError(operation,error&&error.message?error.message:String(error));
+    } finally {
+      if(operationTimer===runToken)operationTimer=null;
+      if(selectedOperation===operation&&$("operationModal").classList.contains("open"))$("runOperation").disabled=false;
+    }
+  }
+
   function runOperation() {
     if (!selectedOperation || operationTimer) return;
     const operation = selectedOperation;
     if (operation.live === true) {
       if (operation.liveType === "network") runLiveNetworkRadar(operation);
+      else if (operation.liveType === "file-integrity") runLiveFileIntegrity(operation);
+      else if (operation.liveType === "process-intelligence") runLiveProcessIntelligence(operation);
       else runLiveSystemScan(operation);
       return;
     }
@@ -2070,6 +2278,8 @@
         diagnose: () => desktop.runConnectivityDiagnostics(),
         discoverDns: () => desktop.discoverDnsResolvers(),
         getDnsFailoverState: () => desktop.getDnsFailoverState(),
+        getProcessSnapshot: () => desktop.getProcessSnapshot(),
+        pickAndHashFile: expectedSha256 => desktop.pickAndHashFile({expectedSha256: expectedSha256 || ""}),
         applyDnsResolver: settings => desktop.applyDnsResolver(settings || {}),
         restoreDnsResolver: options => desktop.restoreDnsResolver(options || {})
       };
@@ -2105,6 +2315,8 @@
         diagnose: () => networkRadarAndroidPlugin.diagnoseConnectivity(),
         discoverDns: () => networkRadarAndroidPlugin.discoverDnsResolvers(),
         getDnsFailoverState: () => networkRadarAndroidPlugin.getDnsFailoverState(),
+        getProcessSnapshot: () => networkRadarAndroidPlugin.getProcessSnapshot(),
+        pickAndHashFile: expectedSha256 => networkRadarAndroidPlugin.pickAndHashFile({expectedSha256: expectedSha256 || ""}),
         openDnsSettings: () => networkRadarAndroidPlugin.openDnsSettings()
       };
     }
@@ -2326,6 +2538,12 @@
     playSfx("success");
   }
   $("runOperation").addEventListener("click", runOperation);
+  $("copyModuleReport").addEventListener("click", async function () {
+    if (!moduleReportPayload) return;
+    const copied = await copyNetworkRadarText(moduleReportPayload);
+    $("copyModuleReport").textContent = copied ? "COPIED ✓" : "COPY FAILED";
+    if (copied) playSfx("success");
+  });
   $("runNetworkDiagnostics").addEventListener("click", runNetworkConnectivityDiagnostics);
   $("toggleOutageWatch").addEventListener("click", startOutageWatch);
   $("outageWatchInterval").addEventListener("change", updateOutageWatchControls);

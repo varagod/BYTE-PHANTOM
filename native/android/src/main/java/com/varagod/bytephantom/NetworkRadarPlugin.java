@@ -1,6 +1,11 @@
 package com.varagod.bytephantom;
 
 import android.content.Context;
+import android.app.ActivityManager;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Debug;
+import android.provider.OpenableColumns;
 import android.content.Intent;
 import android.provider.Settings;
 import android.net.ConnectivityManager;
@@ -14,6 +19,8 @@ import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
+import com.getcapacitor.annotation.ActivityCallback;
+import androidx.activity.result.ActivityResult;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
@@ -21,6 +28,9 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.InputStreamReader;
@@ -53,6 +63,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -141,6 +152,133 @@ public class NetworkRadarPlugin extends Plugin {
                 } catch (Exception secondError) {
                     call.reject("Unable to open Android network settings: " + secondError.getMessage());
                 }
+            }
+        });
+    }
+
+    @PluginMethod
+    public void getProcessSnapshot(PluginCall call) {
+        scanExecutor.execute(() -> {
+            try {
+                ActivityManager manager = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
+                ActivityManager.MemoryInfo systemMemory = new ActivityManager.MemoryInfo();
+                if (manager != null) manager.getMemoryInfo(systemMemory);
+                Runtime runtime = Runtime.getRuntime();
+                Debug.MemoryInfo appMemory = new Debug.MemoryInfo();
+                Debug.getMemoryInfo(appMemory);
+                JSObject process = new JSObject();
+                process.put("name", getContext().getPackageName());
+                process.put("pid", android.os.Process.myPid());
+                process.put("uid", android.os.Process.myUid());
+                process.put("memoryPssBytes", Math.max(0L, (long) appMemory.getTotalPss() * 1024L));
+                process.put("heapUsedBytes", Math.max(0L, runtime.totalMemory() - runtime.freeMemory()));
+                process.put("heapAllocatedBytes", runtime.totalMemory());
+                process.put("heapMaxBytes", runtime.maxMemory());
+                JSObject memory = new JSObject();
+                memory.put("totalBytes", systemMemory.totalMem);
+                memory.put("availableBytes", systemMemory.availMem);
+                memory.put("lowMemory", systemMemory.lowMemory);
+                memory.put("thresholdBytes", systemMemory.threshold);
+                JSObject result = new JSObject();
+                result.put("supported", true);
+                result.put("platform", "ANDROID");
+                result.put("collectedAt", java.time.Instant.now().toString());
+                result.put("process", process);
+                result.put("systemMemory", memory);
+                result.put("totalCount", 1);
+                result.put("returnedCount", 1);
+                result.put("truncated", true);
+                result.put("scope", "ANDROID PRIVACY LIMIT: CURRENT BYTE PHANTOM APP PROCESS ONLY; OTHER APPS' PROCESS DETAILS ARE NOT ENUMERATED");
+                result.put("systemChangesMade", false);
+                result.put("networkProbesPerformed", false);
+                call.resolve(result);
+            } catch (Exception exception) {
+                call.reject("Android process snapshot failed: " +
+                    (exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage()));
+            }
+        });
+    }
+
+    @PluginMethod
+    public void pickAndHashFile(PluginCall call) {
+        String expected = call.getString("expectedSha256");
+        expected = expected == null ? "" : expected.trim().toLowerCase(Locale.ROOT);
+        if (!expected.isEmpty() && !expected.matches("[0-9a-f]{64}")) {
+            call.reject("Expected SHA-256 must contain exactly 64 hexadecimal characters.");
+            return;
+        }
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivityForResult(call, intent, "handleFileIntegritySelection");
+    }
+
+    @ActivityCallback
+    private void handleFileIntegritySelection(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        if (result == null || result.getResultCode() != android.app.Activity.RESULT_OK ||
+            result.getData() == null || result.getData().getData() == null) {
+            JSObject cancelled = new JSObject();
+            cancelled.put("supported", true);
+            cancelled.put("cancelled", true);
+            cancelled.put("platform", "ANDROID");
+            call.resolve(cancelled);
+            return;
+        }
+        Uri uri = result.getData().getData();
+        String expected = call.getString("expectedSha256");
+        expected = expected == null ? "" : expected.trim().toLowerCase(Locale.ROOT);
+        final String expectedHash = expected;
+        scanExecutor.execute(() -> {
+            try {
+                String fileName = uri.getLastPathSegment() == null ? "Selected document" : uri.getLastPathSegment();
+                Cursor cursor = null;
+                try {
+                    cursor = getContext().getContentResolver().query(uri, new String[] {OpenableColumns.DISPLAY_NAME}, null, null, null);
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int nameColumn = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                        if (nameColumn >= 0) fileName = cursor.getString(nameColumn);
+                    }
+                } finally {
+                    if (cursor != null) cursor.close();
+                }
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                long bytesRead = 0L;
+                try (InputStream input = getContext().getContentResolver().openInputStream(uri)) {
+                    if (input == null) throw new IOException("The selected document provider did not return a readable stream.");
+                    byte[] buffer = new byte[64 * 1024];
+                    int count;
+                    while ((count = input.read(buffer)) != -1) {
+                        digest.update(buffer, 0, count);
+                        bytesRead += count;
+                    }
+                }
+                StringBuilder hex = new StringBuilder(64);
+                for (byte value : digest.digest()) hex.append(String.format(Locale.ROOT, "%02x", value & 0xff));
+                String sha256 = hex.toString();
+                String mimeType = getContext().getContentResolver().getType(uri);
+                JSObject resultData = new JSObject();
+                resultData.put("supported", true);
+                resultData.put("cancelled", false);
+                resultData.put("platform", "ANDROID");
+                resultData.put("fileName", fileName);
+                resultData.put("mimeType", mimeType == null ? "" : mimeType);
+                resultData.put("sizeBytes", bytesRead);
+                resultData.put("sha256", sha256);
+                resultData.put("expectedSha256", expectedHash.isEmpty() ? JSONObject.NULL : expectedHash);
+                resultData.put("match", expectedHash.isEmpty() ? JSONObject.NULL : Boolean.valueOf(sha256.equals(expectedHash)));
+                resultData.put("stableRead", JSONObject.NULL);
+                resultData.put("collectedAt", java.time.Instant.now().toString());
+                resultData.put("scope", "USER-SELECTED ANDROID DOCUMENT PROVIDER / STREAMED READ-ONLY SHA-256 / NO UPLOAD / NO FILE MODIFICATION");
+                resultData.put("providerNote", "Android document providers may expose local or cloud-backed files. A cloud provider may fetch the selected content when opened.");
+                resultData.put("systemChangesMade", false);
+                call.resolve(resultData);
+            } catch (NoSuchAlgorithmException exception) {
+                call.reject("SHA-256 is unavailable on this Android runtime.", exception);
+            } catch (Exception exception) {
+                call.reject("Could not read and hash the selected document: " +
+                    (exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage()), exception);
             }
         });
     }

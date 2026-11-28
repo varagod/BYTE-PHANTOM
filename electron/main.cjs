@@ -1,7 +1,9 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("node:path");
 const os = require("node:os");
 const fs = require("node:fs/promises");
+const nodeFs = require("node:fs");
+const { createHash } = require("node:crypto");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const dnsPromises = require("node:dns").promises;
@@ -122,6 +124,76 @@ async function collectSystemSnapshot() {
   };
 }
 
+
+async function collectProcessSnapshot() {
+  if (process.platform !== "win32") {
+    return { supported: false, platform: process.platform, reason: "A full process inventory is only available in the Windows desktop build. Android reports only the BYTE PHANTOM app process." };
+  }
+  const script = `$ErrorActionPreference = 'Stop'
+$all = @(Get-Process -ErrorAction SilentlyContinue)
+$rows = @($all | Sort-Object WorkingSet64 -Descending | Select-Object -First 80 @{
+  Name = 'name'; Expression = { [string]$_.ProcessName }
+}, @{
+  Name = 'pid'; Expression = { [int]$_.Id }
+}, @{
+  Name = 'memoryBytes'; Expression = { [long]$_.WorkingSet64 }
+}, @{
+  Name = 'cpuSeconds'; Expression = { if ($null -ne $_.CPU) { [math]::Round([double]$_.CPU, 2) } else { $null } }
+}, @{
+  Name = 'startedAt'; Expression = { try { $_.StartTime.ToUniversalTime().ToString('o') } catch { $null } }
+}, @{
+  Name = 'executablePath'; Expression = { try { [string]$_.Path } catch { $null } }
+})
+$payload = [pscustomobject]@{ totalCount = $all.Count; processes = @($rows) }
+$payload | ConvertTo-Json -Depth 4 -Compress`;
+  const { stdout } = await execFileAsync("powershell.exe", [
+    "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script
+  ], { windowsHide: true, timeout: 15000, maxBuffer: 2 * 1024 * 1024, encoding: "utf8" });
+  const parsed = JSON.parse(String(stdout || "{}").trim());
+  const processes = Array.isArray(parsed.processes) ? parsed.processes : (parsed.processes ? [parsed.processes] : []);
+  return {
+    supported: true, platform: "WINDOWS", collectedAt: new Date().toISOString(),
+    totalCount: Number(parsed.totalCount) || processes.length, returnedCount: processes.length,
+    truncated: (Number(parsed.totalCount) || processes.length) > processes.length,
+    processes, scope: "READ-ONLY LOCAL PROCESS INVENTORY; TOP 80 BY WORKING SET; PATH MAY BE UNAVAILABLE WITHOUT ACCESS",
+    systemChangesMade: false, networkProbesPerformed: false
+  };
+}
+
+async function hashSelectedFile(mainWindow, expectedSha256) {
+  const expected = String(expectedSha256 || "").trim().toLowerCase();
+  if (expected && !/^[a-f0-9]{64}$/.test(expected)) throw new Error("Expected SHA-256 must contain exactly 64 hexadecimal characters.");
+  const selection = await dialog.showOpenDialog(mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined, {
+    title: "BYTE PHANTOM — Select a file for SHA-256 integrity analysis",
+    properties: ["openFile"]
+  });
+  if (selection.canceled || !Array.isArray(selection.filePaths) || !selection.filePaths[0]) {
+    return { supported: true, cancelled: true, platform: "WINDOWS" };
+  }
+  const filePath = selection.filePaths[0];
+  const before = await fs.stat(filePath);
+  if (!before.isFile()) throw new Error("The selected item is not a regular file.");
+  const hash = createHash("sha256");
+  let bytesRead = 0;
+  await new Promise((resolve, reject) => {
+    const stream = nodeFs.createReadStream(filePath);
+    stream.on("data", chunk => { bytesRead += chunk.length; hash.update(chunk); });
+    stream.once("error", reject);
+    stream.once("end", resolve);
+  });
+  const after = await fs.stat(filePath);
+  const sha256 = hash.digest("hex");
+  return {
+    supported: true, cancelled: false, platform: "WINDOWS",
+    fileName: path.basename(filePath), filePath, mimeType: "",
+    sizeBytes: bytesRead, sha256, expectedSha256: expected || null,
+    match: expected ? sha256 === expected : null,
+    stableRead: before.size === after.size && before.mtimeMs === after.mtimeMs,
+    collectedAt: new Date().toISOString(),
+    scope: "USER-SELECTED FILE / STREAMED READ-ONLY SHA-256 / NO UPLOAD / NO FILE MODIFICATION",
+    systemChangesMade: false
+  };
+}
 
 function isPrivateIPv4(address) {
   const parts=String(address||"").split(".").map(Number);
@@ -1107,6 +1179,20 @@ ipcMain.handle("byte-phantom:system-snapshot", async (event) => {
     throw new Error("System inventory is only available to the local BYTE PHANTOM desktop window.");
   }
   return collectSystemSnapshot();
+});
+
+ipcMain.handle("byte-phantom:process-snapshot", async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const senderUrl = event.senderFrame && event.senderFrame.url;
+  if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) throw new Error("Process inventory is only available to the local BYTE PHANTOM desktop window.");
+  return collectProcessSnapshot();
+});
+
+ipcMain.handle("byte-phantom:file-integrity", async (event, settings = {}) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const senderUrl = event.senderFrame && event.senderFrame.url;
+  if (!win || typeof senderUrl !== "string" || !senderUrl.startsWith("file://")) throw new Error("File integrity is only available to the local BYTE PHANTOM desktop window.");
+  return hashSelectedFile(win, settings.expectedSha256 || "");
 });
 
 ipcMain.handle("byte-phantom:window-state", (event) => {

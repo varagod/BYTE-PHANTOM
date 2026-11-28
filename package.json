@@ -1,8 +1,8 @@
 {
   "name": "byte-phantom",
-  "version": "1.19.1",
+  "version": "1.20.0",
   "private": true,
-  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with multi-target DNS diagnosis, captive portal detection, HTTPS response integrity validation, Network Radar, and assisted DNS failover.",
+  "description": "BYTE PHANTOM — local-first Cybersecurity & Network Intelligence workstation with Network Radar, DNS intelligence, outage diagnostics, file SHA-256 integrity analysis, and read-only process intelligence.",
   "scripts": {
     "start": "npx serve web",
     "android:add": "npx cap add android",

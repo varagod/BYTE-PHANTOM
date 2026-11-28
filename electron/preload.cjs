@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld("bytePhantomDesktop", Object.freeze({
   toggleFullscreen: () => ipcRenderer.invoke("byte-phantom:toggle-fullscreen"),
   getWindowState: () => ipcRenderer.invoke("byte-phantom:window-state"),
   getSystemSnapshot: () => ipcRenderer.invoke("byte-phantom:system-snapshot"),
+  getProcessSnapshot: () => ipcRenderer.invoke("byte-phantom:process-snapshot"),
+  pickAndHashFile: (settings) => ipcRenderer.invoke("byte-phantom:file-integrity", settings || {}),
   getNetworkRadar: (options) => ipcRenderer.invoke("byte-phantom:network-radar", options || {}),
   runConnectivityDiagnostics: () => ipcRenderer.invoke("byte-phantom:connectivity-diagnostics"),
   discoverDnsResolvers: () => ipcRenderer.invoke("byte-phantom:dns-discovery"),

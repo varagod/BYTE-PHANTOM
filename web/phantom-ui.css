@@ -388,3 +388,12 @@
 .network-diagnostic-row strong[data-state="portal"]{color:#ff9b9b}
 .network-diagnostic-row strong[data-state="mismatch"]{color:#ffc477}
 .network-diagnostic-row strong[data-state="validated"]{color:#63ff9c}
+
+
+/* BYTE PHANTOM v1.20.0 — native file and process intelligence */
+.module-options{display:grid;gap:7px;margin:12px 0;padding:12px;border:1px solid rgba(68,232,255,.2);border-radius:7px;background:rgba(4,12,20,.62)}
+.module-options[hidden]{display:none}
+.module-options .text-input{width:100%;font-family:var(--mono);letter-spacing:.25px}
+.module-options-note{color:#8e9ba9;font-size:10px;line-height:1.55}
+#copyModuleReport{min-width:120px}
+@media(max-width:600px){.modal-actions{flex-wrap:wrap}.modal-actions button{flex:1 1 100%}}
