@@ -1,8 +1,17 @@
-# BYTE PHANTOM v1.21.0
+# BYTE PHANTOM v1.22.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
 BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.21.0 replaces the fictional PASSWORD CRACKER card with CREDENTIAL LAB, a cross-platform local password generator powered by Web Crypto getRandomValues. It offers 12–64 character lengths, selectable character groups, and copy-on-request without saving generated secrets.
+
+## v1.22.0 — FIREWALL INTELLIGENCE
+- Replaced the fictional FIREWALL BREACH card with a real, read-only Windows Defender Firewall inspector.
+- Windows queries the effective `ActiveStore` using PowerShell `Get-NetFirewallProfile` and `Get-NetFirewallRule`; it reports the MpsSvc service state, Domain/Private/Public profile states, default inbound/outbound actions, rule merge/notification/logging settings, enabled/disabled rule counts and inbound/outbound Allow/Block counts.
+- Up to 120 enabled rule summaries are returned, including direction, action, profile and policy source. The UI displays a sample of up to 35 rules; the copyable JSON report includes the available snapshot.
+- The module does not change firewall profiles, services or rules, does not request UAC elevation, and does not perform network probes.
+- Android reports `NOT EXPOSED`: ordinary Android apps are not given a public system-wide firewall profile/rule inventory. VPN, Private DNS, captive-portal or connectivity signals are not treated as proof that a firewall is enabled or disabled.
+- Fixed malformed duplicate HTML opening markup in the FILE INTEGRITY expected-hash field.
+- The operation catalogue remains at 12 cards: six live local tools and six clearly labelled simulations.
 
 ## v1.21.0 — CREDENTIAL LAB
 - Replaced the fictional PASSWORD CRACKER scenario with a live local password generator.
