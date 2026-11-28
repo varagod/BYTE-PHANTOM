@@ -1,13 +1,15 @@
 {
   "name": "BYTE PHANTOM",
-  "version": "1.19.1",
-  "build": "1.19.1",
+  "version": "1.20.0",
+  "build": "1.20.0",
   "release": "2026-11-27",
   "platforms": [
     "Windows x64",
     "Android"
   ],
   "realCapabilities": [
+    "FILE INTEGRITY: Windows open-file dialog and Android Storage Access Framework picker; streaming SHA-256 calculation, optional reference-digest comparison, byte count and metadata-only stability check; no file upload or file modification",
+    "PROCESS INTELLIGENCE: Windows read-only top-80 process inventory with PID, working-set memory, CPU time, start time and accessible executable path; Android current BYTE PHANTOM app-process PSS/heap and device memory only",
     "Captive Portal and HTTPS Response Integrity checks: strict per-provider HTTP status and expected body validation for Microsoft NCSI, Google connectivity, Cloudflare connectivity, and Apple captive portal probes",
     "HTTPS checks do not follow redirects; report redirect destination host, response byte count, expected status, body match, and response-integrity state",
     "Android native ConnectivityManager captive-portal, validated-network, and internet-capability indicators when available",
@@ -46,8 +48,6 @@
     "CAMERA ACCESS",
     "SATELLITE LINK",
     "MAINFRAME OVERRIDE",
-    "DATA EXTRACTION",
-    "DIGITAL FORENSICS",
     "ENCRYPTION BREAKER"
   ],
   "android": {
@@ -57,7 +57,9 @@
       "android.permission.ACCESS_NETWORK_STATE"
     ],
     "runtimeLocationPermission": false,
-    "diagnostics": "InetAddress system DNS lookup and HttpURLConnection HTTPS checks"
+    "diagnostics": "InetAddress system DNS lookup and HttpURLConnection HTTPS checks",
+    "fileAccess": "Android Storage Access Framework ACTION_OPEN_DOCUMENT with temporary read permission for the explicitly selected item; no READ_EXTERNAL_STORAGE or MANAGE_EXTERNAL_STORAGE permission.",
+    "processIntelligence": "Current BYTE PHANTOM process PSS/heap and device memory only; no enumeration of other applications' processes."
   },
   "connectivityDiagnostics": {
     "dnsHost": "example.com (primary compatibility field)",
@@ -130,7 +132,7 @@
       "confidence": "A single unexpected response is a warning, not conclusive proof. These probes cannot identify all transparent proxies or TLS interception."
     }
   },
-  "security": "Connectivity diagnostics run only after an explicit user action or while the operator has started OUTAGE WATCH with NETWORK RADAR open. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform three system DNS lookups, and make four fixed HTTPS GET checks. HTTPS requests do not follow redirects and only retain a bounded response sample for expected-signature validation; response bodies are not stored in history or exported. Android reads ConnectivityManager captive portal, validated, and internet capability flags when available. The app does not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends direct DNS A queries only to configured IPv4 DNS servers and fixed public resolver references. DNS answer divergence and non-public address flags are advisory indicators only, not a malware verdict. Windows DNS changes remain opt-in, limited to the active default-route adapter, require UAC Administrator approval, and preserve a local original-configuration backup. Android opens system network settings for manual changes only.",
+  "security": "Connectivity diagnostics run only after an explicit user action or while the operator has started OUTAGE WATCH with NETWORK RADAR open. They read the active route, send one ICMP echo to the active private IPv4 gateway when available, perform three system DNS lookups, and make four fixed HTTPS GET checks. HTTPS requests do not follow redirects and only retain a bounded response sample for expected-signature validation; response bodies are not stored in history or exported. Android reads ConnectivityManager captive portal, validated, and internet capability flags when available. The app does not scan LAN hosts or ports, test credentials, exploit devices, or modify network settings. DNS intelligence sends direct DNS A queries only to configured IPv4 DNS servers and fixed public resolver references. DNS answer divergence and non-public address flags are advisory indicators only, not a malware verdict. Windows DNS changes remain opt-in, limited to the active default-route adapter, require UAC Administrator approval, and preserve a local original-configuration backup. Android opens system network settings for manual changes only. FILE INTEGRITY reads only one explicitly user-selected file using the Windows open-file dialog or Android Storage Access Framework. SHA-256 is streamed in memory; no file content is uploaded, changed or stored by the app. Android document providers may be cloud-backed and can fetch content on the user's behalf. PROCESS INTELLIGENCE is read-only: Windows returns up to 80 processes from Get-Process without elevation; Android reports only the current BYTE PHANTOM app process and device memory, not other apps.",
   "networkPathIntelligence": {
     "dataSource": "Windows Get-NetIPConfiguration/Get-NetRoute; Android ConnectivityManager/LinkProperties",
     "fields": [
@@ -145,6 +147,7 @@
     "configurationChanges": false
   },
   "fixes": [
+    "Added two real operation modules: FILE INTEGRITY (streamed SHA-256 with optional reference comparison) and PROCESS INTELLIGENCE (Windows local process table; Android own-app process and memory only).",
     "Fixed Windows Electron main-process startup SyntaxError by preserving CRLF separators as escaped JavaScript string sequences; Windows startup entrypoint is covered by node --check before packaging.",
     "Added captive-portal and response-integrity checks: redirects are not followed, Microsoft/Google/Cloudflare/Apple response signatures are validated, and Android OS captive-portal/validated-network flags are displayed",
     "Added Network Shutdown Intelligence with three system DNS names, four independent HTTPS providers, conservative path isolation, and per-target results on Windows and Android",
@@ -310,5 +313,20 @@
       "endpointSpecificFailuresCreateOutageIncident": false,
       "gatewayIcmpSilenceAloneConfirmsLocalFailure": false
     }
+  },
+  "fileIntegrity": {
+    "status": "LIVE / NATIVE",
+    "windows": "Electron open-file dialog; one user-selected regular file is streamed through SHA-256. Before/after size and modification time are compared to flag a file that changed during hashing.",
+    "android": "Android Storage Access Framework ACTION_OPEN_DOCUMENT picker; the selected URI is read through ContentResolver in a streaming SHA-256 pass. No broad storage permission or persistent URI grant is requested.",
+    "referenceComparison": "Optional expected SHA-256 input must be exactly 64 hexadecimal characters. The result reports MATCH, MISMATCH, or NOT REQUESTED.",
+    "privacy": "BYTE PHANTOM does not upload, copy, edit or retain selected file contents. Android document providers may be cloud-backed and can fetch content when the user selects one; this is surfaced in the result."
+  },
+  "processIntelligence": {
+    "status": "LIVE / READ-ONLY",
+    "windows": "PowerShell Get-Process snapshot: total process count and up to 80 processes sorted by working-set memory, including name, PID, memory, CPU time, start time and executable path when access is allowed.",
+    "android": "Only the BYTE PHANTOM app's own process PID/UID, PSS and runtime heap plus system available/total memory are reported. Other apps' process details are not enumerated.",
+    "elevatedPrivileges": false,
+    "processControl": false,
+    "networkProbes": false
   }
 }

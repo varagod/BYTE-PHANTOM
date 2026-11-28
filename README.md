@@ -1,8 +1,17 @@
-# BYTE PHANTOM v1.19.1
+# BYTE PHANTOM v1.20.0
 
 **DIGITAL GHOST · CYBERSECURITY & NETWORK INTELLIGENCE**
 
-BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.19.0 adds captive-portal detection and strict HTTPS response-integrity checks on Windows and Android. Connectivity probes validate each provider's expected HTTP status and body, do not follow redirects, and show Android's native captive-portal / validated-network indicators.
+BYTE PHANTOM is a local-first Cybersecurity & Network Intelligence workstation. Version 1.20.0 replaces two former simulation cards with native read-only tools: FILE INTEGRITY calculates and optionally compares a user-selected file's SHA-256 digest, and PROCESS INTELLIGENCE reads Windows process metadata or the Android BYTE PHANTOM app process only.
+
+## v1.20.0 — FILE INTEGRITY + PROCESS INTELLIGENCE
+- Replaced the fictional DATA EXTRACTION card with FILE INTEGRITY. Windows opens the system file picker; Android uses the Storage Access Framework. The selected file is streamed through SHA-256, with file name, byte count, MIME type and an optional expected-hash comparison.
+- A reference SHA-256 digest is optional and must be 64 hexadecimal characters. Results report MATCH, MISMATCH or NOT REQUESTED. Windows compares file size and modification time before and after the read to flag a possible concurrent change.
+- Replaced the fictional DIGITAL FORENSICS card with PROCESS INTELLIGENCE. Windows reads a local Get-Process snapshot and displays up to 80 processes sorted by working-set memory, including PID, memory, CPU time and executable path when accessible.
+- Android reports only the BYTE PHANTOM app's own PID/UID, PSS and runtime heap plus device memory. It does not enumerate other applications' processes.
+- Both tools are read-only and local. No file contents are uploaded, no files are modified, no processes are controlled and no elevation is requested.
+- Android uses a user-selected document URI and does not request broad storage permissions. A document provider may be cloud-backed and can fetch the selected file on the user's behalf; the module reports this limitation.
+- The 12-card operation catalogue remains unchanged: four live native modules and eight clearly labelled simulations.
 
 ## v1.19.1 — WINDOWS STARTUP HOTFIX
 - Fixed two malformed JavaScript string literals in the Windows Electron main process. The PowerShell script builders now join lines using escaped CRLF sequences (`"\\r\\n"`) rather than a raw line break inside a quoted JavaScript string.
