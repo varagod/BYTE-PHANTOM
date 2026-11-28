@@ -125,7 +125,7 @@
             <article class="stat-card"><div class="stat-top"><span class="stat-icon violet">⌘</span><span class="stat-trend">READY</span></div><div class="stat-value">14</div><div class="stat-name">LOADED MODULES</div><div class="stat-bottom"><span class="stat-bar violet-bar"></span><small>12 operations · 2 tools</small></div></article>
             <article class="stat-card stat-card-live"><div class="stat-top"><span class="stat-icon cyan">◉</span><span class="stat-trend">LIVE</span></div><div class="stat-value">05</div><div class="stat-name">REAL MODULES</div><div class="stat-bottom"><span class="stat-bar cyan-bar"></span><small>Host · Network · File · Process · Credential</small></div></article>
             <article class="stat-card"><div class="stat-top"><span class="stat-icon red">ϟ</span><span class="stat-trend" id="runStatus">IDLE</span></div><div class="stat-value" id="runCount">00</div><div class="stat-name">SESSION OPERATIONS</div><div class="stat-bottom"><span class="stat-bar red-bar"></span><small>Runs this session</small></div></article>
-            <article class="stat-card"><div class="stat-top"><span class="stat-icon green">⌁</span><span class="stat-trend">SECURE</span></div><div class="stat-value">OFF</div><div class="stat-name">NETWORK ACCESS</div><div class="stat-bottom"><span class="stat-bar green-bar"></span><small>No network actions available</small></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-icon green">⌁</span><span class="stat-trend">SECURE</span></div><div class="stat-value">OFF</div><div class="stat-name">NETWORK ACCESS</div><div class="stat-bottom"><span class="stat-bar green-bar"></span><small>PUBLIC TARGETS DISABLED · LOCAL LAN ONLY</small></div></article>
           </div>
 
           <div class="dashboard-grid">
@@ -160,7 +160,7 @@
             <div class="operation-grid" id="reconGrid"></div>
           </div>
           <div class="operation-group">
-            <div class="group-heading"><div class="group-number group-number-violet">02</div><div><h3>ACCESS SIMULATION</h3><p>Imaginary access-control and override scenarios</p></div><span class="group-count">06 MODULES</span></div>
+            <div class="group-heading"><div class="group-number group-number-violet">02</div><div><h3>ACCESS & CREDENTIAL TOOLS</h3><p>Local credential utility and clearly labelled access-control scenarios</p></div><span class="group-count">06 MODULES</span></div>
             <div class="operation-grid" id="accessGrid"></div>
           </div>
           <div class="operation-group">
@@ -171,7 +171,7 @@
         </section>
 
         <section class="page" id="page-terminal">
-          <div class="page-title-row"><div><div class="eyebrow">COMMAND INTERFACE / 02</div><h1>Dark <span>Terminal</span></h1><p>A cinematic command line for simulator-only instructions.</p></div><div class="terminal-badge"><span class="live-dot"></span> SANDBOX ACTIVE</div></div>
+          <div class="page-title-row"><div><div class="eyebrow">COMMAND INTERFACE / 02</div><h1>Dark <span>Terminal</span></h1><p>A local command launcher for BYTE PHANTOM tools and clearly labelled simulations.</p></div><div class="terminal-badge"><span class="live-dot"></span> SANDBOX ACTIVE</div></div>
           <div class="terminal-window">
             <div class="terminal-titlebar"><div class="window-dots"><i></i><i></i><i></i></div><span>PHANTOM://LOCAL/CONSOLE</span><button id="clearTerminal" class="terminal-clear">CLEAR OUTPUT</button></div>
             <div class="terminal-screen" id="terminalScreen" aria-live="polite">
@@ -218,7 +218,7 @@
               <div class="volume-row"><label for="sfxVolume">SOUND EFFECTS VOLUME <output id="sfxVolumeValue">48%</output></label><input type="range" id="sfxVolume" min="0" max="100" value="48"></div>
               <div class="setting-row"><div><b>Compact interface</b><small>Reduce spacing across panels</small></div><label class="toggle"><input type="checkbox" id="compactToggle"><span></span></label></div>
             </section>
-            <section class="panel settings-panel"><div class="panel-heading"><div><div class="eyebrow">ABOUT THIS BUILD</div><h3>BYTE PHANTOM v1.21.0</h3></div><span class="panel-symbol">BP</span></div><div class="about-copy"><p><b>DIGITAL GHOST</b> is a local-first Cybersecurity & Network Intelligence workstation. Version 1.21.0 adds two real read-only operation modules: FILE INTEGRITY streams a user-selected file through SHA-256 and can compare a known digest; PROCESS INTELLIGENCE reads a Windows process snapshot, while Android reports only the BYTE PHANTOM app process and device memory. Files are not uploaded or changed and processes are never controlled. Android uses its system document picker without broad storage permissions; cloud-backed document providers may fetch selected content. The remaining eight operation cards are explicitly labelled simulations.</p><div class="about-line"><span>PLATFORM</span><b>WINDOWS DESKTOP / ANDROID</b></div><div class="about-line"><span>ENGINE</span><b>ELECTRON + CAPACITOR / NATIVE JAVA</b></div><div class="about-line"><span>LIVE OPERATION CARDS</span><b class="text-green">05 / 12</b></div><div class="about-line"><span>NETWORK PROBES</span><b class="text-green">LOCAL ICMP / ARP</b></div><div class="about-line"><span>VERSION</span><b>1.21.0</b></div></div></section>
+            <section class="panel settings-panel"><div class="panel-heading"><div><div class="eyebrow">ABOUT THIS BUILD</div><h3>BYTE PHANTOM v1.21.0</h3></div><span class="panel-symbol">BP</span></div><div class="about-copy"><p><b>DIGITAL GHOST</b> is a local-first Cybersecurity & Network Intelligence workstation. Version 1.21.0 adds CREDENTIAL LAB, a local cryptographic password generator with configurable length and character groups. Generated secrets are not stored in activity logs, reports or local storage and are copied only on request. FILE INTEGRITY calculates SHA-256 for a user-selected file; PROCESS INTELLIGENCE reads Windows process data, while Android reports only the BYTE PHANTOM app process and device memory. The remaining seven operation cards are explicitly labelled simulations.</p><div class="about-line"><span>PLATFORM</span><b>WINDOWS DESKTOP / ANDROID</b></div><div class="about-line"><span>ENGINE</span><b>ELECTRON + CAPACITOR / NATIVE JAVA</b></div><div class="about-line"><span>LIVE OPERATION CARDS</span><b class="text-green">05 / 12</b></div><div class="about-line"><span>NETWORK PROBES</span><b class="text-green">LOCAL ICMP / ARP</b></div><div class="about-line"><span>VERSION</span><b>1.21.0</b></div></div></section>
           </div>
           <div class="bottom-note"><span>⬡</span> Network Radar history is stored locally on this device for up to 30 days. Reports are copied only when you request them; no account or remote service is required.</div>
         </section>
